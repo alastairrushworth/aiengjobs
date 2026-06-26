@@ -1,0 +1,50 @@
+---
+import "../styles/global.css";
+import { url } from "../lib/url.ts";
+
+interface Props {
+  title: string;
+  description?: string;
+}
+
+const {
+  title,
+  description = "The job board for AI engineers — RAG, agents, evals, inference. Salary-transparent, no ghost jobs.",
+} = Astro.props;
+
+const canonical = new URL(Astro.url.pathname, Astro.site).href;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary" />
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="container">
+        <a class="brand" href={url("/")}>aieng<span class="dot">.</span>jobs</a>
+        <nav class="nav">
+          <a href={url("/")}>Jobs</a>
+          <a href="#newsletter">Newsletter</a>
+        </nav>
+      </div>
+    </header>
+    <main class="container">
+      <slot />
+    </main>
+    <footer class="site-footer">
+      <div class="container">
+        AI Engineering Jobs · first-party ATS listings, salary-transparent, no ghost jobs.
+      </div>
+    </footer>
+  </body>
+</html>

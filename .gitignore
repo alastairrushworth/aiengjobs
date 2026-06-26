@@ -1,0 +1,18 @@
+node_modules/
+dist/
+.astro/
+.output/
+
+# SQLite database lives on the droplet, never in the repo
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+
+# secrets
+.env
+.env.*
+!.env.example
+
+.DS_Store
+*.log

@@ -1,0 +1,42 @@
+---
+import type { Job } from "@aiengjobs/shared";
+import { formatSalary, remoteLabel, seniorityLabel } from "../lib/format.ts";
+
+interface Props {
+  job: Job;
+  href: string;
+}
+
+const { job, href } = Astro.props;
+const salary = formatSalary(job);
+const remote = remoteLabel(job.remoteType);
+const sen = seniorityLabel(job.seniority);
+const searchBlob =
+  `${job.title} ${job.companyName} ${job.skills.join(" ")} ${job.locationRaw ?? ""}`.toLowerCase();
+---
+
+<a
+  class="job-card"
+  href={href}
+  data-search={searchBlob}
+  data-clusters={job.clusters.join(" ")}
+  data-remote={job.remoteType ?? ""}
+  data-seniority={job.seniority ?? ""}
+>
+  <div class="top">
+    <div>
+      <h3>{job.title}</h3>
+      <div class="company">
+        {job.companyName}{job.locationRaw ? ` · ${job.locationRaw}` : ""}
+      </div>
+    </div>
+    {salary && <div class="salary">{salary}</div>}
+  </div>
+  <div class="meta">
+    {job.isNew && <span class="badge new">New</span>}
+    {job.isFeatured && <span class="badge featured">Featured</span>}
+    {remote && <span class="badge">{remote}</span>}
+    {sen && <span class="badge">{sen}</span>}
+    {job.skills.slice(0, 4).map((s) => <span class="badge skill">{s}</span>)}
+  </div>
+</a>

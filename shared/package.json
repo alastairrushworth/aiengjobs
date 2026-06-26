@@ -1,0 +1,9 @@
+{
+  "name": "@aiengjobs/shared",
+  "version": "0.0.0",
+  "type": "module",
+  "exports": {
+    ".": "./types.ts",
+    "./taxonomy": "./taxonomy.ts"
+  }
+}

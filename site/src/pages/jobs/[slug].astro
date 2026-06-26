@@ -1,0 +1,91 @@
+---
+import Base from "../../layouts/Base.astro";
+import { formatSalary, remoteLabel, seniorityLabel } from "../../lib/format.ts";
+import { url } from "../../lib/url.ts";
+import snapshot from "../../data/snapshot.json";
+import type { SiteSnapshot, Job } from "@aiengjobs/shared";
+
+export function getStaticPaths() {
+  const data = snapshot as unknown as SiteSnapshot;
+  return data.jobs
+    .filter((j) => !j.isClosed)
+    .map((job) => ({ params: { slug: job.slug }, props: { job } }));
+}
+
+const { job } = Astro.props as { job: Job };
+const salary = formatSalary(job);
+
+// JobPosting structured data (JSON-LD) for SEO/GEO — spec §8.
+const jsonLd: Record<string, unknown> = {
+  "@context": "https://schema.org/",
+  "@type": "JobPosting",
+  title: job.title,
+  hiringOrganization: { "@type": "Organization", name: job.companyName },
+  employmentType: "FULL_TIME",
+  datePosted: job.postedAt ?? job.ingestedAt,
+  directApply: false,
+};
+if (job.remoteType === "remote") jsonLd.jobLocationType = "TELECOMMUTE";
+if (job.country)
+  jsonLd.applicantLocationRequirements = { "@type": "Country", name: job.country };
+if (job.salaryMin) {
+  jsonLd.baseSalary = {
+    "@type": "MonetaryAmount",
+    currency: job.salaryCurrency ?? "USD",
+    value: {
+      "@type": "QuantitativeValue",
+      minValue: job.salaryMin,
+      maxValue: job.salaryMax ?? job.salaryMin,
+      unitText: "YEAR",
+    },
+  };
+}
+---
+
+<Base
+  title={`${job.title} · ${job.companyName}`}
+  description={`${job.title} at ${job.companyName}. ${salary ?? "AI engineering role."}`}
+>
+  <article class="job-detail">
+    <p><a class="back" href={url("/")}>← All jobs</a></p>
+    <h1>{job.title}</h1>
+    <p class="company">
+      {job.companyName}{job.locationRaw ? ` · ${job.locationRaw}` : ""}
+    </p>
+    <div class="meta">
+      {salary && <span class="badge new">{salary}</span>}
+      {remoteLabel(job.remoteType) && <span class="badge">{remoteLabel(job.remoteType)}</span>}
+      {seniorityLabel(job.seniority) && <span class="badge">{seniorityLabel(job.seniority)}</span>}
+    </div>
+    <div class="meta skills">
+      {job.skills.map((s) => <span class="badge skill">{s}</span>)}
+    </div>
+    {job.descriptionHtml && <div class="desc" set:html={job.descriptionHtml} />}
+    <p class="apply-wrap">
+      <a class="apply" href={job.applyUrl} target="_blank" rel="noopener nofollow">
+        Apply on company site →
+      </a>
+    </p>
+  </article>
+
+  <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} is:inline />
+</Base>
+
+<style>
+  .job-detail { max-width: 720px; padding: 32px 0; }
+  .job-detail h1 { font-size: 1.8rem; letter-spacing: -0.02em; margin: 12px 0 6px; }
+  .job-detail .company { color: var(--muted); margin: 0 0 16px; }
+  .job-detail .skills { margin-top: 10px; }
+  .back { color: var(--muted); }
+  .desc { margin-top: 24px; color: var(--text); line-height: 1.65; }
+  .apply-wrap { margin-top: 28px; }
+  .apply {
+    display: inline-block;
+    background: var(--accent);
+    color: #fff;
+    padding: 12px 20px;
+    border-radius: 10px;
+    font-weight: 600;
+  }
+  .apply:hover { filter: brightness(1.08); }
+</style>

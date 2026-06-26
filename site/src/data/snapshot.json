@@ -1,0 +1,94 @@
+{
+  "generatedAt": "2026-06-26T00:00:00.000Z",
+  "_note": "SAMPLE data for the Phase 0 scaffold. The ingestion engine overwrites this file with real, classified ATS listings in Phase 1.",
+  "companies": [
+    { "id": "c_anthropic", "name": "Anthropic", "slug": "anthropic", "domain": "anthropic.com", "atsProvider": "greenhouse", "stage": "Late" },
+    { "id": "c_perplexity", "name": "Perplexity", "slug": "perplexity", "domain": "perplexity.ai", "atsProvider": "ashby", "stage": "Growth" },
+    { "id": "c_langchain", "name": "LangChain", "slug": "langchain", "domain": "langchain.com", "atsProvider": "ashby", "stage": "Early" },
+    { "id": "c_pinecone", "name": "Pinecone", "slug": "pinecone", "domain": "pinecone.io", "atsProvider": "greenhouse", "stage": "Growth" },
+    { "id": "c_modal", "name": "Modal", "slug": "modal", "domain": "modal.com", "atsProvider": "lever", "stage": "Early" },
+    { "id": "c_baseten", "name": "Baseten", "slug": "baseten", "domain": "baseten.co", "atsProvider": "ashby", "stage": "Growth" }
+  ],
+  "jobs": [
+    {
+      "id": "j_sample_1", "slug": "anthropic-ai-engineer-applied", "companyId": "c_anthropic", "companyName": "Anthropic", "companySlug": "anthropic",
+      "title": "AI Engineer, Applied AI", "normalizedTitle": "ai engineer",
+      "applyUrl": "https://www.anthropic.com/careers",
+      "locationRaw": "Remote (US)", "country": "US", "remoteType": "remote", "seniority": "senior",
+      "salaryMin": 300000, "salaryMax": 405000, "salaryCurrency": "USD", "salaryPeriod": "year",
+      "classification": "in", "classificationConfidence": 0.97,
+      "skills": ["Anthropic API", "Tool use", "Eval harnesses", "Python"], "clusters": ["llm", "agents", "evals"],
+      "isFeatured": false, "isDirect": false, "isNew": true, "isClosed": false, "ingestedAt": "2026-06-26T00:00:00.000Z"
+    },
+    {
+      "id": "j_sample_2", "slug": "perplexity-llm-engineer-search", "companyId": "c_perplexity", "companyName": "Perplexity", "companySlug": "perplexity",
+      "title": "LLM Engineer, Search", "normalizedTitle": "llm engineer",
+      "applyUrl": "https://www.perplexity.ai/hub/careers",
+      "locationRaw": "San Francisco, CA", "country": "US", "city": "San Francisco", "remoteType": "onsite", "seniority": "mid",
+      "salaryMin": 200000, "salaryMax": 260000, "salaryCurrency": "USD", "salaryPeriod": "year",
+      "classification": "in", "classificationConfidence": 0.93,
+      "skills": ["RAG", "Embeddings", "Reranking", "Python"], "clusters": ["llm", "rag"],
+      "isFeatured": false, "isDirect": false, "isNew": true, "isClosed": false, "ingestedAt": "2026-06-26T00:00:00.000Z"
+    },
+    {
+      "id": "j_sample_3", "slug": "langchain-agents-engineer", "companyId": "c_langchain", "companyName": "LangChain", "companySlug": "langchain",
+      "title": "Agents Engineer", "normalizedTitle": "agents engineer",
+      "applyUrl": "https://www.langchain.com/careers",
+      "locationRaw": "Remote", "remoteType": "remote", "seniority": "mid",
+      "salaryMin": 180000, "salaryMax": 240000, "salaryCurrency": "USD", "salaryPeriod": "year",
+      "classification": "in", "classificationConfidence": 0.95,
+      "skills": ["LangChain", "Multi-agent", "Orchestration", "Python", "TypeScript"], "clusters": ["agents", "llm"],
+      "isFeatured": false, "isDirect": false, "isNew": false, "isClosed": false, "ingestedAt": "2026-06-26T00:00:00.000Z"
+    },
+    {
+      "id": "j_sample_4", "slug": "pinecone-retrieval-engineer", "companyId": "c_pinecone", "companyName": "Pinecone", "companySlug": "pinecone",
+      "title": "RAG / Retrieval Engineer", "normalizedTitle": "retrieval engineer",
+      "applyUrl": "https://www.pinecone.io/careers/",
+      "locationRaw": "New York, NY (Hybrid)", "country": "US", "city": "New York", "remoteType": "hybrid", "seniority": "senior",
+      "salaryMin": 210000, "salaryMax": 275000, "salaryCurrency": "USD", "salaryPeriod": "year",
+      "classification": "in", "classificationConfidence": 0.94,
+      "skills": ["pgvector", "Embeddings", "GPU", "Python"], "clusters": ["rag", "inference"],
+      "isFeatured": false, "isDirect": false, "isNew": false, "isClosed": false, "ingestedAt": "2026-06-26T00:00:00.000Z"
+    },
+    {
+      "id": "j_sample_5", "slug": "modal-inference-engineer-gpu", "companyId": "c_modal", "companyName": "Modal", "companySlug": "modal",
+      "title": "Inference Engineer (GPU)", "normalizedTitle": "inference engineer",
+      "applyUrl": "https://modal.com/careers",
+      "locationRaw": "Remote (Global)", "remoteType": "remote", "seniority": "staff",
+      "salaryMin": 230000, "salaryMax": 320000, "salaryCurrency": "USD", "salaryPeriod": "year",
+      "classification": "in", "classificationConfidence": 0.96,
+      "skills": ["vLLM", "Triton", "Quantization", "Kubernetes", "Python"], "clusters": ["inference", "mlops"],
+      "isFeatured": false, "isDirect": false, "isNew": true, "isClosed": false, "ingestedAt": "2026-06-26T00:00:00.000Z"
+    },
+    {
+      "id": "j_sample_6", "slug": "baseten-forward-deployed-ai-engineer", "companyId": "c_baseten", "companyName": "Baseten", "companySlug": "baseten",
+      "title": "Forward-Deployed AI Engineer", "normalizedTitle": "forward deployed ai engineer",
+      "applyUrl": "https://www.baseten.co/careers/",
+      "locationRaw": "Remote (US)", "country": "US", "remoteType": "remote", "seniority": "senior",
+      "salaryMin": 200000, "salaryMax": 280000, "salaryCurrency": "USD", "salaryPeriod": "year",
+      "classification": "in", "classificationConfidence": 0.92,
+      "skills": ["vLLM", "LLM-as-judge", "Latency", "Python"], "clusters": ["llm", "inference", "evals"],
+      "isFeatured": false, "isDirect": false, "isNew": false, "isClosed": false, "ingestedAt": "2026-06-26T00:00:00.000Z"
+    }
+  ],
+  "facets": {
+    "clusters": [
+      { "id": "llm", "label": "LLM & frameworks", "count": 4 },
+      { "id": "inference", "label": "Inference / serving", "count": 3 },
+      { "id": "rag", "label": "Retrieval / RAG", "count": 2 },
+      { "id": "agents", "label": "Agents", "count": 2 },
+      { "id": "evals", "label": "Evals & quality", "count": 2 },
+      { "id": "mlops", "label": "MLOps / infra", "count": 1 }
+    ],
+    "seniority": [
+      { "id": "senior", "count": 3 },
+      { "id": "mid", "count": 2 },
+      { "id": "staff", "count": 1 }
+    ],
+    "remoteType": [
+      { "id": "remote", "count": 4 },
+      { "id": "onsite", "count": 1 },
+      { "id": "hybrid", "count": 1 }
+    ]
+  }
+}
