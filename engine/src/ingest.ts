@@ -18,7 +18,24 @@ import { llmEnabled } from "./pipeline/llm.ts";
 import { jobId, jobSlug } from "./util/id.ts";
 
 const SLEEP_MS = Number(process.env.INGEST_DELAY_MS ?? 400); // polite to feeds (Lever crawl-delay)
+const CONCURRENCY = Number(process.env.INGEST_CONCURRENCY ?? 8); // parallel LLM calls per company
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+// Run async fn over items with bounded concurrency. node:sqlite is synchronous,
+// so the DB writes inside fn never truly overlap — only the awaited LLM calls do.
+async function mapPool<T>(
+  items: T[],
+  concurrency: number,
+  fn: (item: T) => Promise<void>,
+): Promise<void> {
+  let i = 0;
+  const worker = async () => {
+    while (i < items.length) await fn(items[i++]);
+  };
+  await Promise.all(
+    Array.from({ length: Math.min(concurrency, items.length) }, worker),
+  );
+}
 
 /** Poll every seeded source, classify/tag, upsert, then expire vanished jobs (§6.4–6.5). */
 export async function ingest(): Promise<void> {
@@ -58,8 +75,8 @@ export async function ingest(): Promise<void> {
     fetched += postings.length;
 
     let inThisCompany = 0;
-    for (const raw of postings) {
-      if (!raw.applyUrl || !raw.title) continue;
+    await mapPool(postings, CONCURRENCY, async (raw) => {
+      if (!raw.applyUrl || !raw.title) return;
       const id = jobId(t.slug, raw.externalId);
       const hash = contentHash([
         raw.title,
@@ -73,7 +90,7 @@ export async function ingest(): Promise<void> {
       if (existing && existing.contentHash === hash && existing.isClosed === 0) {
         markSeen(db, id, runStart); // unchanged → skip reprocessing (saves LLM cost)
         skipped++;
-        continue;
+        return;
       }
 
       const norm = normalize(raw, t.slug);
@@ -81,7 +98,7 @@ export async function ingest(): Promise<void> {
       const tags =
         cls.classification === "in"
           ? await tagJob(`${raw.title}\n${raw.descriptionText ?? ""}`)
-          : { skills: [], clusters: [] };
+          : { skills: [] as string[] };
       const loc = parseLocation(raw.locationRaw, raw.remoteType, raw.remoteHint);
 
       upsertJob(db, {
@@ -120,7 +137,7 @@ export async function ingest(): Promise<void> {
         listed++;
         inThisCompany++;
       }
-    }
+    });
     console.log(`  ✓ ${t.name}: ${postings.length} postings, ${inThisCompany} in-scope`);
     await sleep(SLEEP_MS);
   }
