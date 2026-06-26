@@ -3,6 +3,7 @@ import Base from "../layouts/Base.astro";
 import JobCard from "../components/JobCard.astro";
 import { url } from "../lib/url.ts";
 import snapshot from "../data/snapshot.json";
+import { CLUSTER_PAGES } from "../lib/clusters.ts";
 import type { SiteSnapshot } from "@aiengjobs/shared";
 
 const data = snapshot as unknown as SiteSnapshot;
@@ -21,6 +22,11 @@ const clusters = data.facets.clusters.filter((c) => !HIDDEN_CLUSTERS.has(c.id));
       first-party roles. Salary-transparent. No ghost jobs.
     </p>
   </section>
+
+  <nav class="browse">
+    <span class="browse-label">Browse by stack:</span>
+    {CLUSTER_PAGES.map((p) => <a href={url(`/${p.slug}`)}>{p.label}</a>)}
+  </nav>
 
   <div class="filters">
     <input

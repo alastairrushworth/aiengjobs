@@ -140,3 +140,46 @@ a { color: inherit; text-decoration: none; }
 .badge.new { border-color: var(--accent-2); color: var(--accent-2); }
 
 .empty { text-align: center; color: var(--muted); padding: 40px 0; display: none; }
+
+/* Browse-by-stack nav (cross-links to programmatic pages) */
+.browse {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+  margin: 22px 0 4px;
+}
+.browse-label { color: var(--muted); font-size: 0.85rem; }
+.browse a {
+  font-size: 0.88rem;
+  color: var(--text);
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 1px;
+}
+.browse a:hover { border-color: var(--accent); color: var(--accent); }
+
+/* Salary distribution cards */
+.salary-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin: 22px 0 8px;
+}
+.salary-stats > div {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  text-align: center;
+}
+.salary-stats .num {
+  display: block;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--accent-2);
+  letter-spacing: -0.02em;
+}
+.salary-stats .lbl { color: var(--muted); font-size: 0.8rem; }
+@media (max-width: 560px) {
+  .salary-stats { grid-template-columns: repeat(2, 1fr); }
+}

@@ -50,7 +50,7 @@ if (job.salaryMin) {
     <p><a class="back" href={url("/")}>← All jobs</a></p>
     <h1>{job.title}</h1>
     <p class="company">
-      {job.companyName}{job.locationRaw ? ` · ${job.locationRaw}` : ""}
+      <a href={url(`/companies/${job.companySlug}`)} style="color:var(--accent)">{job.companyName}</a>{job.locationRaw ? ` · ${job.locationRaw}` : ""}
     </p>
     <div class="meta">
       {salary && <span class="badge new">{salary}</span>}

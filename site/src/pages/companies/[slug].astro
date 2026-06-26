@@ -1,0 +1,70 @@
+---
+import Base from "../../layouts/Base.astro";
+import JobCard from "../../components/JobCard.astro";
+import { url } from "../../lib/url.ts";
+import snapshot from "../../data/snapshot.json";
+import type { SiteSnapshot, Job, Company } from "@aiengjobs/shared";
+
+export function getStaticPaths() {
+  const data = snapshot as unknown as SiteSnapshot;
+  const open = data.jobs.filter((j) => !j.isClosed);
+  const byCompany = new Map<string, Job[]>();
+  for (const j of open) {
+    const list = byCompany.get(j.companySlug) ?? [];
+    list.push(j);
+    byCompany.set(j.companySlug, list);
+  }
+  return data.companies
+    .filter((c) => byCompany.has(c.slug))
+    .map((company) => ({
+      params: { slug: company.slug },
+      props: { company, jobs: byCompany.get(company.slug)! },
+    }));
+}
+
+const { company, jobs } = Astro.props as { company: Company; jobs: Job[] };
+
+// Distinct stack across this company's roles.
+const stack = [...new Set(jobs.flatMap((j) => j.skills))].slice(0, 14);
+const withSalary = jobs.filter((j) => j.salaryMin).length;
+
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  name: company.name,
+  ...(company.domain ? { url: `https://${company.domain}` } : {}),
+};
+---
+
+<Base
+  title={`${company.name} AI engineering jobs (${jobs.length}) — aiengjobs`}
+  description={`Open AI-engineering roles at ${company.name}${stack.length ? ` — ${stack.slice(0, 6).join(", ")}.` : "."}`}
+>
+  <section class="hero" style="padding-bottom:8px;text-align:left">
+    <p style="margin:0"><a class="back" href={url("/")}>← All jobs</a></p>
+    <h1>{company.name}</h1>
+    <p>
+      {jobs.length} open AI-engineering role{jobs.length === 1 ? "" : "s"}
+      {withSalary > 0 ? ` · ${withSalary} with salary` : ""}
+      {company.stage ? ` · ${company.stage}-stage` : ""}
+      {company.domain ? (
+        <>
+          {" · "}
+          <a href={`https://${company.domain}`} target="_blank" rel="noopener nofollow" style="color:var(--accent)">{company.domain}</a>
+        </>
+      ) : null}
+    </p>
+  </section>
+
+  {stack.length > 0 && (
+    <div class="meta" style="margin:6px 0 20px">
+      {stack.map((s) => <span class="badge skill">{s}</span>)}
+    </div>
+  )}
+
+  <div class="jobs">
+    {jobs.map((job) => <JobCard job={job} href={url(`/jobs/${job.slug}`)} />)}
+  </div>
+
+  <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} is:inline />
+</Base>

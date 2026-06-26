@@ -1,23 +1,60 @@
-# Seed company list (spec §6.3). The feeds are keyed by ATS slug, so the real
-# work is curating WHICH companies to poll. Aim for 200-500.
-# IMPORTANT: ats_slug values below are best-guess starters — Phase 1 verifies each
-# by hitting the connector endpoint (auto-detect from careers.{domain} where unsure).
-# Columns: name,ats_provider,ats_slug,domain,stage
+# Seed company list (spec §6.3) — AI-first companies with auto-verified ATS provider+slug.
+# Re-verify periodically; companies move ATS / change slugs. Columns:
+# name,ats_provider,ats_slug,domain,stage
 Anthropic,greenhouse,anthropic,anthropic.com,late
 OpenAI,ashby,openai,openai.com,late
+Mistral AI,lever,mistral,mistral.ai,growth
+Cohere,ashby,cohere,cohere.com,late
+Together AI,greenhouse,togetherai,together.ai,growth
+Fireworks AI,ashby,fireworksai,fireworks.ai,growth
+Reka AI,ashby,reka,reka.ai,early
 Perplexity,ashby,perplexity,perplexity.ai,growth
+Stability AI,greenhouse,stabilityai,stability.ai,growth
+xAI,greenhouse,xai,x.ai,late
+Modal,ashby,modal,modal.com,early
+Baseten,ashby,baseten,baseten.co,growth
+Cerebras,ashby,cerebras,cerebras.net,late
+Lambda,ashby,lambda,lambdalabs.com,growth
+CoreWeave,greenhouse,coreweave,coreweave.com,late
+Crusoe,ashby,crusoe,crusoe.ai,growth
+Anyscale,ashby,anyscale,anyscale.com,growth
+Pinecone,ashby,pinecone,pinecone.io,growth
+Weaviate,ashby,weaviate,weaviate.io,growth
+Chroma,ashby,trychroma,trychroma.com,early
+Zilliz,lever,zilliz,zilliz.com,growth
+LanceDB,ashby,lancedb,lancedb.com,early
+Vectara,greenhouse,vectara,vectara.com,early
 LangChain,ashby,langchain,langchain.com,early
 LlamaIndex,ashby,llamaindex,llamaindex.ai,early
-Pinecone,greenhouse,pinecone,pinecone.io,growth
-Weaviate,ashby,weaviate,weaviate.io,growth
-Qdrant,ashby,qdrant,qdrant.tech,early
-Modal,lever,modal,modal.com,early
-Baseten,ashby,baseten,baseten.co,growth
-Fireworks AI,ashby,fireworksai,fireworks.ai,growth
-Together AI,greenhouse,togetherai,together.ai,growth
-Mistral AI,lever,mistral,mistral.ai,growth
-Cohere,greenhouse,cohere,cohere.com,late
-Hugging Face,greenhouse,huggingface,huggingface.co,late
-Contextual AI,ashby,contextualai,contextual.ai,early
-LangSmith,ashby,langsmith,smith.langchain.com,early
 Arize AI,greenhouse,arizeai,arize.com,growth
+Galileo,greenhouse,galileo,rungalileo.io,early
+Braintrust,ashby,braintrust,braintrust.dev,early
+Comet ML,greenhouse,comet,comet.com,growth
+Langfuse,ashby,langfuse,langfuse.com,early
+Character.AI,ashby,character,character.ai,growth
+Runway,ashby,runway,runwayml.com,growth
+ElevenLabs,ashby,elevenlabs,elevenlabs.io,growth
+Synthesia,ashby,synthesia,synthesia.io,growth
+AssemblyAI,greenhouse,assemblyai,assemblyai.com,growth
+Deepgram,ashby,deepgram,deepgram.com,growth
+Cresta,greenhouse,cresta,cresta.com,growth
+Glean,greenhouse,gleanwork,glean.com,late
+Sierra,ashby,sierra,sierra.ai,growth
+Harvey,ashby,harvey,harvey.ai,growth
+Anysphere (Cursor),ashby,cursor,cursor.com,growth
+Writer,ashby,writer,writer.com,growth
+Imbue,greenhouse,imbue,imbue.com,growth
+Cognition,ashby,cognition,cognition.ai,growth
+Poolside,ashby,poolside,poolside.ai,growth
+Decagon,ashby,decagon,decagon.ai,early
+Mercor,ashby,mercor,mercor.com,growth
+Tavus,ashby,tavus,tavus.io,early
+Suno,ashby,suno,suno.com,growth
+Scale AI,greenhouse,scaleai,scale.com,late
+Labelbox,greenhouse,labelbox,labelbox.com,growth
+Snorkel AI,greenhouse,snorkelai,snorkel.ai,growth
+Dust,ashby,dust,dust.tt,early
+Abridge,ashby,abridge,abridge.com,growth
+Lovable,ashby,lovable,lovable.dev,growth
+Vapi,ashby,vapi,vapi.ai,early
+Pika,ashby,pika,pika.art,early

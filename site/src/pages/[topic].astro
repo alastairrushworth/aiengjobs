@@ -1,0 +1,58 @@
+---
+import Base from "../layouts/Base.astro";
+import JobCard from "../components/JobCard.astro";
+import { url } from "../lib/url.ts";
+import snapshot from "../data/snapshot.json";
+import { CLUSTER_PAGES } from "../lib/clusters.ts";
+import type { SiteSnapshot, Job } from "@aiengjobs/shared";
+import type { ClusterPage } from "../lib/clusters.ts";
+
+export function getStaticPaths() {
+  const data = snapshot as unknown as SiteSnapshot;
+  const open = data.jobs.filter((j) => !j.isClosed);
+  return CLUSTER_PAGES.map((page) => ({
+    params: { topic: page.slug },
+    props: { page, jobs: open.filter((j) => j.clusters.includes(page.id)) },
+  }));
+}
+
+const { page, jobs } = Astro.props as { page: ClusterPage; jobs: Job[] };
+
+const itemList = {
+  "@context": "https://schema.org",
+  "@type": "ItemList",
+  name: page.h1,
+  numberOfItems: jobs.length,
+  itemListElement: jobs.slice(0, 50).map((j, i) => ({
+    "@type": "ListItem",
+    position: i + 1,
+    url: new URL(url(`/jobs/${j.slug}`), Astro.site).href,
+    name: `${j.title} — ${j.companyName}`,
+  })),
+};
+
+const others = CLUSTER_PAGES.filter((p) => p.id !== page.id);
+---
+
+<Base title={`${page.h1} (${jobs.length}) — aiengjobs`} description={page.intro}>
+  <section class="hero" style="padding-bottom:8px">
+    <h1>{page.h1}</h1>
+    <p>{page.intro}</p>
+    <p class="count">{jobs.length} open role{jobs.length === 1 ? "" : "s"}</p>
+  </section>
+
+  <p style="margin:8px 0"><a class="back" href={url("/")}>← All jobs</a></p>
+
+  <div class="jobs">
+    {jobs.map((job) => <JobCard job={job} href={url(`/jobs/${job.slug}`)} />)}
+  </div>
+  {jobs.length === 0 && <p style="text-align:center;color:var(--muted);padding:32px 0">No open roles in this category right now.</p>}
+
+  <nav class="browse" style="margin-top:40px">
+    <span style="color:var(--muted);font-size:.85rem">Browse:</span>
+    {others.map((p) => <a href={url(`/${p.slug}`)}>{p.label}</a>)}
+    <a href={url(`/salaries/${page.id}`)}>{page.label} salaries →</a>
+  </nav>
+
+  <script type="application/ld+json" set:html={JSON.stringify(itemList)} is:inline />
+</Base>
