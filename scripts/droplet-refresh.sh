@@ -6,6 +6,13 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
+# Load secrets (OPENAI_API_KEY etc.) for both manual and systemd runs.
+if [ -f /etc/aiengjobs.env ]; then
+  set -a
+  . /etc/aiengjobs.env
+  set +a
+fi
+
 export AIENGJOBS_DB="${AIENGJOBS_DB:-/var/lib/aiengjobs/aiengjobs.db}"
 
 # Stay in sync with the repo (deploy may have happened from elsewhere).
