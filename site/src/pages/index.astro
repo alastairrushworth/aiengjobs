@@ -7,7 +7,10 @@ import type { SiteSnapshot } from "@aiengjobs/shared";
 
 const data = snapshot as unknown as SiteSnapshot;
 const jobs = data.jobs.filter((j) => !j.isClosed);
-const clusters = data.facets.clusters;
+// Python/Cloud are near-universal — not useful browse facets. Lead with the
+// stack-native AI clusters (RAG, agents, evals, inference, …) per spec §4.
+const HIDDEN_CLUSTERS = new Set(["language", "cloud"]);
+const clusters = data.facets.clusters.filter((c) => !HIDDEN_CLUSTERS.has(c.id));
 ---
 
 <Base title="AI Engineering Jobs — RAG, agents, evals, inference">

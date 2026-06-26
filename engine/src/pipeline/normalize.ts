@@ -1,5 +1,5 @@
 import type { RawPosting } from "../connectors/types.ts";
-import type { Company } from "@aiengjobs/shared";
+import { stripHtml } from "../util/html.ts";
 
 export interface NormalizedJob {
   title: string;
@@ -12,15 +12,15 @@ export interface NormalizedJob {
   dedupKey: string;
 }
 
-export function normalize(raw: RawPosting, company: Company): NormalizedJob {
+export function normalize(raw: RawPosting, companySlug: string): NormalizedJob {
   const normalizedTitle = raw.title
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, " ")
     .trim();
-  const descriptionText = raw.descriptionHtml
-    ? stripHtml(raw.descriptionHtml)
-    : undefined;
-  const dedupKey = `${company.slug}|${normalizedTitle}|${(raw.locationRaw ?? "").toLowerCase()}`;
+  const descriptionText =
+    raw.descriptionText ??
+    (raw.descriptionHtml ? stripHtml(raw.descriptionHtml) : undefined);
+  const dedupKey = `${companySlug}|${normalizedTitle}|${(raw.locationRaw ?? "").toLowerCase()}`;
 
   return {
     title: raw.title,
@@ -31,11 +31,4 @@ export function normalize(raw: RawPosting, company: Company): NormalizedJob {
     locationRaw: raw.locationRaw,
     dedupKey,
   };
-}
-
-function stripHtml(html: string): string {
-  return html
-    .replace(/<[^>]+>/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
 }

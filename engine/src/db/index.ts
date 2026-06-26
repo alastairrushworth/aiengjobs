@@ -3,6 +3,7 @@ import { readFileSync, mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { CLUSTERS } from "@aiengjobs/shared/taxonomy";
+import { slugify } from "../util/id.ts";
 
 const here = dirname(fileURLToPath(import.meta.url));
 
@@ -16,13 +17,6 @@ export function openDb(): DatabaseSync {
   const db = new DatabaseSync(DB_PATH);
   db.exec("PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON;");
   return db;
-}
-
-function slugify(s: string): string {
-  return s
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
 }
 
 /** Create the schema (idempotent) and seed the skills table from the taxonomy. */

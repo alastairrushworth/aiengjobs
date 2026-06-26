@@ -31,6 +31,7 @@ CREATE TABLE IF NOT EXISTS jobs (
   id                        TEXT PRIMARY KEY,
   company_id                TEXT NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
   source_id                 TEXT REFERENCES sources(id) ON DELETE SET NULL,
+  external_id               TEXT,                       -- the ATS's own posting id
   slug                      TEXT NOT NULL UNIQUE,
   title                     TEXT NOT NULL,
   normalized_title          TEXT NOT NULL,
@@ -67,6 +68,7 @@ CREATE INDEX IF NOT EXISTS idx_jobs_classification ON jobs(classification);
 CREATE INDEX IF NOT EXISTS idx_jobs_closed         ON jobs(is_closed);
 CREATE INDEX IF NOT EXISTS idx_jobs_dedup          ON jobs(dedup_key);
 CREATE INDEX IF NOT EXISTS idx_jobs_apply_url      ON jobs(apply_url);
+CREATE INDEX IF NOT EXISTS idx_jobs_source_ext     ON jobs(source_id, external_id);
 
 CREATE TABLE IF NOT EXISTS skills (
   id      TEXT PRIMARY KEY,

@@ -60,7 +60,7 @@ if (job.salaryMin) {
     <div class="meta skills">
       {job.skills.map((s) => <span class="badge skill">{s}</span>)}
     </div>
-    {job.descriptionHtml && <div class="desc" set:html={job.descriptionHtml} />}
+    {job.descriptionText && <p class="desc">{job.descriptionText}</p>}
     <p class="apply-wrap">
       <a class="apply" href={job.applyUrl} target="_blank" rel="noopener nofollow">
         Apply on company site →

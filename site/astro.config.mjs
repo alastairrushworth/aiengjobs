@@ -1,10 +1,10 @@
 import { defineConfig } from "astro/config";
 
-// Project Pages site is served under /aiengjobs/. The `base` is threaded
-// through internal links via src/lib/url.ts; switching to a custom domain
-// later means setting base back to "/" and updating `site`.
+// Served under alastairrushworth.com/aiengjobs/ (the account's custom domain;
+// github.io 301-redirects there). `base` is threaded through internal links via
+// src/lib/url.ts. A dedicated domain later means dropping base to "/" + new `site`.
 export default defineConfig({
-  site: "https://alastairrushworth.github.io",
+  site: "https://alastairrushworth.com",
   base: "/aiengjobs",
   output: "static",
   trailingSlash: "ignore",
