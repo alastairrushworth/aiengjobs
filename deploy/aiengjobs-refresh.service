@@ -1,0 +1,11 @@
+[Unit]
+Description=aiengjobs nightly ATS ingest + snapshot push
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=deploy
+WorkingDirectory=/home/deploy/aiengjobs
+EnvironmentFile=/etc/aiengjobs.env
+ExecStart=/home/deploy/aiengjobs/scripts/droplet-refresh.sh
