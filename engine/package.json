@@ -5,8 +5,10 @@
   "description": "ATS ingestion + classification engine. Runs on the DigitalOcean droplet.",
   "scripts": {
     "db:init": "tsx src/cli.ts db:init",
+    "seed": "tsx src/cli.ts seed",
     "ingest": "tsx src/cli.ts ingest",
     "export": "tsx src/cli.ts export",
+    "refresh": "tsx src/cli.ts refresh",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

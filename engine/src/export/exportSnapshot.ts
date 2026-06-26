@@ -69,8 +69,11 @@ interface CompanyRow {
   description: string | null;
 }
 
+const NEW_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
+
 export function exportSnapshot(): void {
   const db = openDb();
+  const now = Date.now();
 
   const companyRows = db.prepare("SELECT * FROM companies").all() as unknown as CompanyRow[];
   const companies: Company[] = companyRows.map((c) => ({
@@ -91,7 +94,7 @@ export function exportSnapshot(): void {
       `SELECT j.*, c.name AS company_name, c.slug AS company_slug
        FROM jobs j JOIN companies c ON c.id = j.company_id
        WHERE j.classification = 'in' AND j.is_closed = 0
-       ORDER BY j.is_featured DESC, j.ingested_at DESC`,
+       ORDER BY j.is_featured DESC, j.ingested_at DESC, j.id`,
     )
     .all() as unknown as JobRow[];
 
@@ -123,8 +126,11 @@ export function exportSnapshot(): void {
       companySlug: r.company_slug,
       title: r.title,
       normalizedTitle: r.normalized_title,
-      descriptionHtml: r.description_html ?? undefined,
-      descriptionText: r.description_text ?? undefined,
+      // Keep the snapshot lean (and the public repo small): a plain-text excerpt,
+      // not full description HTML. The apply link carries the complete posting.
+      descriptionText: r.description_text
+        ? r.description_text.slice(0, 2000)
+        : undefined,
       applyUrl: r.apply_url,
       locationRaw: r.location_raw ?? undefined,
       country: r.country ?? undefined,
@@ -142,7 +148,7 @@ export function exportSnapshot(): void {
       clusters: [...sk.clusters],
       isFeatured: !!r.is_featured,
       isDirect: !!r.is_direct,
-      isNew: !!r.is_new,
+      isNew: Date.parse(r.ingested_at) > now - NEW_WINDOW_MS,
       isClosed: !!r.is_closed,
       postedAt: r.posted_at ?? undefined,
       updatedAt: r.updated_at ?? undefined,
