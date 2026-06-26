@@ -8,4 +8,6 @@ Type=oneshot
 User=deploy
 WorkingDirectory=/home/deploy/aiengjobs
 EnvironmentFile=/etc/aiengjobs.env
+# First full LLM ingest is long; never time it out.
+TimeoutStartSec=0
 ExecStart=/home/deploy/aiengjobs/scripts/droplet-refresh.sh
