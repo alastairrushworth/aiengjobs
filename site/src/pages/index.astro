@@ -1,0 +1,112 @@
+---
+import Base from "../layouts/Base.astro";
+import JobCard from "../components/JobCard.astro";
+import { url } from "../lib/url.ts";
+import snapshot from "../data/snapshot.json";
+import type { SiteSnapshot } from "@aiengjobs/shared";
+
+const data = snapshot as unknown as SiteSnapshot;
+const jobs = data.jobs.filter((j) => !j.isClosed);
+const clusters = data.facets.clusters;
+---
+
+<Base title="AI Engineering Jobs — RAG, agents, evals, inference">
+  <section class="hero">
+    <h1>The job board for AI engineers</h1>
+    <p>
+      RAG, agents, evals, inference — browse <span class="count">{jobs.length}</span>
+      first-party roles. Salary-transparent. No ghost jobs.
+    </p>
+  </section>
+
+  <div class="filters">
+    <input
+      type="search"
+      id="q"
+      placeholder="Search title, company, skill…"
+      aria-label="Search jobs"
+    />
+    <select id="remote" aria-label="Remote policy">
+      <option value="">Any location</option>
+      <option value="remote">Remote</option>
+      <option value="hybrid">Hybrid</option>
+      <option value="onsite">On-site</option>
+    </select>
+    <select id="seniority" aria-label="Seniority">
+      <option value="">Any level</option>
+      <option value="mid">Mid</option>
+      <option value="senior">Senior</option>
+      <option value="staff">Staff</option>
+      <option value="principal">Principal</option>
+      <option value="lead">Lead</option>
+    </select>
+  </div>
+
+  <div class="chips" id="clusters">
+    {
+      clusters.map((c) => (
+        <button class="chip" type="button" aria-pressed="false" data-cluster={c.id}>
+          {c.label} <span style="opacity:.6">{c.count}</span>
+        </button>
+      ))
+    }
+  </div>
+
+  <p class="results-meta"><span id="shown">{jobs.length}</span> of {jobs.length} roles</p>
+
+  <div class="jobs" id="jobs">
+    {jobs.map((job) => <JobCard job={job} href={url(`/jobs/${job.slug}`)} />)}
+  </div>
+  <p class="empty" id="empty">No roles match these filters yet.</p>
+</Base>
+
+<script>
+  const q = document.getElementById("q") as HTMLInputElement;
+  const remote = document.getElementById("remote") as HTMLSelectElement;
+  const seniority = document.getElementById("seniority") as HTMLSelectElement;
+  const clusterBtns = Array.from(
+    document.querySelectorAll<HTMLButtonElement>("#clusters .chip"),
+  );
+  const cards = Array.from(document.querySelectorAll<HTMLElement>("#jobs .job-card"));
+  const shown = document.getElementById("shown")!;
+  const empty = document.getElementById("empty")!;
+
+  const active = new Set<string>();
+
+  function apply() {
+    const text = (q.value || "").trim().toLowerCase();
+    const rem = remote.value;
+    const sen = seniority.value;
+    let n = 0;
+    for (const card of cards) {
+      const matchText = !text || (card.dataset.search || "").includes(text);
+      const matchRem = !rem || card.dataset.remote === rem;
+      const matchSen = !sen || card.dataset.seniority === sen;
+      const cls = (card.dataset.clusters || "").split(" ");
+      const matchCls =
+        active.size === 0 || [...active].every((a) => cls.includes(a));
+      const ok = matchText && matchRem && matchSen && matchCls;
+      card.style.display = ok ? "" : "none";
+      if (ok) n++;
+    }
+    shown.textContent = String(n);
+    empty.style.display = n === 0 ? "block" : "none";
+  }
+
+  q.addEventListener("input", apply);
+  remote.addEventListener("change", apply);
+  seniority.addEventListener("change", apply);
+  for (const btn of clusterBtns) {
+    btn.addEventListener("click", () => {
+      const id = btn.dataset.cluster!;
+      if (active.has(id)) {
+        active.delete(id);
+        btn.setAttribute("aria-pressed", "false");
+      } else {
+        active.add(id);
+        btn.setAttribute("aria-pressed", "true");
+      }
+      apply();
+    });
+  }
+</script>

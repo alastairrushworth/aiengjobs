@@ -1,0 +1,16 @@
+{
+  "name": "aiengjobs",
+  "private": true,
+  "version": "0.0.0",
+  "description": "AI Engineering Jobs — static board (GitHub Pages) + ingestion engine (DigitalOcean droplet)",
+  "workspaces": [
+    "shared",
+    "site",
+    "engine"
+  ],
+  "scripts": {
+    "build": "npm run build -w @aiengjobs/site",
+    "dev": "npm run dev -w @aiengjobs/site",
+    "typecheck": "npm run typecheck -w @aiengjobs/engine"
+  }
+}

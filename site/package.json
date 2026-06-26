@@ -1,0 +1,15 @@
+{
+  "name": "@aiengjobs/site",
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "check": "astro check"
+  },
+  "dependencies": {
+    "@aiengjobs/shared": "*",
+    "astro": "^5.0.0"
+  }
+}

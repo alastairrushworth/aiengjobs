@@ -1,0 +1,20 @@
+{
+  "name": "@aiengjobs/engine",
+  "version": "0.0.0",
+  "type": "module",
+  "description": "ATS ingestion + classification engine. Runs on the DigitalOcean droplet.",
+  "scripts": {
+    "db:init": "tsx src/cli.ts db:init",
+    "ingest": "tsx src/cli.ts ingest",
+    "export": "tsx src/cli.ts export",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@aiengjobs/shared": "*"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  }
+}
