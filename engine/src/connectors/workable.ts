@@ -5,7 +5,17 @@ import { mapPool } from "../util/concurrency.ts";
 
 // Workable's public board API lists jobs without descriptions, so each posting
 // needs a follow-up detail fetch — bounded so big boards don't hammer the API.
-const DETAIL_CONCURRENCY = 6;
+const DETAIL_CONCURRENCY = 4;
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+// Workable rate-limits request bursts with HTTP 429; retry with backoff.
+async function workableFetch(url: string, attempts = 3): Promise<Response> {
+  for (let i = 0; ; i++) {
+    const res = await fetch(url, { headers: { "User-Agent": USER_AGENT } });
+    if (res.status !== 429 || i >= attempts - 1) return res;
+    await sleep(500 * 2 ** i); // 500ms, 1s, 2s
+  }
+}
 
 interface WorkableListJob {
   shortcode: string;
@@ -55,9 +65,7 @@ export const workable: Connector = {
   provider: "workable",
   endpoint: (slug) => `https://www.workable.com/api/accounts/${slug}`,
   async fetchPostings(slug) {
-    const res = await fetch(workable.endpoint(slug), {
-      headers: { "User-Agent": USER_AGENT },
-    });
+    const res = await workableFetch(workable.endpoint(slug));
     if (!res.ok) throw new Error(`workable ${slug} HTTP ${res.status}`);
     const data = (await res.json()) as { jobs?: WorkableListJob[] };
     const jobs = (data.jobs ?? []).filter((j) => j.application_url ?? j.shortlink ?? j.url);
@@ -67,9 +75,8 @@ export const workable: Connector = {
       // (list-only posting) if a single job's detail fetch fails.
       let detail: WorkableDetail | undefined;
       try {
-        const dr = await fetch(
+        const dr = await workableFetch(
           `https://apply.workable.com/api/v2/accounts/${slug}/jobs/${j.shortcode}`,
-          { headers: { "User-Agent": USER_AGENT } },
         );
         if (dr.ok) detail = (await dr.json()) as WorkableDetail;
       } catch {

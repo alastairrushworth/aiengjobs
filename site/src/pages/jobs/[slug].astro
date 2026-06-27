@@ -15,6 +15,17 @@ export function getStaticPaths() {
 const { job } = Astro.props as { job: Job };
 const salary = formatSalary(job);
 
+// Cap the skill wall; the long tail adds noise more than signal.
+const MAX_SKILLS = 16;
+const skills = job.skills.slice(0, MAX_SKILLS);
+const moreSkills = job.skills.length - skills.length;
+
+// Render the description as real paragraphs (the text carries newlines).
+const paragraphs = (job.descriptionText ?? "")
+  .split(/\n+/)
+  .map((p) => p.trim())
+  .filter(Boolean);
+
 // JobPosting structured data (JSON-LD) for SEO/GEO — spec §8.
 const jsonLd: Record<string, unknown> = {
   "@context": "https://schema.org/",
@@ -57,10 +68,17 @@ if (job.salaryMin) {
       {remoteLabel(job.remoteType) && <span class="badge">{remoteLabel(job.remoteType)}</span>}
       {seniorityLabel(job.seniority) && <span class="badge">{seniorityLabel(job.seniority)}</span>}
     </div>
-    <div class="meta skills">
-      {job.skills.map((s) => <span class="badge skill">{s}</span>)}
-    </div>
-    {job.descriptionText && <p class="desc">{job.descriptionText}</p>}
+    {skills.length > 0 && (
+      <div class="meta skills">
+        {skills.map((s) => <span class="badge skill">{s}</span>)}
+        {moreSkills > 0 && <span class="badge more">+{moreSkills} more</span>}
+      </div>
+    )}
+    {paragraphs.length > 0 && (
+      <div class="desc">
+        {paragraphs.map((p) => <p>{p}</p>)}
+      </div>
+    )}
     <p class="apply-wrap">
       <a class="apply" href={job.applyUrl} target="_blank" rel="noopener nofollow">
         Apply on company site →
@@ -75,9 +93,13 @@ if (job.salaryMin) {
   .job-detail { max-width: 720px; padding: 32px 0; }
   .job-detail h1 { font-size: 1.8rem; letter-spacing: -0.02em; margin: 12px 0 6px; }
   .job-detail .company { color: var(--muted); margin: 0 0 16px; }
-  .job-detail .skills { margin-top: 10px; }
+  .job-detail .meta { display: flex; flex-wrap: wrap; gap: 8px; }
+  .job-detail .skills { margin-top: 12px; }
+  .badge.more { color: var(--muted); }
   .back { color: var(--muted); }
-  .desc { margin-top: 24px; color: var(--text); line-height: 1.65; }
+  .desc { margin-top: 28px; color: var(--text); line-height: 1.7; }
+  .desc p { margin: 0 0 14px; }
+  .desc p:last-child { margin-bottom: 0; }
   .apply-wrap { margin-top: 28px; }
   .apply {
     display: inline-block;

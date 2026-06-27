@@ -106,3 +106,159 @@ Sereact,ashby,sereact,sereact.ai,early
 Synthflow,ashby,synthflow,synthflow.ai,early
 Taktile,ashby,taktile,taktile.com,growth
 Hugging Face,workable,huggingface,huggingface.co,late
+
+# === MAJOR NON-AI COMPANIES (large employers; AI/ML roles filtered in by classifier) ===
+# --- USA ---
+Affirm,greenhouse,affirm,affirm.com,late
+Airbnb,greenhouse,airbnb,airbnb.com,late
+Airtable,greenhouse,airtable,airtable.com,late
+Asana,greenhouse,asana,asana.com,late
+Benchling,ashby,benchling,benchling.com,late
+Block,greenhouse,block,block.xyz,late
+Brex,greenhouse,brex,brex.com,late
+Carta,greenhouse,carta,carta.com,late
+Chime,greenhouse,chime,chime.com,late
+Cloudflare,greenhouse,cloudflare,cloudflare.com,late
+Coinbase,greenhouse,coinbase,coinbase.com,late
+Confluent,ashby,confluent,confluent.io,late
+Datadog,greenhouse,datadog,datadoghq.com,late
+Discord,greenhouse,discord,discord.com,late
+DoorDash,greenhouse,doordashusa,doordash.com,late
+Dropbox,greenhouse,dropbox,dropbox.com,late
+Elastic,greenhouse,elastic,elastic.co,late
+Figma,greenhouse,figma,figma.com,late
+Flexport,greenhouse,flexport,flexport.com,late
+Gemini,greenhouse,gemini,gemini.com,late
+GitLab,greenhouse,gitlab,gitlab.com,late
+Gusto,greenhouse,gusto,gusto.com,late
+Instacart,greenhouse,instacart,instacart.com,late
+Lyft,greenhouse,lyft,lyft.com,late
+MongoDB,greenhouse,mongodb,mongodb.com,late
+Notion,ashby,notion,notion.so,late
+Okta,greenhouse,okta,okta.com,late
+Pinterest,greenhouse,pinterest,pinterest.com,late
+Plaid,ashby,plaid,plaid.com,late
+Ramp,ashby,ramp,ramp.com,late
+Reddit,greenhouse,reddit,reddit.com,late
+Robinhood,greenhouse,robinhood,robinhood.com,late
+Roblox,greenhouse,roblox,roblox.com,late
+Samsara,greenhouse,samsara,samsara.com,late
+Snowflake,ashby,snowflake,snowflake.com,late
+Squarespace,greenhouse,squarespace,squarespace.com,late
+Stripe,greenhouse,stripe,stripe.com,late
+Toast,greenhouse,toast,toasttab.com,late
+Twilio,greenhouse,twilio,twilio.com,late
+Unity,greenhouse,unity3d,unity.com,late
+Webflow,greenhouse,webflow,webflow.com,late
+# --- UK ---
+Deliveroo,ashby,deliveroo,deliveroo.com,late
+Farfetch,lever,farfetch,farfetch.com,late
+Freetrade,ashby,freetrade,freetrade.io,late
+GoCardless,greenhouse,gocardless,gocardless.com,late
+Improbable,ashby,improbable,improbable.io,late
+Marshmallow,ashby,marshmallow,marshmallow.com,late
+Monzo,greenhouse,monzo,monzo.com,late
+Moonpig,lever,moonpig,moonpig.com,late
+Octopus Energy,lever,octoenergy,octopus.energy,late
+Skyscanner,greenhouse,skyscanner,skyscanner.net,late
+Tide,greenhouse,tide,tide.co,late
+Trainline,ashby,trainline,thetrainline.com,late
+Zego,workable,zego,zego.com,late
+# --- Europe ---
+Adyen,greenhouse,adyen,adyen.com,late
+Alan,ashby,alan,alan.com,late
+Back Market,ashby,backmarket,backmarket.com,late
+BlaBlaCar,lever,blablacar,blablacar.com,late
+Celonis,greenhouse,celonis,celonis.com,late
+Contentful,greenhouse,contentful,contentful.com,late
+Doctolib,greenhouse,doctolib,doctolib.com,late
+GetYourGuide,greenhouse,getyourguide,getyourguide.com,late
+HelloFresh,greenhouse,hellofresh,hellofresh.com,late
+Miro,ashby,miro,miro.com,late
+Mollie,ashby,mollie,mollie.com,late
+N26,greenhouse,n26,n26.com,late
+Pennylane,ashby,pennylane,pennylane.com,late
+Pipedrive,lever,pipedrive,pipedrive.com,late
+Remote,greenhouse,remotecom,remote.com,late
+SumUp,greenhouse,sumup,sumup.com,late
+Supercell,ashby,supercell,supercell.com,late
+Veriff,greenhouse,veriff,veriff.com,late
+Wolt,greenhouse,wolt,wolt.com,late
+
+# === YC STARTUPS (larger active YC alumni; AI/ML roles filtered in by classifier) ===
+Deel,ashby,deel,deel.com,late
+GOAT Group,greenhouse,goatgroup,goatgroup.com,late
+Fivetran,greenhouse,fivetran,fivetran.com,late
+Akido Labs,greenhouse,akidolabs,akidolabs.com,late
+Clipboard,ashby,clipboard,clipboardworks.com,late
+Faire,greenhouse,faire,faire.com,late
+Superside,lever,superside,superside.com,late
+Algolia,greenhouse,algolia,algolia.com,late
+Checkr,greenhouse,checkr,checkr.com,late
+Human Interest,greenhouse,humaninterest,humaninterest.com,late
+Zapier,ashby,zapier,zapier.com,late
+Xendit,greenhouse,xendit,xendit.co,late
+Vanta,ashby,vanta,vanta.com,late
+Lattice,greenhouse,lattice,lattice.com,late
+Tractian,lever,tractian,tractian.com,late
+Instawork,greenhouse,instawork,instawork.com,late
+Astranis,greenhouse,astranis,astranis.com,late
+Pair Team,greenhouse,pairteam,pairteam.com,late
+LemFi,ashby,lemfi,lemfi.com,late
+H1,lever,h1,h1.co,late
+Zip,ashby,zip,ziphq.com,late
+Mixpanel,greenhouse,mixpanel,mixpanel.com,growth
+Tovala,lever,tovala,tovala.com,growth
+Modern Health,greenhouse,modernhealth,modernhealth.com,growth
+Odeko,greenhouse,odeko,odeko.com,growth
+SkydropX,ashby,skydropx,skydropx.com,growth
+Submittable,greenhouse,submittable,submittable.com,growth
+HackerRank,greenhouse,hackerrank,hackerrank.com,growth
+Sendbird,greenhouse,sendbird,sendbird.com,growth
+People.ai,lever,people-ai,people.ai,growth
+Nabis,greenhouse,nabis,nabis.com,growth
+Snapdocs,ashby,snapdocs,snapdocs.com,growth
+CaptivateIQ,lever,captivateiq,captivateiq.com,growth
+May Mobility,greenhouse,maymobility,maymobility.com,growth
+Teleport,ashby,goteleport,goteleport.com,growth
+Rescale,ashby,rescale,rescale.com,growth
+Snappr,lever,snappr,snappr.com,growth
+TRM Labs,ashby,trm-labs,trmlabs.com,growth
+Thndr,ashby,thndr,thndr.app,growth
+Qventus,greenhouse,qventus,qventus.com,growth
+Gecko Robotics,ashby,gecko-robotics,geckorobotics.com,growth
+HealthSherpa,ashby,healthsherpa,healthsherpa.com,growth
+SmartAsset,greenhouse,smartasset,smartasset.com,growth
+InfluxData,ashby,influxdata,influxdata.com,growth
+Permutive,ashby,permutive,permutive.com,growth
+Tennr,ashby,tennr,tennr.com,growth
+Docker,ashby,docker,docker.com,growth
+Cambly,ashby,cambly,cambly.com,growth
+Verse Medical,ashby,versemedical,versemedical.com,growth
+Hightouch,greenhouse,hightouch,hightouch.com,growth
+MarqVision,greenhouse,marqvision,marqvision.com,growth
+Onebrief,ashby,onebrief,onebrief.com,growth
+GetAccept,teamtailor,getaccept,getaccept.com,growth
+Ontop,recruitee,getontop,getontop.com,growth
+Pelago,greenhouse,pelago,pelagohealth.com,growth
+Postscript,greenhouse,postscript,postscript.io,growth
+Prolific,greenhouse,prolific,prolific.com,growth
+Fieldguide,ashby,fieldguide,fieldguide.io,growth
+Verto,ashby,verto,vertofx.com,growth
+Modern Treasury,ashby,moderntreasury,moderntreasury.com,growth
+SingleStore,greenhouse,singlestore,singlestore.com,growth
+Tremendous,ashby,tremendous,tremendous.com,growth
+Mashgin,lever,mashgin,mashgin.com,growth
+RevenueCat,ashby,revenuecat,revenuecat.com,growth
+Canary Technologies,lever,canarytechnologies,canarytechnologies.com,growth
+Alpaca,greenhouse,alpaca,alpaca.markets,growth
+CoLab,greenhouse,colabsoftware,colabsoftware.com,growth
+Riot,lever,tryriot,tryriot.com,growth
+PostHog,ashby,posthog,posthog.com,growth
+Encord,ashby,encord,encord.com,growth
+Baubap,greenhouse,baubap,baubap.com,growth
+Lob,greenhouse,lob,lob.com,growth
+Squire Technologies,lever,getsquire,getsquire.com,growth
+Gigs,greenhouse,gigs,gigs.com,growth
+Toku,recruitee,toku,trytoku.com,growth
+Corgi Insurance,ashby,corgi,corgi.com,growth
