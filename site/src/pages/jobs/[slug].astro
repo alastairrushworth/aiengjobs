@@ -20,11 +20,24 @@ const MAX_SKILLS = 16;
 const skills = job.skills.slice(0, MAX_SKILLS);
 const moreSkills = job.skills.length - skills.length;
 
-// Render the description as real paragraphs (the text carries newlines).
-const paragraphs = (job.descriptionText ?? "")
-  .split(/\n+/)
-  .map((p) => p.trim())
-  .filter(Boolean);
+// Render the description as real paragraphs + bullet lists. The text carries
+// newlines, with list items prefixed by a bullet/dash marker (see stripHtml).
+const BULLET_RE = /^\s*(?:[•·▪◦‣*]|[-–—](?=\s))\s*/;
+type Block = { type: "p"; text: string } | { type: "ul"; items: string[] };
+const blocks: Block[] = [];
+for (const line of (job.descriptionText ?? "").split("\n")) {
+  const trimmed = line.trim();
+  if (!trimmed) continue;
+  if (BULLET_RE.test(trimmed)) {
+    const item = trimmed.replace(BULLET_RE, "").trim();
+    if (!item) continue;
+    const last = blocks[blocks.length - 1];
+    if (last && last.type === "ul") last.items.push(item);
+    else blocks.push({ type: "ul", items: [item] });
+  } else {
+    blocks.push({ type: "p", text: trimmed });
+  }
+}
 
 // JobPosting structured data (JSON-LD) for SEO/GEO — spec §8.
 const jsonLd: Record<string, unknown> = {
@@ -74,9 +87,15 @@ if (job.salaryMin) {
         {moreSkills > 0 && <span class="badge more">+{moreSkills} more</span>}
       </div>
     )}
-    {paragraphs.length > 0 && (
+    {blocks.length > 0 && (
       <div class="desc">
-        {paragraphs.map((p) => <p>{p}</p>)}
+        {blocks.map((b) =>
+          b.type === "ul" ? (
+            <ul>{b.items.map((it) => <li>{it}</li>)}</ul>
+          ) : (
+            <p>{b.text}</p>
+          ),
+        )}
       </div>
     )}
     <p class="apply-wrap">
@@ -99,7 +118,10 @@ if (job.salaryMin) {
   .back { color: var(--muted); }
   .desc { margin-top: 28px; color: var(--text); line-height: 1.7; }
   .desc p { margin: 0 0 14px; }
-  .desc p:last-child { margin-bottom: 0; }
+  .desc ul { margin: 0 0 14px; padding-left: 1.25rem; }
+  .desc li { margin: 0 0 6px; }
+  .desc li:last-child { margin-bottom: 0; }
+  .desc > :last-child { margin-bottom: 0; }
   .apply-wrap { margin-top: 28px; }
   .apply {
     display: inline-block;

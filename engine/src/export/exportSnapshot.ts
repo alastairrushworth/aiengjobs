@@ -2,6 +2,7 @@ import { writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { openDb } from "../db/index.ts";
+import { stripHtml } from "../util/html.ts";
 import { CLUSTER_BY_ID } from "@aiengjobs/shared/taxonomy";
 import type { ClusterId } from "@aiengjobs/shared/taxonomy";
 import type {
@@ -16,15 +17,12 @@ import type {
 
 const here = dirname(fileURLToPath(import.meta.url));
 
-// Plain-text excerpt for the snapshot — cut on a sentence/word/line boundary
-// (never mid-word) and add an ellipsis. The apply link carries the full posting.
-function excerpt(text: string, max = 2000): string {
-  if (text.length <= max) return text;
-  const cut = text.slice(0, max);
-  const boundary = Math.max(cut.lastIndexOf(". "), cut.lastIndexOf("\n"));
-  const trimmed =
-    boundary > max * 0.6 ? cut.slice(0, boundary + 1) : cut.replace(/\s+\S*$/, "");
-  return trimmed.trimEnd() + "…";
+// Display text for the snapshot. Re-derive from the stored HTML so list items and
+// paragraph breaks come through (stripHtml emits "• " bullets + newlines); fall
+// back to the stored plain text. Full text, no truncation — the site renders it.
+function displayText(row: JobRow): string | undefined {
+  if (row.description_html) return stripHtml(row.description_html);
+  return row.description_text ?? undefined;
 }
 
 // The exporter writes the snapshot the Astro site reads at build time. On the
@@ -137,9 +135,7 @@ export function exportSnapshot(): void {
       companySlug: r.company_slug,
       title: r.title,
       normalizedTitle: r.normalized_title,
-      // Keep the snapshot lean (and the public repo small): a plain-text excerpt,
-      // not full description HTML. The apply link carries the complete posting.
-      descriptionText: r.description_text ? excerpt(r.description_text) : undefined,
+      descriptionText: displayText(r),
       applyUrl: r.apply_url,
       locationRaw: r.location_raw ?? undefined,
       country: r.country ?? undefined,
