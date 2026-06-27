@@ -46,8 +46,6 @@ a { color: inherit; text-decoration: none; }
 }
 .brand { font-weight: 700; font-size: 1.05rem; letter-spacing: -0.01em; }
 .brand .dot { color: var(--accent); }
-.nav a { color: var(--muted); font-size: 0.9rem; margin-left: 18px; }
-.nav a:hover { color: var(--text); }
 
 .site-footer {
   border-top: 1px solid var(--border);
