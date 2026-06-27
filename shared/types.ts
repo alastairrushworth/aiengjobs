@@ -7,6 +7,7 @@ export type AtsProvider =
   | "ashby"
   | "workable"
   | "recruitee"
+  | "teamtailor"
   | "personio"
   | "direct";
 

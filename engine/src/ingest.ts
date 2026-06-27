@@ -16,26 +16,11 @@ import { parseLocation } from "./pipeline/location.ts";
 import { contentHash } from "./pipeline/hash.ts";
 import { llmEnabled } from "./pipeline/llm.ts";
 import { jobId, jobSlug } from "./util/id.ts";
+import { mapPool } from "./util/concurrency.ts";
 
 const SLEEP_MS = Number(process.env.INGEST_DELAY_MS ?? 400); // polite to feeds (Lever crawl-delay)
 const CONCURRENCY = Number(process.env.INGEST_CONCURRENCY ?? 8); // parallel LLM calls per company
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
-
-// Run async fn over items with bounded concurrency. node:sqlite is synchronous,
-// so the DB writes inside fn never truly overlap — only the awaited LLM calls do.
-async function mapPool<T>(
-  items: T[],
-  concurrency: number,
-  fn: (item: T) => Promise<void>,
-): Promise<void> {
-  let i = 0;
-  const worker = async () => {
-    while (i < items.length) await fn(items[i++]);
-  };
-  await Promise.all(
-    Array.from({ length: Math.min(concurrency, items.length) }, worker),
-  );
-}
 
 /** Poll every seeded source, classify/tag, upsert, then expire vanished jobs (§6.4–6.5). */
 export async function ingest(): Promise<void> {
@@ -95,10 +80,10 @@ export async function ingest(): Promise<void> {
 
       const norm = normalize(raw, t.slug);
       const cls = await classifyJob(raw.title, raw.descriptionText ?? "");
-      const tags =
+      const skills =
         cls.classification === "in"
-          ? await tagJob(`${raw.title}\n${raw.descriptionText ?? ""}`)
-          : { skills: [] as string[] };
+          ? (await tagJob(`${raw.title}\n${raw.descriptionText ?? ""}`)).skills
+          : [];
       const loc = parseLocation(raw.locationRaw, raw.remoteType, raw.remoteHint);
 
       upsertJob(db, {
@@ -131,7 +116,7 @@ export async function ingest(): Promise<void> {
         dedupKey: norm.dedupKey,
         lastSeenAt: runStart,
       });
-      setJobSkills(db, id, tags.skills);
+      setJobSkills(db, id, skills);
       processed++;
       if (cls.classification === "in") {
         listed++;
