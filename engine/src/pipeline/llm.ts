@@ -28,6 +28,9 @@ export async function llmJSON(
           { role: "user", content: user },
         ],
         response_format: { type: "json_object" },
+        // Classify/tag are simple extraction tasks — no reasoning needed.
+        // "none" keeps reasoning_tokens at 0 (cheapest, fastest on GPT-5.x-nano).
+        reasoning_effort: "none",
       }),
     });
     if (!res.ok) {
