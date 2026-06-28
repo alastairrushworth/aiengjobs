@@ -6,6 +6,8 @@ import { ashby } from "./ashby.ts";
 import { workable } from "./workable.ts";
 import { recruitee } from "./recruitee.ts";
 import { teamtailor } from "./teamtailor.ts";
+import { smartrecruiters } from "./smartrecruiters.ts";
+import { workday } from "./workday.ts";
 
 // Registry of the ATS connectors we build ourselves (spec §6.6 recommendation).
 export const CONNECTORS: Partial<Record<AtsProvider, Connector>> = {
@@ -15,6 +17,8 @@ export const CONNECTORS: Partial<Record<AtsProvider, Connector>> = {
   workable,
   recruitee,
   teamtailor,
+  smartrecruiters,
+  workday,
 };
 
 export function getConnector(provider: AtsProvider): Connector | undefined {

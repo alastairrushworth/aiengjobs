@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import { openDb } from "./db/index.ts";
 import { upsertCompany, upsertSource } from "./db/repo.ts";
 import { getConnector } from "./connectors/index.ts";
+import { slugify } from "./util/id.ts";
 import type { AtsProvider } from "@aiengjobs/shared";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -34,9 +35,14 @@ export function seed(): void {
       skipped++;
       continue;
     }
+    // The ATS token (passed to the connector) can carry case or delimiters that
+    // aren't URL-safe — e.g. SmartRecruiters "Wise" or Workday "tenant:dc:site".
+    // Keep it verbatim as the token, but derive a clean slug for ids/URLs.
+    // slugify is idempotent for the already-clean lowercase slugs, so existing
+    // companies' slugs/ids are unchanged.
     const cid = upsertCompany(db, {
       name,
-      slug: atsSlug,
+      slug: slugify(atsSlug),
       domain: domain || undefined,
       atsProvider: provider as AtsProvider,
       atsToken: atsSlug,

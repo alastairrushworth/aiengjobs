@@ -286,3 +286,12 @@ Marqeta,greenhouse,marqeta,marqeta.com,late
 Betterment,greenhouse,betterment,betterment.com,growth
 Wealthfront,lever,wealthfront,wealthfront.com,growth
 Alloy,greenhouse,alloy,alloy.com,growth
+# --- SmartRecruiters (case-sensitive identifier) ---
+Wise,smartrecruiters,Wise,wise.com,late
+Visa,smartrecruiters,Visa,visa.com,late
+# --- Workday (slug encodes tenant:dc:site; connector queries the AI/ML slice) ---
+Capital One,workday,capitalone:wd12:Capital_One,capitalone.com,late
+Citi,workday,citi:wd5:2,citi.com,late
+State Street,workday,statestreet:wd1:Global,statestreet.com,late
+Barclays,workday,barclays:wd3:External_Career_Site_Barclays,barclays.com,late
+Prudential plc,workday,prudential:wd3:prudential,prudentialplc.com,late
