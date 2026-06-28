@@ -1,8 +1,8 @@
 import { CLUSTERS, CLUSTER_OF_SKILL } from "@aiengjobs/shared/taxonomy";
 import type { ClusterId } from "@aiengjobs/shared/taxonomy";
-import { llmJSON, llmEnabled } from "./llm.ts";
 
-const ALL_SKILLS = CLUSTERS.flatMap((c) => c.skills);
+/** The full taxonomy skill list — also handed to the LLM extractor as its enum. */
+export const ALL_SKILLS = CLUSTERS.flatMap((c) => c.skills);
 const SKILL_SET = new Set(ALL_SKILLS.map((s) => s.toLowerCase()));
 
 function escapeRegex(s: string): string {
@@ -31,23 +31,13 @@ export function tagHeuristic(text: string): TagResult {
   return finalize(skills);
 }
 
-/** Heuristic skills, augmented by a GPT-5.4-nano pass constrained to the taxonomy. */
-export async function tagJob(text: string): Promise<TagResult> {
-  const base = tagHeuristic(text);
-  if (!llmEnabled()) return base;
-
-  const out = await llmJSON(
-    `Extract the AI-engineering skills/technologies present in this job text. Choose ONLY from this exact list (use the exact spelling): ${ALL_SKILLS.join(", ")}. Respond with JSON: {"skills": string[]}.`,
-    text.slice(0, 3500),
-  );
-  if (out && Array.isArray(out.skills)) {
-    const llmSkills = (out.skills as unknown[])
-      .filter((s): s is string => typeof s === "string")
-      .map(canonical)
-      .filter((s): s is string => s !== undefined);
-    return finalize([...base.skills, ...llmSkills]);
-  }
-  return base;
+/** Merge heuristic + LLM-extracted skills, drop non-taxonomy terms, roll up clusters. */
+export function combineSkills(text: string, llmSkills: string[] = []): TagResult {
+  const base = tagHeuristic(text).skills;
+  const extra = llmSkills
+    .map(canonical)
+    .filter((s): s is string => s !== undefined);
+  return finalize([...base, ...extra]);
 }
 
 function canonical(name: string): string | undefined {

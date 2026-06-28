@@ -27,11 +27,15 @@ export function decodeEntities(s: string): string {
 // Strip tags to plain text while PRESERVING paragraph/list structure as newlines,
 // so descriptions render as readable paragraphs rather than one run-on block.
 export function stripHtml(html: string): string {
-  return html
+  const stripped = html
     .replace(/<\s*br\s*\/?>/gi, "\n") // line breaks
     .replace(/<\s*li[^>]*>/gi, "\n• ") // bullet for each list item
     .replace(/<\/\s*(p|div|ul|ol|h[1-6]|tr|section|article)\s*>/gi, "\n\n") // block boundaries
-    .replace(/<[^>]+>/g, " ") // drop remaining tags
+    .replace(/<[^>]+>/g, " "); // drop remaining tags
+  // Decode entities AFTER tag removal (so a decoded "<" can't resurrect a tag),
+  // fold non-breaking spaces, then collapse the whitespace they introduce.
+  return decodeEntities(stripped)
+    .replace(/\u00a0/g, " ")
     .replace(/[ \t\f\v]+/g, " ") // collapse spaces but keep newlines
     .replace(/ *\n */g, "\n")
     .replace(/\n{3,}/g, "\n\n") // cap blank runs

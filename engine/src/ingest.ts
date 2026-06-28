@@ -9,10 +9,11 @@ import {
 } from "./db/repo.ts";
 import { getConnector } from "./connectors/index.ts";
 import { normalize } from "./pipeline/normalize.ts";
-import { classifyJob } from "./pipeline/classify.ts";
-import { tagJob } from "./pipeline/tag.ts";
+import { classifyHeuristic, type ClassifyResult } from "./pipeline/classify.ts";
+import { combineSkills } from "./pipeline/tag.ts";
 import { inferSeniority } from "./pipeline/seniority.ts";
 import { parseLocation } from "./pipeline/location.ts";
+import { extractListing, type ExtractResult } from "./pipeline/extract.ts";
 import { contentHash } from "./pipeline/hash.ts";
 import { llmEnabled } from "./pipeline/llm.ts";
 import { jobId, jobSlug } from "./util/id.ts";
@@ -79,13 +80,38 @@ export async function ingest(): Promise<void> {
       }
 
       const norm = normalize(raw, t.slug);
-      const cls = await classifyJob(raw.title, raw.descriptionText ?? "");
-      const skills =
-        cls.classification === "in"
-          ? (await tagJob(`${raw.title}\n${raw.descriptionText ?? ""}`)).skills
-          : [];
+      const text = norm.descriptionText ?? "";
       const loc = parseLocation(raw.locationRaw, raw.remoteType, raw.remoteHint);
+      const heuristicClass = classifyHeuristic(raw.title);
 
+      // One LLM call does classification + skills + salary + location + seniority.
+      // Skip it for titles the heuristic already rules OUT — they're discarded,
+      // so there's nothing worth extracting (and it keeps the LLM bill down).
+      let cls: ClassifyResult;
+      let ex: ExtractResult | null = null;
+      if (heuristicClass?.classification === "out") {
+        cls = heuristicClass;
+      } else if (llmEnabled()) {
+        ex = await extractListing(raw.title, text, raw.locationRaw);
+        cls =
+          heuristicClass ??
+          (ex
+            ? {
+                classification: ex.inScope ? "in" : "out",
+                confidence: ex.confidence,
+                via: "llm",
+              }
+            : { classification: "out", confidence: 0.3, via: "default" });
+      } else {
+        // No API key → heuristics only; exclude the ambiguous to stay credible.
+        cls = heuristicClass ?? { classification: "out", confidence: 0.3, via: "default" };
+      }
+
+      const skills =
+        cls.classification === "in" ? combineSkills(text, ex?.skills).skills : [];
+
+      // Prefer the ATS/role payload (and the heuristics derived from it); fall
+      // back to the LLM extraction only where the payload is silent.
       upsertJob(db, {
         id,
         companyId: t.companyId,
@@ -98,14 +124,14 @@ export async function ingest(): Promise<void> {
         descriptionText: norm.descriptionText,
         applyUrl: raw.applyUrl,
         locationRaw: raw.locationRaw,
-        country: loc.country,
-        city: loc.city,
-        remoteType: loc.remoteType,
-        seniority: inferSeniority(raw.title),
-        salaryMin: raw.salaryMin,
-        salaryMax: raw.salaryMax,
-        salaryCurrency: raw.salaryCurrency,
-        salaryPeriod: raw.salaryPeriod,
+        country: loc.country ?? ex?.country ?? undefined,
+        city: loc.city ?? ex?.city ?? undefined,
+        remoteType: loc.remoteType ?? ex?.remoteType ?? undefined,
+        seniority: inferSeniority(raw.title) ?? ex?.seniority ?? undefined,
+        salaryMin: raw.salaryMin ?? ex?.salaryMin ?? undefined,
+        salaryMax: raw.salaryMax ?? ex?.salaryMax ?? undefined,
+        salaryCurrency: raw.salaryCurrency ?? ex?.salaryCurrency ?? undefined,
+        salaryPeriod: raw.salaryPeriod ?? ex?.salaryPeriod ?? undefined,
         classification: cls.classification,
         classificationConfidence: cls.confidence,
         isDirect: 0,
