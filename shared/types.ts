@@ -8,6 +8,8 @@ export type AtsProvider =
   | "workable"
   | "recruitee"
   | "teamtailor"
+  | "smartrecruiters"
+  | "workday"
   | "personio"
   | "direct";
 
