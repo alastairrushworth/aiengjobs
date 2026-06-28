@@ -5,26 +5,39 @@ import { formatSalary, remoteLabel, roleType, seniorityLabel } from "../lib/form
 interface Props {
   job: Job;
   href: string;
+  // Landing-page salary ranking, set only by the home page. A number is this
+  // card's pay rank within the visible top-50 (0 = best paid); `null` marks an
+  // index card outside that set (rendered hidden until a filter is active);
+  // `undefined` (other pages) means no landing behaviour at all.
+  homeRank?: number | null;
 }
 
-const { job, href } = Astro.props;
+const { job, href, homeRank } = Astro.props;
 const salary = formatSalary(job);
 const remote = remoteLabel(job.remoteType);
 const sen = seniorityLabel(job.seniority);
 const role = roleType(job);
 const searchBlob =
   `${job.title} ${job.companyName} ${job.skills.join(" ")} ${job.locationRaw ?? ""}`.toLowerCase();
+
+// Initial state for the home page: top-50 cards are ordered by salary via CSS
+// `order`; the rest start hidden. Other pages pass no homeRank and get neither.
+const inHome = typeof homeRank === "number";
+const initialStyle =
+  homeRank === undefined ? undefined : inHome ? `order:${homeRank}` : "display:none";
 ---
 
 <a
   class="job-card"
   href={href}
+  style={initialStyle}
   data-search={searchBlob}
   data-clusters={job.clusters.join(" ")}
   data-remote={job.remoteType ?? ""}
   data-seniority={job.seniority ?? ""}
   data-country={job.country ?? ""}
   data-role={role}
+  data-home-rank={inHome ? homeRank : undefined}
 >
   <div class="top">
     <div>

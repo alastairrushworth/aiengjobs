@@ -10,18 +10,25 @@ import type { SiteSnapshot } from "@aiengjobs/shared";
 const data = snapshot as unknown as SiteSnapshot;
 const jobs = data.jobs.filter((j) => !j.isClosed);
 
-// Home page surfaces the 50 best-paid roles. The ranking is invisible — cards
-// look identical, they're just ordered by (normalized) salary, highest first.
+// Every open role is rendered (in natural snapshot order) so the client-side
+// search/filter can reach all of them. The invisible salary ranking and the
+// 50-role cap apply ONLY to the landing view: we pick the HOME_LIMIT best-paid
+// roles and remember each one's pay rank so the landing page can order them by
+// salary via CSS, without touching the DOM order. Once a query or toggle is
+// active, the full set is shown in natural order — no salary ranking.
 const HOME_LIMIT = 50;
-const topJobs = [...jobs]
+const homeRank = new Map<string, number>();
+[...jobs]
   .sort((a, b) => salaryRank(b) - salaryRank(a))
-  .slice(0, HOME_LIMIT);
+  .slice(0, HOME_LIMIT)
+  .forEach((job, i) => homeRank.set(job.slug, i));
+const homeCount = homeRank.size;
 
-// Country filter — derived from the roles actually shown, so every option in the
-// dropdown matches at least one visible card. ISO codes get a readable name.
+// Country filter — derived from ALL roles (not just the landing set) so you can
+// filter to a country that isn't among the top-paid 50. ISO codes get a name.
 const countryNames = new Intl.DisplayNames(["en"], { type: "region" });
 const countryCounts = new Map<string, number>();
-for (const j of topJobs) {
+for (const j of jobs) {
   if (j.country) countryCounts.set(j.country, (countryCounts.get(j.country) ?? 0) + 1);
 }
 const countries = [...countryCounts.entries()]
@@ -32,10 +39,10 @@ const countries = [...countryCounts.entries()]
     count,
   }));
 
-// Role-type filter — bucket every shown listing into a generic role family and
-// order by frequency, keeping the catch-all "Other" pinned last.
+// Role-type filter — bucket every listing into a generic role family and order
+// by frequency, keeping the catch-all "Other" pinned last.
 const roleCounts = new Map<string, number>();
-for (const j of topJobs) {
+for (const j of jobs) {
   const r = roleType(j);
   roleCounts.set(r, (roleCounts.get(r) ?? 0) + 1);
 }
@@ -91,10 +98,16 @@ const roles = [...roleCounts.entries()]
     </div>
   </div>
 
-  <p class="results-meta"><span id="shown">{topJobs.length}</span> of {topJobs.length} roles</p>
+  <p class="results-meta"><span id="shown">{homeCount}</span> of {jobs.length} roles</p>
 
   <div class="jobs" id="jobs">
-    {topJobs.map((job) => <JobCard job={job} href={url(`/jobs/${job.slug}`)} />)}
+    {jobs.map((job) => (
+      <JobCard
+        job={job}
+        href={url(`/jobs/${job.slug}`)}
+        homeRank={homeRank.get(job.slug) ?? null}
+      />
+    ))}
   </div>
   <p class="empty" id="empty">No roles match these filters yet.</p>
 </Base>
@@ -104,7 +117,8 @@ const roles = [...roleCounts.entries()]
   const role = document.getElementById("role") as HTMLSelectElement;
   const country = document.getElementById("country") as HTMLSelectElement;
   const seniority = document.getElementById("seniority") as HTMLSelectElement;
-  const cards = Array.from(document.querySelectorAll<HTMLElement>("#jobs .job-card"));
+  const jobsEl = document.getElementById("jobs")!;
+  const cards = Array.from(jobsEl.querySelectorAll<HTMLElement>(".job-card"));
   const shown = document.getElementById("shown")!;
   const empty = document.getElementById("empty")!;
 
@@ -113,15 +127,26 @@ const roles = [...roleCounts.entries()]
     const rol = role.value;
     const cty = country.value;
     const sen = seniority.value;
+    const active = Boolean(text || rol || cty || sen);
     let n = 0;
     for (const card of cards) {
-      const matchText = !text || (card.dataset.search || "").includes(text);
-      const matchRol = !rol || card.dataset.role === rol;
-      const matchCty = !cty || card.dataset.country === cty;
-      const matchSen = !sen || card.dataset.seniority === sen;
-      const ok = matchText && matchRol && matchCty && matchSen;
-      card.style.display = ok ? "" : "none";
-      if (ok) n++;
+      const isHome = card.dataset.homeRank !== undefined;
+      if (active) {
+        // Full set, natural snapshot order — salary ranking is dropped entirely.
+        const matchText = !text || (card.dataset.search || "").includes(text);
+        const matchRol = !rol || card.dataset.role === rol;
+        const matchCty = !cty || card.dataset.country === cty;
+        const matchSen = !sen || card.dataset.seniority === sen;
+        const ok = matchText && matchRol && matchCty && matchSen;
+        card.style.display = ok ? "" : "none";
+        card.style.order = "";
+        if (ok) n++;
+      } else {
+        // Landing: only the top-paid home set, ordered by salary via CSS `order`.
+        card.style.display = isHome ? "" : "none";
+        card.style.order = isHome ? card.dataset.homeRank! : "";
+        if (isHome) n++;
+      }
     }
     shown.textContent = String(n);
     empty.style.display = n === 0 ? "block" : "none";
