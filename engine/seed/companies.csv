@@ -262,3 +262,27 @@ Squire Technologies,lever,getsquire,getsquire.com,growth
 Gigs,greenhouse,gigs,gigs.com,growth
 Toku,recruitee,toku,trytoku.com,growth
 Corgi Insurance,ashby,corgi,corgi.com,growth
+# === UK & US FINANCE INSTITUTIONS (quant/trading, asset mgmt, fintech; AI/ML roles filtered in by classifier) ===
+# --- US quant / trading / hedge funds ---
+Jane Street,greenhouse,janestreet,janestreet.com,late
+Point72,greenhouse,point72,point72.com,late
+IMC Trading,greenhouse,imc,imc.com,late
+Jump Trading,greenhouse,jumptrading,jumptrading.com,late
+Squarepoint Capital,greenhouse,squarepointcapital,squarepoint-capital.com,late
+Akuna Capital,greenhouse,akunacapital,akunacapital.com,late
+Virtu Financial,greenhouse,virtu,virtu.com,late
+AQR Capital,greenhouse,aqr,aqr.com,late
+Optiver,greenhouse,optiverus,optiver.com,late
+# --- UK finance ---
+Man Group,greenhouse,mangroup,man.com,late
+Marshall Wace,greenhouse,marshallwace,mwam.com,late
+Zopa,lever,zopa,zopa.com,growth
+Form3,greenhouse,form3,form3.tech,growth
+XTX Markets,greenhouse,xtxmarketstechnologies,xtxmarkets.com,late
+# --- US fintech / asset management ---
+SoFi,greenhouse,sofi,sofi.com,late
+Mercury,greenhouse,mercury,mercury.com,growth
+Marqeta,greenhouse,marqeta,marqeta.com,late
+Betterment,greenhouse,betterment,betterment.com,growth
+Wealthfront,lever,wealthfront,wealthfront.com,growth
+Alloy,greenhouse,alloy,alloy.com,growth

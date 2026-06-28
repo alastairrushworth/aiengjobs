@@ -2,7 +2,7 @@
 import Base from "../layouts/Base.astro";
 import JobCard from "../components/JobCard.astro";
 import { url } from "../lib/url.ts";
-import { roleType } from "../lib/format.ts";
+import { roleType, salaryRank } from "../lib/format.ts";
 import snapshot from "../data/snapshot.json";
 import { CLUSTER_PAGES } from "../lib/clusters.ts";
 import type { SiteSnapshot } from "@aiengjobs/shared";
@@ -10,11 +10,18 @@ import type { SiteSnapshot } from "@aiengjobs/shared";
 const data = snapshot as unknown as SiteSnapshot;
 const jobs = data.jobs.filter((j) => !j.isClosed);
 
-// Country filter — derive from the jobs themselves, label the ISO codes with
-// readable names, and order by frequency so the busiest locations lead.
+// Home page surfaces the 50 best-paid roles. The ranking is invisible — cards
+// look identical, they're just ordered by (normalized) salary, highest first.
+const HOME_LIMIT = 50;
+const topJobs = [...jobs]
+  .sort((a, b) => salaryRank(b) - salaryRank(a))
+  .slice(0, HOME_LIMIT);
+
+// Country filter — derived from the roles actually shown, so every option in the
+// dropdown matches at least one visible card. ISO codes get a readable name.
 const countryNames = new Intl.DisplayNames(["en"], { type: "region" });
 const countryCounts = new Map<string, number>();
-for (const j of jobs) {
+for (const j of topJobs) {
   if (j.country) countryCounts.set(j.country, (countryCounts.get(j.country) ?? 0) + 1);
 }
 const countries = [...countryCounts.entries()]
@@ -25,10 +32,10 @@ const countries = [...countryCounts.entries()]
     count,
   }));
 
-// Role-type filter — bucket every listing into a generic role family and order
-// by frequency, keeping the catch-all "Other" pinned last.
+// Role-type filter — bucket every shown listing into a generic role family and
+// order by frequency, keeping the catch-all "Other" pinned last.
 const roleCounts = new Map<string, number>();
-for (const j of jobs) {
+for (const j of topJobs) {
   const r = roleType(j);
   roleCounts.set(r, (roleCounts.get(r) ?? 0) + 1);
 }
@@ -84,10 +91,10 @@ const roles = [...roleCounts.entries()]
     </div>
   </div>
 
-  <p class="results-meta"><span id="shown">{jobs.length}</span> of {jobs.length} roles</p>
+  <p class="results-meta"><span id="shown">{topJobs.length}</span> of {topJobs.length} roles</p>
 
   <div class="jobs" id="jobs">
-    {jobs.map((job) => <JobCard job={job} href={url(`/jobs/${job.slug}`)} />)}
+    {topJobs.map((job) => <JobCard job={job} href={url(`/jobs/${job.slug}`)} />)}
   </div>
   <p class="empty" id="empty">No roles match these filters yet.</p>
 </Base>
