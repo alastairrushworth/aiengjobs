@@ -1,0 +1,380 @@
+---
+import Base from "../layouts/Base.astro";
+import { url } from "../lib/url.ts";
+import { salaryMidpointUsd, seniorityLabel } from "../lib/format.ts";
+import snapshot from "../data/snapshot.json";
+import type { SiteSnapshot, Job, Seniority } from "@aiengjobs/shared";
+
+const data = snapshot as unknown as SiteSnapshot;
+const open = data.jobs.filter((j) => !j.isClosed);
+
+function median(xs: number[]): number {
+  if (!xs.length) return 0;
+  const s = [...xs].sort((a, b) => a - b);
+  const m = Math.floor(s.length / 2);
+  return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
+}
+const k = (n: number) => `$${Math.round(n / 1000)}k`;
+const pct = (n: number, d: number) => (d ? Math.round((n / d) * 100) : 0);
+
+// Salary midpoints (annualized USD) paired with their job — used everywhere we
+// compare pay. Midpoint of the published range, per the brief.
+const paid = open
+  .map((j) => ({ job: j, pay: salaryMidpointUsd(j) }))
+  .filter((x): x is { job: Job; pay: number } => x.pay !== null);
+
+// ── Headline numbers ──────────────────────────────────────────────────────
+const totalRoles = open.length;
+const companyCount = new Set(open.map((j) => j.companySlug)).size;
+const remoteCount = open.filter((j) => j.remoteType === "remote").length;
+const hybridCount = open.filter((j) => j.remoteType === "hybrid").length;
+const onsiteCount = open.filter((j) => j.remoteType === "onsite").length;
+const medianPay = median(paid.map((x) => x.pay));
+
+// Freshness from the employer's own posting date (isNew/ingestedAt aren't
+// reliable signals — the board re-ingests everything nightly).
+const genMs = new Date(data.generatedAt).getTime();
+const DAY = 86_400_000;
+const postedThisWeek = open.filter(
+  (j) => j.postedAt && genMs - new Date(j.postedAt).getTime() <= 7 * DAY,
+).length;
+
+// ── Top 5 companies by pay (min data points so one lavish role can't win) ──
+const MIN_PAY_ROLES = 3;
+const payByCompany = new Map<string, { name: string; slug: string; pays: number[] }>();
+for (const { job, pay } of paid) {
+  const e = payByCompany.get(job.companySlug) ?? {
+    name: job.companyName,
+    slug: job.companySlug,
+    pays: [],
+  };
+  e.pays.push(pay);
+  payByCompany.set(job.companySlug, e);
+}
+const topPayCompanies = [...payByCompany.values()]
+  .filter((c) => c.pays.length >= MIN_PAY_ROLES)
+  .map((c) => ({ name: c.name, slug: c.slug, value: median(c.pays), n: c.pays.length }))
+  .sort((a, b) => b.value - a.value)
+  .slice(0, 5);
+
+// ── Top 5 companies by open positions ──────────────────────────────────────
+const countByCompany = new Map<string, { name: string; slug: string; n: number }>();
+for (const j of open) {
+  const e = countByCompany.get(j.companySlug) ?? { name: j.companyName, slug: j.companySlug, n: 0 };
+  e.n++;
+  countByCompany.set(j.companySlug, e);
+}
+const topHiringCompanies = [...countByCompany.values()]
+  .sort((a, b) => b.n - a.n)
+  .slice(0, 5);
+
+// ── Most-requested skills ──────────────────────────────────────────────────
+const skillCount = new Map<string, number>();
+for (const j of open) for (const s of j.skills) skillCount.set(s, (skillCount.get(s) ?? 0) + 1);
+const topSkills = [...skillCount.entries()]
+  .map(([name, n]) => ({ name, n }))
+  .sort((a, b) => b.n - a.n)
+  .slice(0, 12);
+
+// ── Highest-paying skills (median midpoint among roles requesting them) ─────
+const MIN_SKILL_PAY_ROLES = 5;
+const paysBySkill = new Map<string, number[]>();
+for (const { job, pay } of paid)
+  for (const s of job.skills) {
+    const arr = paysBySkill.get(s);
+    if (arr) arr.push(pay);
+    else paysBySkill.set(s, [pay]);
+  }
+const topPaidSkills = [...paysBySkill.entries()]
+  .filter(([, arr]) => arr.length >= MIN_SKILL_PAY_ROLES)
+  .map(([name, arr]) => ({ name, value: median(arr), n: arr.length }))
+  .sort((a, b) => b.value - a.value)
+  .slice(0, 6);
+
+// ── Seniority mix ──────────────────────────────────────────────────────────
+const SEN_ORDER: Seniority[] = [
+  "intern", "junior", "mid", "senior", "staff", "principal", "lead", "manager",
+];
+const seniorityMix = SEN_ORDER.map((id) => ({
+  id,
+  label: seniorityLabel(id)!,
+  n: open.filter((j) => j.seniority === id).length,
+})).filter((s) => s.n > 0);
+
+// ── Top countries ──────────────────────────────────────────────────────────
+const countryNames = new Intl.DisplayNames(["en"], { type: "region" });
+const countryCount = new Map<string, number>();
+for (const j of open) if (j.country) countryCount.set(j.country, (countryCount.get(j.country) ?? 0) + 1);
+const topCountries = [...countryCount.entries()]
+  .map(([code, n]) => ({ code, label: countryNames.of(code) ?? code, n }))
+  .sort((a, b) => b.n - a.n)
+  .slice(0, 6);
+
+const updated = new Date(data.generatedAt).toLocaleDateString("en-US", {
+  year: "numeric",
+  month: "short",
+  day: "numeric",
+});
+
+// Shared maxima for bar normalization.
+const maxSkill = topSkills[0]?.n ?? 1;
+const maxPaidSkill = topPaidSkills[0]?.value ?? 1;
+const maxPayCo = topPayCompanies[0]?.value ?? 1;
+const maxHireCo = topHiringCompanies[0]?.n ?? 1;
+const maxSen = Math.max(1, ...seniorityMix.map((s) => s.n));
+const maxCountry = topCountries[0]?.n ?? 1;
+---
+
+<Base
+  title="AI engineering job market stats — salaries, top companies, in-demand skills"
+  description={`Live stats across ${totalRoles} open AI-engineering roles: median pay ${k(medianPay)}, top-paying companies, most-requested skills, remote split. Updated ${updated}.`}
+>
+  <section class="hero" style="padding-bottom:10px">
+    <h1>AI engineering market stats</h1>
+    <p class="updated">Updated {updated} · refreshed daily</p>
+  </section>
+
+  <!-- Headline figures -->
+  <div class="figures">
+    <div><span class="num">{totalRoles}</span><span class="lbl">open roles</span></div>
+    <div><span class="num">{companyCount}</span><span class="lbl">companies hiring</span></div>
+    <div><span class="num">{k(medianPay)}</span><span class="lbl">median salary</span></div>
+    <div><span class="num">{pct(remoteCount, totalRoles)}%</span><span class="lbl">fully remote</span></div>
+    <div><span class="num">{pct(paid.length, totalRoles)}%</span><span class="lbl">publish pay</span></div>
+    <div><span class="num">{postedThisWeek}</span><span class="lbl">posted this week</span></div>
+  </div>
+
+  <!-- Top companies -->
+  <div class="cols">
+    <section class="panel">
+      <h2>💰 Top-paying companies</h2>
+      <p class="sub">By median salary midpoint · {MIN_PAY_ROLES}+ priced roles</p>
+      <ol class="board">
+        {topPayCompanies.map((c, i) => (
+          <li>
+            <span class="rank">{i + 1}</span>
+            <a class="bl" href={url(`/companies/${c.slug}`)}>{c.name}</a>
+            <span class="bar"><span class="fill" style={`width:${(c.value / maxPayCo) * 100}%`}></span></span>
+            <span class="bv">{k(c.value)}</span>
+          </li>
+        ))}
+      </ol>
+    </section>
+
+    <section class="panel">
+      <h2>📋 Most open positions</h2>
+      <p class="sub">Companies hiring the most right now</p>
+      <ol class="board">
+        {topHiringCompanies.map((c, i) => (
+          <li>
+            <span class="rank">{i + 1}</span>
+            <a class="bl" href={url(`/companies/${c.slug}`)}>{c.name}</a>
+            <span class="bar"><span class="fill alt" style={`width:${(c.n / maxHireCo) * 100}%`}></span></span>
+            <span class="bv">{c.n}</span>
+          </li>
+        ))}
+      </ol>
+    </section>
+  </div>
+
+  <!-- Remote split -->
+  <section class="panel">
+    <h2>🌍 Where the work happens</h2>
+    <div class="split">
+      <span class="seg remote" style={`width:${pct(remoteCount, totalRoles)}%`}></span>
+      <span class="seg hybrid" style={`width:${pct(hybridCount, totalRoles)}%`}></span>
+      <span class="seg onsite" style={`width:${pct(onsiteCount, totalRoles)}%`}></span>
+    </div>
+    <div class="legend">
+      <span><i class="dot remote"></i>Remote · {pct(remoteCount, totalRoles)}% ({remoteCount})</span>
+      <span><i class="dot hybrid"></i>Hybrid · {pct(hybridCount, totalRoles)}% ({hybridCount})</span>
+      <span><i class="dot onsite"></i>On-site · {pct(onsiteCount, totalRoles)}% ({onsiteCount})</span>
+    </div>
+  </section>
+
+  <!-- Skills -->
+  <div class="cols">
+    <section class="panel">
+      <h2>🔧 Most-wanted skills</h2>
+      <p class="sub">Open roles naming each skill</p>
+      <ul class="bars">
+        {topSkills.map((s) => (
+          <li>
+            <span class="bl">{s.name}</span>
+            <span class="bar"><span class="fill" style={`width:${(s.n / maxSkill) * 100}%`}></span></span>
+            <span class="bv">{s.n}</span>
+          </li>
+        ))}
+      </ul>
+    </section>
+
+    <section class="panel">
+      <h2>📈 Best-paid skills</h2>
+      <p class="sub">Median salary of roles asking for it · {MIN_SKILL_PAY_ROLES}+ priced roles</p>
+      <ul class="bars">
+        {topPaidSkills.map((s) => (
+          <li>
+            <span class="bl">{s.name}</span>
+            <span class="bar"><span class="fill alt" style={`width:${(s.value / maxPaidSkill) * 100}%`}></span></span>
+            <span class="bv">{k(s.value)}</span>
+          </li>
+        ))}
+      </ul>
+    </section>
+  </div>
+
+  <!-- Seniority + countries -->
+  <div class="cols">
+    <section class="panel">
+      <h2>🪜 Seniority mix</h2>
+      <ul class="bars">
+        {seniorityMix.map((s) => (
+          <li>
+            <span class="bl">{s.label}</span>
+            <span class="bar"><span class="fill" style={`width:${(s.n / maxSen) * 100}%`}></span></span>
+            <span class="bv">{s.n}</span>
+          </li>
+        ))}
+      </ul>
+    </section>
+
+    <section class="panel">
+      <h2>📍 Top locations</h2>
+      <ul class="bars">
+        {topCountries.map((c) => (
+          <li>
+            <span class="bl">{c.label}</span>
+            <span class="bar"><span class="fill alt" style={`width:${(c.n / maxCountry) * 100}%`}></span></span>
+            <span class="bv">{c.n}</span>
+          </li>
+        ))}
+      </ul>
+    </section>
+  </div>
+</Base>
+
+<style>
+  .updated { font-size: 0.85rem; color: var(--muted); margin-top: 8px; }
+
+  /* Headline figures */
+  .figures {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 12px;
+    margin: 24px 0 8px;
+  }
+  .figures > div {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 18px 12px;
+    text-align: center;
+  }
+  .figures .num {
+    display: block;
+    font-size: 1.7rem;
+    font-weight: 700;
+    color: var(--accent-2);
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+  }
+  .figures .lbl { color: var(--muted); font-size: 0.78rem; }
+
+  /* Two-column panel grid */
+  .cols {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-top: 16px;
+  }
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 18px 20px;
+    margin-top: 16px;
+  }
+  .cols .panel { margin-top: 0; }
+  .panel h2 { margin: 0 0 2px; font-size: 1.05rem; letter-spacing: -0.01em; }
+  .panel .sub { margin: 0 0 14px; color: var(--muted); font-size: 0.8rem; }
+
+  /* Bar lists + leaderboards */
+  .bars, .board { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 9px; }
+  .bars li, .board li { display: flex; align-items: center; gap: 10px; font-size: 0.88rem; }
+  .board .rank {
+    flex: 0 0 22px;
+    height: 22px;
+    display: grid;
+    place-items: center;
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: var(--accent);
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+  }
+  .bl {
+    flex: 0 0 34%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--text);
+  }
+  a.bl { border-bottom: 1px solid transparent; }
+  a.bl:hover { color: var(--accent); border-color: var(--accent); }
+  .bar {
+    flex: 1 1 auto;
+    height: 9px;
+    background: var(--surface-2);
+    border-radius: 999px;
+    overflow: hidden;
+  }
+  .fill {
+    display: block;
+    height: 100%;
+    border-radius: 999px;
+    background: linear-gradient(90deg, var(--accent), #9b7dff);
+    min-width: 3px;
+  }
+  .fill.alt { background: linear-gradient(90deg, #2bbf8c, var(--accent-2)); }
+  .bv {
+    flex: 0 0 auto;
+    min-width: 42px;
+    text-align: right;
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+  }
+
+  /* Remote split bar */
+  .split {
+    display: flex;
+    height: 16px;
+    border-radius: 999px;
+    overflow: hidden;
+    margin: 4px 0 14px;
+    background: var(--surface-2);
+  }
+  .split .seg { height: 100%; }
+  .seg.remote, .dot.remote { background: var(--accent-2); }
+  .seg.hybrid, .dot.hybrid { background: var(--accent); }
+  .seg.onsite, .dot.onsite { background: #4a5163; }
+  .legend { display: flex; flex-wrap: wrap; gap: 8px 18px; color: var(--muted); font-size: 0.84rem; }
+  .legend .dot {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 3px;
+    margin-right: 6px;
+    vertical-align: middle;
+  }
+
+  @media (max-width: 720px) {
+    .figures { grid-template-columns: repeat(3, 1fr); }
+    .cols { grid-template-columns: 1fr; gap: 0; }
+    .bl { flex-basis: 40%; }
+  }
+  @media (max-width: 440px) {
+    .figures { grid-template-columns: repeat(2, 1fr); }
+  }
+</style>

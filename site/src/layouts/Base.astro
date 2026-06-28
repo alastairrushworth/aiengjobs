@@ -45,6 +45,9 @@ const canonical = new URL(Astro.url.pathname, Astro.site).href;
     <header class="site-header">
       <div class="container">
         <a class="brand" href={url("/")}>aieng<span class="dot">.</span>jobs</a>
+        <nav class="site-nav">
+          <a href={url("/stats")}>Stats</a>
+        </nav>
       </div>
     </header>
     <main class="container">
