@@ -20,6 +20,16 @@ const canonical = new URL(Astro.url.pathname, Astro.site).href;
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!-- Google Analytics (gtag.js) -->
+    <script async is:inline src="https://www.googletagmanager.com/gtag/js?id=G-Y8XLWX2T51"></script>
+    <script is:inline>
+      window.dataLayer = window.dataLayer || [];
+      function gtag() {
+        dataLayer.push(arguments);
+      }
+      gtag("js", new Date());
+      gtag("config", "G-Y8XLWX2T51");
+    </script>
     <link rel="icon" type="image/svg+xml" href={url("/favicon.svg")} />
     <link rel="icon" type="image/png" sizes="32x32" href={url("/favicon-32.png")} />
     <link rel="apple-touch-icon" href={url("/apple-touch-icon.png")} />
@@ -43,6 +53,8 @@ const canonical = new URL(Astro.url.pathname, Astro.site).href;
     <footer class="site-footer">
       <div class="container">
         AI Engineering Jobs · first-party ATS listings, salary-transparent, no ghost jobs.
+        <br />
+        Built by <a href="https://alastairrushworth.com" rel="me">alastairrushworth.com</a>.
       </div>
     </footer>
   </body>

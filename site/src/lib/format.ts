@@ -36,11 +36,35 @@ export function decodeEntities(s: string): string {
     .replace(/\u00a0/g, " ");
 }
 
-export function formatSalary(
-  job: Pick<Job, "salaryMin" | "salaryMax" | "salaryCurrency" | "salaryPeriod">,
-): string | null {
+type SalaryFields = Pick<
+  Job,
+  "salaryMin" | "salaryMax" | "salaryCurrency" | "salaryPeriod"
+>;
+
+// Normalizes pay period + currency to a comparable annual USD figure — used both
+// to rank roles and to sanity-check parses. Jobs without salary are 0.
+const FX_TO_USD: Record<string, number> = {
+  USD: 1, GBP: 1.27, EUR: 1.08, CAD: 0.73, AUD: 0.66, SGD: 0.74, INR: 0.012,
+};
+const PERIOD_TO_YEAR: Record<string, number> = {
+  year: 1, month: 12, day: 260, hour: 2080,
+};
+// Above this annualized figure a "salary" is almost certainly a parse error
+// (e.g. an equity/valuation number), so we neither rank nor display it.
+const SALARY_CEILING_USD = 2_000_000;
+
+function annualUsd(job: SalaryFields): number {
+  const base = job.salaryMax ?? job.salaryMin;
+  if (!base) return 0;
+  const fx = FX_TO_USD[(job.salaryCurrency ?? "USD").toUpperCase()] ?? 1;
+  const perYear = PERIOD_TO_YEAR[job.salaryPeriod ?? "year"] ?? 1;
+  return base * perYear * fx;
+}
+
+export function formatSalary(job: SalaryFields): string | null {
   const { salaryMin, salaryMax, salaryCurrency, salaryPeriod } = job;
   if (!salaryMin && !salaryMax) return null;
+  if (annualUsd(job) > SALARY_CEILING_USD) return null; // implausible parse — hide
 
   const cur = salaryCurrency ?? "USD";
   const sym = cur === "USD" ? "$" : cur === "GBP" ? "£" : cur === "EUR" ? "€" : `${cur} `;
@@ -52,6 +76,13 @@ export function formatSalary(
       : k((salaryMin ?? salaryMax)!);
   const per = !salaryPeriod || salaryPeriod === "year" ? "/yr" : `/${salaryPeriod}`;
   return `${sym}${range}${per}`;
+}
+
+// Invisible home-page ranking: highest annual pay first; implausible parses and
+// no-salary roles sink to the bottom (0).
+export function salaryRank(job: SalaryFields): number {
+  const annual = annualUsd(job);
+  return annual > SALARY_CEILING_USD ? 0 : annual;
 }
 
 const REMOTE_LABELS: Record<RemoteType, string> = {
