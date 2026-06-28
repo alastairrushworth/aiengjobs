@@ -2,16 +2,41 @@
 import Base from "../layouts/Base.astro";
 import JobCard from "../components/JobCard.astro";
 import { url } from "../lib/url.ts";
+import { roleType } from "../lib/format.ts";
 import snapshot from "../data/snapshot.json";
 import { CLUSTER_PAGES } from "../lib/clusters.ts";
 import type { SiteSnapshot } from "@aiengjobs/shared";
 
 const data = snapshot as unknown as SiteSnapshot;
 const jobs = data.jobs.filter((j) => !j.isClosed);
-// Python/Cloud are near-universal — not useful browse facets. Lead with the
-// stack-native AI clusters (RAG, agents, evals, inference, …) per spec §4.
-const HIDDEN_CLUSTERS = new Set(["language", "cloud"]);
-const clusters = data.facets.clusters.filter((c) => !HIDDEN_CLUSTERS.has(c.id));
+
+// Country filter — derive from the jobs themselves, label the ISO codes with
+// readable names, and order by frequency so the busiest locations lead.
+const countryNames = new Intl.DisplayNames(["en"], { type: "region" });
+const countryCounts = new Map<string, number>();
+for (const j of jobs) {
+  if (j.country) countryCounts.set(j.country, (countryCounts.get(j.country) ?? 0) + 1);
+}
+const countries = [...countryCounts.entries()]
+  .sort((a, b) => b[1] - a[1])
+  .map(([code, count]) => ({
+    code,
+    label: countryNames.of(code) ?? code,
+    count,
+  }));
+
+// Role-type filter — bucket every listing into a generic role family and order
+// by frequency, keeping the catch-all "Other" pinned last.
+const roleCounts = new Map<string, number>();
+for (const j of jobs) {
+  const r = roleType(j);
+  roleCounts.set(r, (roleCounts.get(r) ?? 0) + 1);
+}
+const roles = [...roleCounts.entries()]
+  .sort((a, b) =>
+    a[0] === "Other" ? 1 : b[0] === "Other" ? -1 : b[1] - a[1],
+  )
+  .map(([label, count]) => ({ label, count }));
 ---
 
 <Base title="AI Engineering Jobs — RAG, agents, evals, inference">
@@ -35,30 +60,28 @@ const clusters = data.facets.clusters.filter((c) => !HIDDEN_CLUSTERS.has(c.id));
       placeholder="Search title, company, skill…"
       aria-label="Search jobs"
     />
-    <select id="remote" aria-label="Remote policy">
-      <option value="">Any location</option>
-      <option value="remote">Remote</option>
-      <option value="hybrid">Hybrid</option>
-      <option value="onsite">On-site</option>
-    </select>
-    <select id="seniority" aria-label="Seniority">
-      <option value="">Any level</option>
-      <option value="mid">Mid</option>
-      <option value="senior">Senior</option>
-      <option value="staff">Staff</option>
-      <option value="principal">Principal</option>
-      <option value="lead">Lead</option>
-    </select>
-  </div>
-
-  <div class="chips" id="clusters">
-    {
-      clusters.map((c) => (
-        <button class="chip" type="button" aria-pressed="false" data-cluster={c.id}>
-          {c.label} <span style="opacity:.6">{c.count}</span>
-        </button>
-      ))
-    }
+    <div class="toggles">
+      <select id="role" aria-label="Role type">
+        <option value="">Any role</option>
+        {roles.map((r) => (
+          <option value={r.label}>{r.label}</option>
+        ))}
+      </select>
+      <select id="country" aria-label="Country">
+        <option value="">Any country</option>
+        {countries.map((c) => (
+          <option value={c.code}>{c.label}</option>
+        ))}
+      </select>
+      <select id="seniority" aria-label="Seniority">
+        <option value="">Any level</option>
+        <option value="mid">Mid</option>
+        <option value="senior">Senior</option>
+        <option value="staff">Staff</option>
+        <option value="principal">Principal</option>
+        <option value="lead">Lead</option>
+      </select>
+    </div>
   </div>
 
   <p class="results-meta"><span id="shown">{jobs.length}</span> of {jobs.length} roles</p>
@@ -71,30 +94,25 @@ const clusters = data.facets.clusters.filter((c) => !HIDDEN_CLUSTERS.has(c.id));
 
 <script>
   const q = document.getElementById("q") as HTMLInputElement;
-  const remote = document.getElementById("remote") as HTMLSelectElement;
+  const role = document.getElementById("role") as HTMLSelectElement;
+  const country = document.getElementById("country") as HTMLSelectElement;
   const seniority = document.getElementById("seniority") as HTMLSelectElement;
-  const clusterBtns = Array.from(
-    document.querySelectorAll<HTMLButtonElement>("#clusters .chip"),
-  );
   const cards = Array.from(document.querySelectorAll<HTMLElement>("#jobs .job-card"));
   const shown = document.getElementById("shown")!;
   const empty = document.getElementById("empty")!;
 
-  const active = new Set<string>();
-
   function apply() {
     const text = (q.value || "").trim().toLowerCase();
-    const rem = remote.value;
+    const rol = role.value;
+    const cty = country.value;
     const sen = seniority.value;
     let n = 0;
     for (const card of cards) {
       const matchText = !text || (card.dataset.search || "").includes(text);
-      const matchRem = !rem || card.dataset.remote === rem;
+      const matchRol = !rol || card.dataset.role === rol;
+      const matchCty = !cty || card.dataset.country === cty;
       const matchSen = !sen || card.dataset.seniority === sen;
-      const cls = (card.dataset.clusters || "").split(" ");
-      const matchCls =
-        active.size === 0 || [...active].every((a) => cls.includes(a));
-      const ok = matchText && matchRem && matchSen && matchCls;
+      const ok = matchText && matchRol && matchCty && matchSen;
       card.style.display = ok ? "" : "none";
       if (ok) n++;
     }
@@ -103,19 +121,7 @@ const clusters = data.facets.clusters.filter((c) => !HIDDEN_CLUSTERS.has(c.id));
   }
 
   q.addEventListener("input", apply);
-  remote.addEventListener("change", apply);
+  role.addEventListener("change", apply);
+  country.addEventListener("change", apply);
   seniority.addEventListener("change", apply);
-  for (const btn of clusterBtns) {
-    btn.addEventListener("click", () => {
-      const id = btn.dataset.cluster!;
-      if (active.has(id)) {
-        active.delete(id);
-        btn.setAttribute("aria-pressed", "false");
-      } else {
-        active.add(id);
-        btn.setAttribute("aria-pressed", "true");
-      }
-      apply();
-    });
-  }
 </script>

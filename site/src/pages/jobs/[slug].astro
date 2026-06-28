@@ -1,6 +1,12 @@
 ---
 import Base from "../../layouts/Base.astro";
-import { formatSalary, remoteLabel, seniorityLabel } from "../../lib/format.ts";
+import {
+  decodeEntities,
+  formatSalary,
+  remoteLabel,
+  roleType,
+  seniorityLabel,
+} from "../../lib/format.ts";
 import { url } from "../../lib/url.ts";
 import snapshot from "../../data/snapshot.json";
 import type { SiteSnapshot, Job } from "@aiengjobs/shared";
@@ -14,6 +20,30 @@ export function getStaticPaths() {
 
 const { job } = Astro.props as { job: Job };
 const salary = formatSalary(job);
+const role = roleType(job);
+
+// Structured "facts" surfaced at the top of the page. Country codes get a
+// readable name; prefer the raw location string, else compose city + country.
+const countryName = job.country
+  ? (new Intl.DisplayNames(["en"], { type: "region" }).of(job.country) ?? job.country)
+  : undefined;
+const location =
+  (job.locationRaw && decodeEntities(job.locationRaw)) ||
+  [job.city, countryName].filter(Boolean).join(", ") ||
+  null;
+const facts: { label: string; value: string }[] = [
+  salary && { label: "Salary", value: salary },
+  location && { label: "Location", value: location },
+  remoteLabel(job.remoteType) && {
+    label: "Work type",
+    value: remoteLabel(job.remoteType)!,
+  },
+  seniorityLabel(job.seniority) && {
+    label: "Level",
+    value: seniorityLabel(job.seniority)!,
+  },
+  role && role !== "Other" && { label: "Role", value: role },
+].filter(Boolean) as { label: string; value: string }[];
 
 // Cap the skill wall; the long tail adds noise more than signal.
 const MAX_SKILLS = 16;
@@ -25,7 +55,7 @@ const moreSkills = job.skills.length - skills.length;
 const BULLET_RE = /^\s*(?:[•·▪◦‣*]|[-–—](?=\s))\s*/;
 type Block = { type: "p"; text: string } | { type: "ul"; items: string[] };
 const blocks: Block[] = [];
-for (const line of (job.descriptionText ?? "").split("\n")) {
+for (const line of decodeEntities(job.descriptionText ?? "").split("\n")) {
   const trimmed = line.trim();
   if (!trimmed) continue;
   if (BULLET_RE.test(trimmed)) {
@@ -74,13 +104,18 @@ if (job.salaryMin) {
     <p><a class="back" href={url("/")}>← All jobs</a></p>
     <h1>{job.title}</h1>
     <p class="company">
-      <a href={url(`/companies/${job.companySlug}`)} style="color:var(--accent)">{job.companyName}</a>{job.locationRaw ? ` · ${job.locationRaw}` : ""}
+      <a href={url(`/companies/${job.companySlug}`)} style="color:var(--accent)">{job.companyName}</a>
     </p>
-    <div class="meta">
-      {salary && <span class="badge new">{salary}</span>}
-      {remoteLabel(job.remoteType) && <span class="badge">{remoteLabel(job.remoteType)}</span>}
-      {seniorityLabel(job.seniority) && <span class="badge">{seniorityLabel(job.seniority)}</span>}
-    </div>
+    {facts.length > 0 && (
+      <dl class="facts">
+        {facts.map((f) => (
+          <div class="fact">
+            <dt>{f.label}</dt>
+            <dd class={f.label === "Salary" ? "salary" : undefined}>{f.value}</dd>
+          </div>
+        ))}
+      </dl>
+    )}
     {skills.length > 0 && (
       <div class="meta skills">
         {skills.map((s) => <span class="badge skill">{s}</span>)}
@@ -112,8 +147,28 @@ if (job.salaryMin) {
   .job-detail { max-width: 720px; padding: 32px 0; }
   .job-detail h1 { font-size: 1.8rem; letter-spacing: -0.02em; margin: 12px 0 6px; }
   .job-detail .company { color: var(--muted); margin: 0 0 16px; }
+  .facts {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 1px;
+    margin: 0 0 8px;
+    background: var(--border);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+  .facts .fact { background: var(--surface); padding: 12px 14px; }
+  .facts dt {
+    color: var(--muted);
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-bottom: 4px;
+  }
+  .facts dd { margin: 0; font-size: 0.95rem; font-weight: 600; }
+  .facts dd.salary { color: var(--accent-2); }
   .job-detail .meta { display: flex; flex-wrap: wrap; gap: 8px; }
-  .job-detail .skills { margin-top: 12px; }
+  .job-detail .skills { margin-top: 16px; }
   .badge.more { color: var(--muted); }
   .back { color: var(--muted); }
   .desc { margin-top: 28px; color: var(--text); line-height: 1.7; }

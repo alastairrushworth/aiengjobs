@@ -1,6 +1,6 @@
 ---
 import type { Job } from "@aiengjobs/shared";
-import { formatSalary, remoteLabel, seniorityLabel } from "../lib/format.ts";
+import { formatSalary, remoteLabel, roleType, seniorityLabel } from "../lib/format.ts";
 
 interface Props {
   job: Job;
@@ -11,6 +11,7 @@ const { job, href } = Astro.props;
 const salary = formatSalary(job);
 const remote = remoteLabel(job.remoteType);
 const sen = seniorityLabel(job.seniority);
+const role = roleType(job);
 const searchBlob =
   `${job.title} ${job.companyName} ${job.skills.join(" ")} ${job.locationRaw ?? ""}`.toLowerCase();
 ---
@@ -22,6 +23,8 @@ const searchBlob =
   data-clusters={job.clusters.join(" ")}
   data-remote={job.remoteType ?? ""}
   data-seniority={job.seniority ?? ""}
+  data-country={job.country ?? ""}
+  data-role={role}
 >
   <div class="top">
     <div>
