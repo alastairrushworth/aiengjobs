@@ -85,6 +85,23 @@ export function salaryRank(job: SalaryFields): number {
   return annual > SALARY_CEILING_USD ? 0 : annual;
 }
 
+// Annualized USD *midpoint* of a pay range (mean of min & max, or the lone bound
+// when only one is given). Returns null when there's no usable salary or the
+// figure looks like a parse error. Used by the stats page for like-for-like
+// company/skill pay comparisons — hence midpoint rather than top-of-range.
+const SALARY_FLOOR_USD = 10_000;
+export function salaryMidpointUsd(job: SalaryFields): number | null {
+  const { salaryMin, salaryMax } = job;
+  if (!salaryMin && !salaryMax) return null;
+  const lo = salaryMin ?? salaryMax!;
+  const hi = salaryMax ?? salaryMin!;
+  const fx = FX_TO_USD[(job.salaryCurrency ?? "USD").toUpperCase()] ?? 1;
+  const perYear = PERIOD_TO_YEAR[job.salaryPeriod ?? "year"] ?? 1;
+  const annual = ((lo + hi) / 2) * perYear * fx;
+  if (annual < SALARY_FLOOR_USD || annual > SALARY_CEILING_USD) return null;
+  return annual;
+}
+
 const REMOTE_LABELS: Record<RemoteType, string> = {
   remote: "Remote",
   hybrid: "Hybrid",
