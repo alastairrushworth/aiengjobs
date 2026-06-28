@@ -3,6 +3,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { openDb } from "../db/index.ts";
 import { stripHtml } from "../util/html.ts";
+import { fetchFxRates } from "../util/fx.ts";
 import { CLUSTER_BY_ID } from "@aiengjobs/shared/taxonomy";
 import type { ClusterId } from "@aiengjobs/shared/taxonomy";
 import type {
@@ -80,7 +81,7 @@ interface CompanyRow {
 
 const NEW_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
 
-export function exportSnapshot(): void {
+export async function exportSnapshot(): Promise<void> {
   const db = openDb();
   const now = Date.now();
 
@@ -172,8 +173,13 @@ export function exportSnapshot(): void {
     if (j.remoteType) remoteCounts.set(j.remoteType, (remoteCounts.get(j.remoteType) ?? 0) + 1);
   }
 
+  // Live currency conversion rates, pulled fresh each run (falls back to static
+  // approximations if the feed is unreachable).
+  const fxRates = await fetchFxRates();
+
   const snapshot: SiteSnapshot = {
     generatedAt: new Date().toISOString(),
+    fxRates,
     jobs,
     companies,
     facets: {
