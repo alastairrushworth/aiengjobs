@@ -18,9 +18,11 @@ const k = (n: number) => `$${Math.round(n / 1000)}k`;
 const pct = (n: number, d: number) => (d ? Math.round((n / d) * 100) : 0);
 
 // Salary midpoints (annualized USD) paired with their job — used everywhere we
-// compare pay. Midpoint of the published range, per the brief.
+// compare pay. Midpoint of the published range, converted to USD with the
+// snapshot's live FX rates (£/€/etc. → $).
+const fxRates = data.fxRates;
 const paid = open
-  .map((j) => ({ job: j, pay: salaryMidpointUsd(j) }))
+  .map((j) => ({ job: j, pay: salaryMidpointUsd(j, fxRates) }))
   .filter((x): x is { job: Job; pay: number } => x.pay !== null);
 
 // ── Headline numbers ──────────────────────────────────────────────────────

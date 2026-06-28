@@ -89,13 +89,19 @@ export function salaryRank(job: SalaryFields): number {
 // when only one is given). Returns null when there's no usable salary or the
 // figure looks like a parse error. Used by the stats page for like-for-like
 // company/skill pay comparisons — hence midpoint rather than top-of-range.
+// Pass `fxRates` (the snapshot's live rates) to convert local currencies; falls
+// back to the static table per-currency when a rate is missing.
 const SALARY_FLOOR_USD = 10_000;
-export function salaryMidpointUsd(job: SalaryFields): number | null {
+export function salaryMidpointUsd(
+  job: SalaryFields,
+  fxRates?: Record<string, number>,
+): number | null {
   const { salaryMin, salaryMax } = job;
   if (!salaryMin && !salaryMax) return null;
   const lo = salaryMin ?? salaryMax!;
   const hi = salaryMax ?? salaryMin!;
-  const fx = FX_TO_USD[(job.salaryCurrency ?? "USD").toUpperCase()] ?? 1;
+  const cur = (job.salaryCurrency ?? "USD").toUpperCase();
+  const fx = fxRates?.[cur] ?? FX_TO_USD[cur] ?? 1;
   const perYear = PERIOD_TO_YEAR[job.salaryPeriod ?? "year"] ?? 1;
   const annual = ((lo + hi) / 2) * perYear * fx;
   if (annual < SALARY_FLOOR_USD || annual > SALARY_CEILING_USD) return null;

@@ -16,12 +16,12 @@ async function main(): Promise<void> {
       await ingest();
       break;
     case "export":
-      exportSnapshot();
+      await exportSnapshot();
       break;
     case "refresh":
       // nightly: poll feeds, then regenerate the site snapshot
       await ingest();
-      exportSnapshot();
+      await exportSnapshot();
       break;
     default:
       console.log("Usage: tsx src/cli.ts <db:init | seed | ingest | export | refresh>");

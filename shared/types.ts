@@ -92,6 +92,12 @@ export interface Job {
 /** The snapshot the engine writes to site/src/data and the site reads at build time. */
 export interface SiteSnapshot {
   generatedAt: string;
+  /**
+   * Currency code → multiplier to USD at generation time (USD: 1, e.g. GBP ≈ 1.27).
+   * Pulled live during the nightly refresh so local-currency pay can be converted
+   * to USD for like-for-like comparison on the stats page.
+   */
+  fxRates: Record<string, number>;
   jobs: Job[];
   companies: Company[];
   facets: {
