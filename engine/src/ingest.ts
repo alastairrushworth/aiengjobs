@@ -16,6 +16,7 @@ import { parseLocation } from "./pipeline/location.ts";
 import { extractListing, type ExtractResult } from "./pipeline/extract.ts";
 import { contentHash } from "./pipeline/hash.ts";
 import { llmEnabled } from "./pipeline/llm.ts";
+import { LLM_VETO_CONFIDENCE } from "./config.ts";
 import { jobId, jobSlug } from "./util/id.ts";
 import { mapPool } from "./util/concurrency.ts";
 
@@ -93,15 +94,24 @@ export async function ingest(): Promise<void> {
         cls = heuristicClass;
       } else if (llmEnabled()) {
         ex = await extractListing(raw.title, text, raw.locationRaw);
-        cls =
-          heuristicClass ??
-          (ex
+        if (heuristicClass?.classification === "in") {
+          // Title looks IN. The LLM read the full description, so let it veto an
+          // over-broad title match (e.g. "Support Agent" caught by /agent/) when
+          // it's confidently OUT; otherwise keep the heuristic prior.
+          cls =
+            ex && ex.inScope === false && ex.confidence >= LLM_VETO_CONFIDENCE
+              ? { classification: "out", confidence: ex.confidence, via: "llm" }
+              : heuristicClass;
+        } else {
+          // Ambiguous title → the LLM decides outright.
+          cls = ex
             ? {
                 classification: ex.inScope ? "in" : "out",
                 confidence: ex.confidence,
                 via: "llm",
               }
-            : { classification: "out", confidence: 0.3, via: "default" });
+            : { classification: "out", confidence: 0.3, via: "default" };
+        }
       } else {
         // No API key → heuristics only; exclude the ambiguous to stay credible.
         cls = heuristicClass ?? { classification: "out", confidence: 0.3, via: "default" };
