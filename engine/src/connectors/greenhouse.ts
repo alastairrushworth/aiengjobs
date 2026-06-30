@@ -11,16 +11,28 @@ interface GhJob {
   content?: string; // HTML-entity-encoded
 }
 
+// Greenhouse serves EU-data-residency boards from a separate API host
+// (boards-api.eu.greenhouse.io, fronted by job-boards.eu.greenhouse.io). Those
+// boards 404 on the default US host, so we fall back to the EU host on a 404.
+const GH_HOSTS = ["boards-api.greenhouse.io", "boards-api.eu.greenhouse.io"];
+const boardUrl = (host: string, slug: string) =>
+  `https://${host}/v1/boards/${slug}/jobs?content=true`;
+
 // Greenhouse public board API (spec §6.1) — widest tech coverage.
 export const greenhouse: Connector = {
   provider: "greenhouse",
-  endpoint: (slug) =>
-    `https://boards-api.greenhouse.io/v1/boards/${slug}/jobs?content=true`,
+  endpoint: (slug) => boardUrl(GH_HOSTS[0], slug),
   async fetchPostings(slug) {
-    const res = await fetch(greenhouse.endpoint(slug), {
-      headers: { "User-Agent": USER_AGENT },
-    });
-    if (!res.ok) throw new Error(`greenhouse ${slug} HTTP ${res.status}`);
+    let res: Response | undefined;
+    for (const host of GH_HOSTS) {
+      res = await fetch(boardUrl(host, slug), {
+        headers: { "User-Agent": USER_AGENT },
+      });
+      if (res.ok) break;
+      // Only a 404 means "not on this host" — try the next. Other errors are real.
+      if (res.status !== 404) break;
+    }
+    if (!res || !res.ok) throw new Error(`greenhouse ${slug} HTTP ${res?.status}`);
     const data = (await res.json()) as { jobs?: GhJob[] };
 
     return (data.jobs ?? []).map((j): RawPosting => {
