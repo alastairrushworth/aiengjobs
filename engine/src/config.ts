@@ -33,8 +33,10 @@ export const IN_TITLE_PATTERNS: RegExp[] = [
   /\beval(s|uation)?\b/i,
   /\bmodel serving\b/i,
   // Frontier-lab IC / research roles the bare keywords above miss. Safe to add
-  // now that the LLM can veto a mis-match (above).
+  // now that the LLM can veto a mis-match (above). Research scientists are IN
+  // scope (AI/ML research); the LLM still filters non-IC "Research *Manager*".
   /\bresearch engineer\b/i,
+  /\bresearch scientist\b/i,
   /\bmember of technical staff\b/i,
   /\bdeploy(ed|ment) engineer/i,
   /\bpost.?training\b/i,
