@@ -391,3 +391,26 @@ GoDaddy,workday,godaddy:wd1:GoDaddy_careers_events,godaddy.com,late
 VeriSign,greenhouse,verisign,verisign.com,late
 The Trade Desk,greenhouse,thetradedesk,thetradedesk.com,late
 Workiva,workday,workiva:wd503:careers,workiva.com,late
+
+# === ENTERPRISE ATS (Oracle / Eightfold / iCIMS / SuccessFactors connectors) ===
+# Large-caps whose feeds live on enterprise ATSes. Slugs read from live careers
+# URLs (see connector headers for the slug grammar). iCIMS + SuccessFactors are
+# scrape/JSON-LD based and EXPERIMENTAL — validate each on a live ingest run.
+# --- Eightfold (slug = host:domain) ---
+HSBC,eightfold,hsbc.eightfold.ai:hsbc.com,hsbc.com,late
+Vodafone,eightfold,vodafone.eightfold.ai:vodafone.com,vodafone.com,late
+American Express,eightfold,aexp.eightfold.ai:americanexpress.com,americanexpress.com,late
+Moody's,eightfold,careers.moodys.com:moodys.com,moodys.com,late
+MSCI,eightfold,careers.msci.com:msci.com,msci.com,late
+# --- Oracle Recruiting Cloud (slug = host:siteNumber) ---
+Fortinet,oracle,edel.fa.us2.oraclecloud.com:CX_2001,fortinet.com,late
+Akamai,oracle,fa-extu-saasfaprod1.fa.ocs.oraclecloud.com:CX_1,akamai.com,late
+Verisk Analytics,oracle,fa-ewmy-saasfaprod1.fa.ocs.oraclecloud.com:CX_1,verisk.com,late
+# --- iCIMS (slug = portal subdomain) ---
+Intuit,icims,uscareers-intuit,intuit.com,late
+DocuSign,icims,hubcareers-docusign,docusign.com,late
+Charles Schwab,icims,career-schwab,schwab.com,late
+Intercontinental Exchange,icims,careers-ice,ice.com,late
+# --- SuccessFactors (slug = host:company) ---
+Reckitt,successfactors,career2.successfactors.eu:reckittb01,reckitt.com,late
+Bentley Systems,successfactors,career4.successfactors.com:bentleyprod,bentley.com,late

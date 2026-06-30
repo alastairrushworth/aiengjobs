@@ -10,6 +10,10 @@ export type AtsProvider =
   | "teamtailor"
   | "smartrecruiters"
   | "workday"
+  | "oracle"
+  | "eightfold"
+  | "icims"
+  | "successfactors"
   | "personio"
   | "direct";
 
