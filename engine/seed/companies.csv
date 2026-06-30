@@ -295,3 +295,99 @@ Citi,workday,citi:wd5:2,citi.com,late
 State Street,workday,statestreet:wd1:Global,statestreet.com,late
 Barclays,workday,barclays:wd3:External_Career_Site_Barclays,barclays.com,late
 Prudential plc,workday,prudential:wd3:prudential,prudentialplc.com,late
+
+# === FTSE 100/250 & S&P 500 LARGE-CAP ENTERPRISES (digital/tech-heavy; AI/ML roles filtered in by classifier) ===
+# Provider+slug read from each company's live public job-board URL (greenhouse/lever/
+# ashby/workable/smartrecruiters/workday). Discovered via search, not yet live-API-verified
+# from this network — the nightly ingest run does the live check and drops any dead feed.
+# --- UK FTSE: software / data / media / online ---
+London Stock Exchange Group,workday,lseg:wd3:Careers,lseg.com,late
+Experian,smartrecruiters,Experian,experian.com,late
+RELX,workday,relx:wd3:relx,relx.com,late
+Informa,smartrecruiters,InformaGroupPlc,informa.com,late
+WPP,greenhouse,wpp,wpp.com,late
+Rightmove,greenhouse,rightmovecareers,rightmove.co.uk,late
+Auto Trader,greenhouse,autotrader,autotrader.co.uk,late
+Ocado Group,workday,ocado:wd3:OcadoGroupCareers,ocadogroup.com,late
+Trustpilot,greenhouse,trustpilot,trustpilot.com,late
+Moneysupermarket Group,workday,msfg:wd3:Careers,moneysupermarketgroup.com,late
+Endava,smartrecruiters,Endava,endava.com,late
+Kainos,workday,kainos:wd3:Kainos,kainos.com,late
+Aveva,workday,aveva:wd3:AVEVA_careers,aveva.com,late
+# --- UK FTSE: banks / insurers / asset managers ---
+Lloyds Banking Group,workday,lbg:wd3:lbg_Careers,lloydsbankinggroup.com,late
+NatWest Group,smartrecruiters,NTGGroups,natwestgroup.com,late
+Standard Chartered,workday,peopleplus:wd3:SCB_Careers,sc.com,late
+Aviva,workday,aviva:wd1:External,aviva.com,late
+Legal & General,smartrecruiters,LegalAndGeneral,legalandgeneral.com,late
+Hargreaves Lansdown,workday,hargreaveslansdown:wd3:HargreavesLansdown,hl.co.uk,late
+Hiscox,workday,hiscox:wd3:Hiscox_External_Site,hiscoxgroup.com,late
+M&G,workday,mgpru:wd3:mandgprudential,mandg.com,late
+Abrdn,workday,abrdn:wd3:abrdn,abrdn.com,late
+Direct Line Group,workday,dlg:wd3:DLGCAREERS,directlinegroup.com,late
+Quilter,workday,quilter:wd3:External-Career-Site,quilter.com,late
+# --- UK FTSE: telecom / industrial / consumer / pharma ---
+SSE,smartrecruiters,SSE,sse.com,late
+Rolls-Royce,workday,rollsroyce:wd3:professional,rolls-royce.com,late
+BAE Systems,smartrecruiters,BAESystems3,baesystems.com,late
+Spectris,workday,spectris:wd3:Spectris_Careers,spectris.com,late
+Renishaw,workday,renishaw:wd3:Renishaw,renishaw.com,late
+Smiths Group,smartrecruiters,SmithsGroup2,smiths.com,late
+Intertek,workable,intertek,intertek.com,late
+Rentokil Initial,smartrecruiters,RentokilInitial1,rentokil-initial.com,late
+Tesco,smartrecruiters,TescoTechnologyCE,tesco.com,late
+Next,smartrecruiters,next2,next.co.uk,late
+JD Sports Fashion,greenhouse,jdsports,jdsports.com,late
+Diageo,workday,diageo:wd3:Diageo_Careers,diageo.com,late
+Unilever,workday,unilever:wd3:Unilever_Experienced_Professionals,unilever.com,late
+AstraZeneca,workday,astrazeneca:wd3:Careers,astrazeneca.com,late
+GSK,workday,gsk:wd5:GSKCareers,gsk.com,late
+Smith & Nephew,workday,smithnephew:wd5:External,smith-nephew.com,late
+# --- US S&P: software / security / cloud ---
+Palo Alto Networks,smartrecruiters,paloaltonetworks2,paloaltonetworks.com,late
+Zscaler,greenhouse,zscaler,zscaler.com,late
+CrowdStrike,workday,crowdstrike:wd5:crowdstrikecareers,crowdstrike.com,late
+ServiceNow,smartrecruiters,servicenow,servicenow.com,late
+Workday,workday,workday:wd5:Workday,workday.com,late
+Salesforce,workday,salesforce:wd12:External_Career_Site,salesforce.com,late
+Adobe,workday,adobe:wd5:external_experienced,adobe.com,late
+Autodesk,workday,autodesk:wd1:Ext,autodesk.com,late
+Cadence Design Systems,workday,cadence:wd1:External_Careers,cadence.com,late
+HubSpot,greenhouse,hubspotjobs,hubspot.com,late
+Gen Digital,workday,gen:wd1:careers,gendigital.com,late
+PTC,workday,ptc:wd1:PTC,ptc.com,late
+Cisco,workday,cisco:wd5:Cisco_Careers,cisco.com,late
+# --- US S&P: fintech / payments / financial-data / exchanges ---
+PayPal,workday,paypal:wd1:jobs,paypal.com,late
+Fiserv,workday,fiserv:wd5:EXT,fiserv.com,late
+FIS,workday,fis:wd5:SearchJobs,fisglobal.com,late
+Global Payments,workday,tsys:wd1:TSYS,globalpayments.com,late
+Mastercard,workday,mastercard:wd1:CorporateCareers,mastercard.com,late
+Discover Financial,workday,discover:wd5:Discover,discover.com,late
+Synchrony Financial,workday,synchronyfinancial:wd5:careers,synchrony.com,late
+Gartner,workday,gartner:wd5:EXT,gartner.com,late
+Equifax,workday,equifax:wd5:External,equifax.com,late
+TransUnion,workday,transunion:wd5:TransUnion,transunion.com,late
+Fair Isaac (FICO),workday,fico:wd1:External,fico.com,late
+Broadridge Financial,workday,broadridge:wd5:Careers,broadridge.com,late
+S&P Global,workday,spgi:wd5:SPGI_Careers,spglobal.com,late
+Nasdaq,workday,nasdaq:wd1:Global_External_Site,nasdaq.com,late
+CME Group,workday,cmegroup:wd1:cme_careers,cmegroup.com,late
+# --- US S&P: internet / media / telecom ---
+Booking Holdings,workday,priceline:wd1:BookingHoldings,bookingholdings.com,late
+Expedia Group,workday,expedia:wd5:search,expediagroup.com,late
+Etsy,workday,etsy:wd5:Etsy_Careers,etsy.com,late
+Match Group,lever,matchgroup,mtch.com,late
+Take-Two Interactive,greenhouse,taketwo,take2games.com,late
+Warner Bros Discovery,workday,warnerbros:wd5:global,wbd.com,late
+Comcast,workday,comcast:wd5:Comcast_Careers,comcast.com,late
+Verizon,workday,verizon:wd5:verizon-careers,verizon.com,late
+AT&T,workday,att:wd1:ATTGeneral,att.com,late
+T-Mobile,workday,tmobile:wd1:External,t-mobile.com,late
+Zillow Group,workday,zillow:wd5:Zillow_Group_External,zillowgroup.com,late
+Wayfair,smartrecruiters,Wayfair,wayfair.com,late
+Chewy,greenhouse,chewycom,chewy.com,late
+GoDaddy,workday,godaddy:wd1:GoDaddy_careers_events,godaddy.com,late
+VeriSign,greenhouse,verisign,verisign.com,late
+The Trade Desk,greenhouse,thetradedesk,thetradedesk.com,late
+Workiva,workday,workiva:wd503:careers,workiva.com,late
