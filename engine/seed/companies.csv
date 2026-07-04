@@ -483,3 +483,44 @@ Coalition,greenhouse,coalition,coalitioninc.com,growth
 Kettle,greenhouse,kettle,kettle.us,early
 Lemonade,ashby,lemonade,lemonade.com,late
 Root Insurance,teamtailor,root,joinroot.com,late
+
+# === DEEPER REVIEW: ADDITIONAL VERIFIED FINDS (research pass on prior misses) ===
+# Prior misses were mostly companies on unsupported ATS (Avature/SuccessFactors/iCIMS/
+# Taleo/Workday-outage-blocked) or acquired/absorbed with no independent board left.
+# These are the ones that turned out to have a real, live, supported-provider board.
+# --- Defense/robotics ---
+Applied Intuition,ashby,applied,appliedintuition.com,late
+Rebellion Defense,greenhouse,rebelliondefense,rebelliondefense.com,growth
+ARX Robotics,greenhouse,arxroboticsgmbh,arx-robotics.com,early
+CesiumAstro,lever,CesiumAstro,cesiumastro.com,growth
+True Anomaly,greenhouse,trueanomalyinc,trueanomaly.space,growth
+BRINC Drones,ashby,brinc,brincdrones.com,growth
+# --- MLOps/eval ---
+Fiddler AI,ashby,fiddler-ai,fiddler.ai,growth
+Giskard,workable,giskard,giskard.ai,early
+Arthur AI,ashby,arthur-ai,arthur.ai,growth
+# --- Consultancies/SIs ---
+Nagarro,smartrecruiters,nagarro1,nagarro.com,late
+Netcompany,smartrecruiters,netcompany1,netcompany.com,late
+Xebia,greenhouse,xebiacee,xebia.com,growth
+Sword Group,workable,sword-group,sword-group.com,late
+West Monroe,greenhouse,westmonroe4,westmonroe.com,growth
+Sopra Steria,smartrecruiters,SopraSteria1,soprasteria.com,late
+# --- Enterprise SaaS ---
+Salesforce,workday,salesforce:wd12:External_Career_Site,salesforce.com,late
+Box,greenhouse,boxinc,box.com,late
+# --- AI silicon ---
+SambaNova Systems,greenhouse,sambanovasystems,sambanova.ai,growth
+d-Matrix,ashby,d-Matrix,d-matrix.ai,growth
+Mythic,lever,mythic-ai.com,mythic.ai,early
+Tensordyne,greenhouse,tensordyne,recogni.com,early
+# --- Big-tech subsidiaries with their own independent ATS board ---
+Google DeepMind,greenhouse,deepmind,deepmind.google,late
+Twitch,greenhouse,twitch,twitch.tv,late
+Qualtrics,greenhouse,qualtrics,qualtrics.com,late
+SmartRecruiters,smartrecruiters,smartrecruiters,smartrecruiterscareers.com,growth
+# --- Healthcare AI ---
+Viz.ai,ashby,Viz.ai,viz.ai,growth
+Cleerly Health,greenhouse,cleerlyhealth,cleerlyhealth.com,growth
+Ada Health,greenhouse,adahealth,ada.com,growth
+Clarify Health,lever,clarifyhealth,clarifyhealth.com,growth
