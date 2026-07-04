@@ -1,18 +1,7 @@
-import { USER_AGENT } from "./html.ts";
+import { fetchRetry } from "./fetch.ts";
+import { FX_CURRENCIES, FX_FALLBACK_TO_USD as FX_FALLBACK } from "@aiengjobs/shared/fx";
 
-// Currencies we convert to USD on the site. Keep in sync with the salary parser
-// (comp.ts emits USD/GBP/EUR) plus the structured-comp currencies ATS connectors
-// can surface.
-export const FX_CURRENCIES = [
-  "USD", "GBP", "EUR", "CAD", "AUD", "SGD", "INR", "CHF", "SEK",
-] as const;
-
-// Static fallback (approximate) used when the live fetch fails, so a network blip
-// never breaks the nightly snapshot. Refresh occasionally if rates drift.
-const FX_FALLBACK: Record<string, number> = {
-  USD: 1, GBP: 1.27, EUR: 1.08, CAD: 0.73, AUD: 0.66, SGD: 0.74, INR: 0.012,
-  CHF: 1.12, SEK: 0.095,
-};
+export { FX_CURRENCIES };
 
 /**
  * Live currency → USD multipliers (e.g. GBP ≈ 1.27) for {@link FX_CURRENCIES},
@@ -21,9 +10,7 @@ const FX_FALLBACK: Record<string, number> = {
  */
 export async function fetchFxRates(): Promise<Record<string, number>> {
   try {
-    const res = await fetch("https://open.er-api.com/v6/latest/USD", {
-      headers: { "User-Agent": USER_AGENT },
-    });
+    const res = await fetchRetry("https://open.er-api.com/v6/latest/USD");
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = (await res.json()) as {
       result?: string;

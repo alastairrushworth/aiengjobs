@@ -1,28 +1,46 @@
 import type { APIRoute } from "astro";
-import snapshot from "../data/snapshot.json";
 import { CLUSTER_PAGES } from "../lib/clusters.ts";
 import { url } from "../lib/url.ts";
-import type { SiteSnapshot } from "@aiengjobs/shared";
+import { openJobs, generatedAt } from "../lib/data.ts";
 
 export const GET: APIRoute = ({ site }) => {
-  const data = snapshot as unknown as SiteSnapshot;
-  const open = data.jobs.filter((j) => !j.isClosed);
-  const abs = (p: string) => new URL(url(p), site).href;
+  // Trailing slashes throughout — GitHub Pages 301s the slash-less form, and a
+  // sitemap full of redirects wastes crawl budget.
+  const abs = (p: string) => {
+    const href = new URL(url(p.endsWith("/") ? p : `${p}/`), site).href;
+    return href.endsWith("/") ? href : `${href}/`; // url("/") drops the base's slash
+  };
+  const day = (iso?: string) => (iso ? iso.slice(0, 10) : undefined);
 
-  const paths: string[] = ["/"];
+  const entries: { loc: string; lastmod?: string }[] = [
+    { loc: abs("/"), lastmod: day(generatedAt) },
+    { loc: abs("/stats"), lastmod: day(generatedAt) },
+    { loc: abs("/salaries"), lastmod: day(generatedAt) },
+  ];
   for (const p of CLUSTER_PAGES) {
-    paths.push(`/${p.slug}`);
-    paths.push(`/salaries/${p.id}`);
+    entries.push({ loc: abs(`/${p.slug}`), lastmod: day(generatedAt) });
+    entries.push({ loc: abs(`/salaries/${p.id}`), lastmod: day(generatedAt) });
   }
-  for (const slug of new Set(open.map((j) => j.companySlug))) {
-    paths.push(`/companies/${slug}`);
+  for (const slug of new Set(openJobs.map((j) => j.companySlug))) {
+    entries.push({ loc: abs(`/companies/${slug}`), lastmod: day(generatedAt) });
   }
-  for (const j of open) paths.push(`/jobs/${j.slug}`);
+  // Closed-job tombstones are noindexed and deliberately absent here.
+  for (const j of openJobs) {
+    entries.push({
+      loc: abs(`/jobs/${j.slug}`),
+      lastmod: day(j.updatedAt ?? j.postedAt) ?? day(generatedAt),
+    });
+  }
 
   const body =
     `<?xml version="1.0" encoding="UTF-8"?>\n` +
     `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n` +
-    paths.map((p) => `  <url><loc>${abs(p)}</loc></url>`).join("\n") +
+    entries
+      .map(
+        (e) =>
+          `  <url><loc>${e.loc}</loc>${e.lastmod ? `<lastmod>${e.lastmod}</lastmod>` : ""}</url>`,
+      )
+      .join("\n") +
     `\n</urlset>\n`;
 
   return new Response(body, {

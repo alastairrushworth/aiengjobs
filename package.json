@@ -11,6 +11,10 @@
   "scripts": {
     "build": "npm run build -w @aiengjobs/site",
     "dev": "npm run dev -w @aiengjobs/site",
-    "typecheck": "npm run typecheck -w @aiengjobs/engine"
+    "typecheck": "npm run typecheck -w @aiengjobs/engine && npm run check -w @aiengjobs/site",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "vitest": "^3.0.0"
   }
 }

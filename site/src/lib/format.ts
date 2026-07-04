@@ -1,39 +1,20 @@
 import type { Job, RemoteType, Seniority } from "@aiengjobs/shared";
+import { SENIORITIES } from "@aiengjobs/shared";
+import { decodeEntities } from "@aiengjobs/shared/text";
+import { FX_FALLBACK_TO_USD } from "@aiengjobs/shared/fx";
 
-const NAMED_ENTITIES: Record<string, string> = {
-  amp: "&",
-  lt: "<",
-  gt: ">",
-  quot: '"',
-  apos: "'",
-  nbsp: " ",
-  mdash: "—",
-  ndash: "–",
-  rsquo: "’",
-  lsquo: "‘",
-  rdquo: "”",
-  ldquo: "“",
-  hellip: "…",
-};
+// Re-export so pages keep a single import site for text cleanup.
+export { decodeEntities };
 
 /**
- * Decode HTML entities (&nbsp;, &amp;, &#39;, …) that survive in snapshot text,
- * and fold non-breaking spaces to ordinary ones. Defensive: the engine also
- * decodes at ingest, but this keeps already-captured listings rendering cleanly.
+ * Only http(s) URLs may be rendered into an href — apply links and company
+ * domains come from third-party feeds, which could carry javascript: URLs.
+ * Returns null for anything else so callers can skip the link entirely.
  */
-export function decodeEntities(s: string): string {
-  return s
-    .replace(/&(#x?[0-9a-fA-F]+|\w+);/g, (m, e: string) => {
-      if (e[0] === "#") {
-        const code =
-          e[1] === "x" || e[1] === "X"
-            ? parseInt(e.slice(2), 16)
-            : parseInt(e.slice(1), 10);
-        return Number.isFinite(code) ? String.fromCodePoint(code) : m;
-      }
-      return NAMED_ENTITIES[e] ?? m;
-    })
-    .replace(/\u00a0/g, " ");
+export function safeUrl(u?: string | null): string | null {
+  if (!u) return null;
+  const t = u.trim();
+  return /^https?:\/\//i.test(t) ? t : null;
 }
 
 type SalaryFields = Pick<
@@ -41,22 +22,19 @@ type SalaryFields = Pick<
   "salaryMin" | "salaryMax" | "salaryCurrency" | "salaryPeriod"
 >;
 
-// Normalizes pay period + currency to a comparable annual USD figure — used both
-// to rank roles and to sanity-check parses. Jobs without salary are 0.
-const FX_TO_USD: Record<string, number> = {
-  USD: 1, GBP: 1.27, EUR: 1.08, CAD: 0.73, AUD: 0.66, SGD: 0.74, INR: 0.012,
-};
 const PERIOD_TO_YEAR: Record<string, number> = {
   year: 1, month: 12, day: 260, hour: 2080,
 };
-// Above this annualized figure a "salary" is almost certainly a parse error
+// Outside this annualized band a "salary" is almost certainly a parse error
 // (e.g. an equity/valuation number), so we neither rank nor display it.
+const SALARY_FLOOR_USD = 10_000;
 const SALARY_CEILING_USD = 2_000_000;
 
-function annualUsd(job: SalaryFields): number {
+function annualUsd(job: SalaryFields, fxRates?: Record<string, number>): number {
   const base = job.salaryMax ?? job.salaryMin;
   if (!base) return 0;
-  const fx = FX_TO_USD[(job.salaryCurrency ?? "USD").toUpperCase()] ?? 1;
+  const cur = (job.salaryCurrency ?? "USD").toUpperCase();
+  const fx = fxRates?.[cur] ?? FX_FALLBACK_TO_USD[cur] ?? 1;
   const perYear = PERIOD_TO_YEAR[job.salaryPeriod ?? "year"] ?? 1;
   return base * perYear * fx;
 }
@@ -64,7 +42,8 @@ function annualUsd(job: SalaryFields): number {
 export function formatSalary(job: SalaryFields): string | null {
   const { salaryMin, salaryMax, salaryCurrency, salaryPeriod } = job;
   if (!salaryMin && !salaryMax) return null;
-  if (annualUsd(job) > SALARY_CEILING_USD) return null; // implausible parse — hide
+  const annual = annualUsd(job);
+  if (annual < SALARY_FLOOR_USD || annual > SALARY_CEILING_USD) return null; // implausible parse — hide
 
   const cur = salaryCurrency ?? "USD";
   const sym = cur === "USD" ? "$" : cur === "GBP" ? "£" : cur === "EUR" ? "€" : `${cur} `;
@@ -78,20 +57,21 @@ export function formatSalary(job: SalaryFields): string | null {
   return `${sym}${range}${per}`;
 }
 
-// Invisible home-page ranking: highest annual pay first; implausible parses and
-// no-salary roles sink to the bottom (0).
-export function salaryRank(job: SalaryFields): number {
-  const annual = annualUsd(job);
-  return annual > SALARY_CEILING_USD ? 0 : annual;
+// Salary sort key: highest annual pay first; implausible parses and no-salary
+// roles sink to the bottom (0).
+export function salaryRank(job: SalaryFields, fxRates?: Record<string, number>): number {
+  const annual = annualUsd(job, fxRates);
+  return annual < SALARY_FLOOR_USD || annual > SALARY_CEILING_USD ? 0 : annual;
 }
 
-// Annualized USD *midpoint* of a pay range (mean of min & max, or the lone bound
-// when only one is given). Returns null when there's no usable salary or the
-// figure looks like a parse error. Used by the stats page for like-for-like
-// company/skill pay comparisons — hence midpoint rather than top-of-range.
-// Pass `fxRates` (the snapshot's live rates) to convert local currencies; falls
-// back to the static table per-currency when a rate is missing.
-const SALARY_FLOOR_USD = 10_000;
+/**
+ * Annualized USD *midpoint* of a pay range (mean of min & max, or the lone bound
+ * when only one is given). Returns null when there's no usable salary or the
+ * figure looks like a parse error. The single comparator for all like-for-like
+ * pay comparisons (stats + salary pages) — hence midpoint rather than
+ * top-of-range. Pass `fxRates` (the snapshot's live rates) to convert local
+ * currencies; falls back to the shared static table when a rate is missing.
+ */
 export function salaryMidpointUsd(
   job: SalaryFields,
   fxRates?: Record<string, number>,
@@ -101,11 +81,70 @@ export function salaryMidpointUsd(
   const lo = salaryMin ?? salaryMax!;
   const hi = salaryMax ?? salaryMin!;
   const cur = (job.salaryCurrency ?? "USD").toUpperCase();
-  const fx = fxRates?.[cur] ?? FX_TO_USD[cur] ?? 1;
+  const fx = fxRates?.[cur] ?? FX_FALLBACK_TO_USD[cur] ?? 1;
   const perYear = PERIOD_TO_YEAR[job.salaryPeriod ?? "year"] ?? 1;
   const annual = ((lo + hi) / 2) * perYear * fx;
   if (annual < SALARY_FLOOR_USD || annual > SALARY_CEILING_USD) return null;
   return annual;
+}
+
+export function median(xs: number[]): number {
+  if (!xs.length) return 0;
+  const s = [...xs].sort((a, b) => a - b);
+  const m = Math.floor(s.length / 2);
+  return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
+}
+
+/** p-th percentile (0–100) by linear interpolation. */
+export function percentile(xs: number[], p: number): number {
+  if (!xs.length) return 0;
+  const s = [...xs].sort((a, b) => a - b);
+  const idx = (Math.min(100, Math.max(0, p)) / 100) * (s.length - 1);
+  const lo = Math.floor(idx);
+  const hi = Math.ceil(idx);
+  return lo === hi ? s[lo] : s[lo] + (s[hi] - s[lo]) * (idx - lo);
+}
+
+/** "$123k" — display formatting for annual USD figures. */
+export const kUsd = (n: number) => `$${Math.round(n / 1000)}k`;
+
+const COUNTRY_NAMES = new Intl.DisplayNames(["en"], { type: "region" });
+
+/** Readable country name for an ISO code ("US" → "United States"). */
+export function countryName(code?: string): string | undefined {
+  if (!code) return undefined;
+  try {
+    return COUNTRY_NAMES.of(code) ?? code;
+  } catch {
+    return code;
+  }
+}
+
+const DAY_MS = 86_400_000;
+
+/** Relative posted-date stamp: "today", "3d ago", "2w ago", "4mo ago", "1y ago".
+ *  Relative to the snapshot's generatedAt (the site rebuilds nightly). */
+export function postedAgo(postedAt: string | undefined, generatedAt: string): string | null {
+  if (!postedAt) return null;
+  const posted = Date.parse(postedAt);
+  const gen = Date.parse(generatedAt);
+  if (!Number.isFinite(posted) || !Number.isFinite(gen)) return null;
+  const days = Math.max(0, Math.floor((gen - posted) / DAY_MS));
+  if (days === 0) return "today";
+  if (days < 14) return `${days}d ago`;
+  if (days < 60) return `${Math.floor(days / 7)}w ago`;
+  if (days < 365) return `${Math.floor(days / 30)}mo ago`;
+  return `${Math.floor(days / 365)}y ago`;
+}
+
+/** "New" = the employer posted it within the last 7 days (postedAt is the only
+ *  trustworthy freshness signal — everything re-ingests nightly). */
+export function isNewJob(postedAt: string | undefined, generatedAt: string): boolean {
+  if (!postedAt) return false;
+  const posted = Date.parse(postedAt);
+  const gen = Date.parse(generatedAt);
+  if (!Number.isFinite(posted) || !Number.isFinite(gen)) return false;
+  return gen - posted <= 7 * DAY_MS;
 }
 
 const REMOTE_LABELS: Record<RemoteType, string> = {
@@ -132,6 +171,12 @@ const SENIORITY_LABELS: Record<Seniority, string> = {
 export function seniorityLabel(s?: Seniority): string | null {
   return s ? SENIORITY_LABELS[s] : null;
 }
+
+/** Seniority ids + labels in ladder order — drives filter options and stats. */
+export const SENIORITY_OPTIONS = SENIORITIES.map((id) => ({
+  id,
+  label: SENIORITY_LABELS[id],
+}));
 
 /**
  * Bucket a job into a generic, browsable role family (AI Engineer, Software

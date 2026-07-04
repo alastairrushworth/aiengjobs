@@ -1,0 +1,56 @@
+---
+import Base from "../../layouts/Base.astro";
+import { url } from "../../lib/url.ts";
+import { kUsd, median, salaryMidpointUsd } from "../../lib/format.ts";
+import { openJobs, fxRates } from "../../lib/data.ts";
+import { CLUSTER_PAGES } from "../../lib/clusters.ts";
+
+// Median annualized USD midpoint per cluster (same comparator as the cluster
+// pages and stats — see lib/format.ts).
+const clusters = CLUSTER_PAGES.map((page) => {
+  const mids = openJobs
+    .filter((j) => j.clusters.includes(page.id))
+    .map((j) => salaryMidpointUsd(j, fxRates))
+    .filter((m): m is number => m !== null);
+  return { page, count: mids.length, median: median(mids) };
+}).sort((a, b) => b.median - a.median);
+
+const allMids = openJobs
+  .map((j) => salaryMidpointUsd(j, fxRates))
+  .filter((m): m is number => m !== null);
+---
+
+<Base
+  title="AI engineer salaries by specialism"
+  description={`What AI engineers earn, from ${allMids.length} live roles with published pay: LLM, RAG, agents, evals, inference and fine-tuning salaries (USD/yr).`}
+>
+  <section class="hero" style="padding-bottom:8px">
+    <h1>AI engineer salaries</h1>
+    <p>
+      Median pay by specialism from {allMids.length} live roles with published
+      ranges — converted to USD/yr. Overall median {kUsd(median(allMids))}.
+    </p>
+  </section>
+
+  <ul class="jobs" style="margin-top:24px">
+    {clusters.map(({ page, count, median: med }) => (
+      <li>
+        <a class="job-card" href={url(`/salaries/${page.id}/`)}>
+          <div class="top">
+            <div>
+              <div class="title">{page.label} salaries</div>
+              <div class="company">{count} roles with published pay</div>
+            </div>
+            {count > 0 && <div class="salary">{kUsd(med)} median</div>}
+          </div>
+        </a>
+      </li>
+    ))}
+  </ul>
+
+  <nav class="browse" style="margin-top:40px" aria-label="Related pages">
+    <span style="color:var(--muted);font-size:.85rem">More:</span>
+    <a href={url("/")}>All jobs</a>
+    <a href={url("/stats/")}>Market stats</a>
+  </nav>
+</Base>

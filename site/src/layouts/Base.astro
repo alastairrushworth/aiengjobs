@@ -5,14 +5,27 @@ import { url } from "../lib/url.ts";
 interface Props {
   title: string;
   description?: string;
+  /** Set on the homepage, which carries its own branded title. */
+  noBrandSuffix?: boolean;
+  /** Tombstone/error pages that search engines shouldn't index. */
+  noindex?: boolean;
 }
 
 const {
   title,
   description = "The job board for AI engineers — RAG, agents, evals, inference. Salary-transparent, no ghost jobs.",
+  noBrandSuffix = false,
+  noindex = false,
 } = Astro.props;
 
-const canonical = new URL(Astro.url.pathname, Astro.site).href;
+const fullTitle = noBrandSuffix ? title : `${title} — aiengjobs`;
+
+// Canonical always uses the trailing-slash form GitHub Pages actually serves
+// (directory URLs 301 to it), so we never canonicalize to a redirect.
+const path = Astro.url.pathname;
+const canonicalPath = path.endsWith("/") || /\.[a-z]+$/i.test(path) ? path : `${path}/`;
+const canonical = new URL(canonicalPath, Astro.site).href;
+const ogImage = new URL(url("/og-default.png"), Astro.site).href;
 ---
 
 <!doctype html>
@@ -20,7 +33,24 @@ const canonical = new URL(Astro.url.pathname, Astro.site).href;
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <!-- Google Analytics (gtag.js) -->
+    <title>{fullTitle}</title>
+    <meta name="description" content={description} />
+    {noindex && <meta name="robots" content="noindex" />}
+    <link rel="canonical" href={canonical} />
+    <link rel="icon" type="image/svg+xml" href={url("/favicon.svg")} />
+    <link rel="icon" type="image/png" sizes="32x32" href={url("/favicon-32.png")} />
+    <link rel="apple-touch-icon" href={url("/apple-touch-icon.png")} />
+    <meta property="og:title" content={fullTitle} />
+    <meta property="og:description" content={description} />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:site_name" content="aiengjobs" />
+    <meta property="og:image" content={ogImage} />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={fullTitle} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={ogImage} />
+    <!-- Google Analytics (gtag.js) — last in head so it never delays SEO tags -->
     <script async is:inline src="https://www.googletagmanager.com/gtag/js?id=G-Y8XLWX2T51"></script>
     <script is:inline>
       window.dataLayer = window.dataLayer || [];
@@ -30,34 +60,42 @@ const canonical = new URL(Astro.url.pathname, Astro.site).href;
       gtag("js", new Date());
       gtag("config", "G-Y8XLWX2T51");
     </script>
-    <link rel="icon" type="image/svg+xml" href={url("/favicon.svg")} />
-    <link rel="icon" type="image/png" sizes="32x32" href={url("/favicon-32.png")} />
-    <link rel="apple-touch-icon" href={url("/apple-touch-icon.png")} />
-    <title>{title}</title>
-    <meta name="description" content={description} />
-    <link rel="canonical" href={canonical} />
-    <meta property="og:title" content={title} />
-    <meta property="og:description" content={description} />
-    <meta property="og:type" content="website" />
-    <meta name="twitter:card" content="summary" />
   </head>
   <body>
+    <a class="skip-link" href="#main">Skip to content</a>
     <header class="site-header">
       <div class="container">
         <a class="brand" href={url("/")}>aieng<span class="dot">.</span>jobs</a>
-        <nav class="site-nav">
-          <a href={url("/stats")}>Stats</a>
+        <nav class="site-nav" aria-label="Site">
+          <a href={url("/")}>Jobs</a>
+          <a href={url("/salaries/")}>Salaries</a>
+          <a href={url("/stats/")}>Stats</a>
         </nav>
       </div>
     </header>
-    <main class="container">
+    <main class="container" id="main">
       <slot />
     </main>
     <footer class="site-footer">
       <div class="container">
-        AI Engineering Jobs · first-party ATS listings, salary-transparent, no ghost jobs.
-        <br />
-        Built by <a href="https://alastairrushworth.com" rel="me">alastairrushworth.com</a>.
+        <nav class="footer-nav" aria-label="Browse">
+          <a href={url("/")}>All jobs</a>
+          <a href={url("/salaries/")}>Salaries</a>
+          <a href={url("/stats/")}>Stats</a>
+          <a href={url("/llm-engineer-jobs/")}>LLM jobs</a>
+          <a href={url("/rag-engineer-jobs/")}>RAG jobs</a>
+          <a href={url("/ai-agent-jobs/")}>Agent jobs</a>
+          <a href={url("/ai-eval-jobs/")}>Eval jobs</a>
+          <a href={url("/inference-engineer-jobs/")}>Inference jobs</a>
+          <a href={url("/fine-tuning-jobs/")}>Fine-tuning jobs</a>
+        </nav>
+        <p>
+          AI Engineering Jobs · first-party ATS listings, salary-transparent, no ghost jobs.
+          Listings are pulled nightly from company career sites — never scraped aggregators.
+        </p>
+        <p>
+          Built by <a href="https://alastairrushworth.com" rel="me">alastairrushworth.com</a>.
+        </p>
       </div>
     </footer>
   </body>

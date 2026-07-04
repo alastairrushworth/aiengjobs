@@ -1,20 +1,20 @@
 ---
+import type { InferGetStaticPropsType } from "astro";
 import Base from "../../layouts/Base.astro";
 import JobCard from "../../components/JobCard.astro";
 import { url } from "../../lib/url.ts";
-import snapshot from "../../data/snapshot.json";
-import type { SiteSnapshot, Job, Company } from "@aiengjobs/shared";
+import { jsonLdScript } from "../../lib/jsonld.ts";
+import { openJobs, companies } from "../../lib/data.ts";
+import type { Job } from "@aiengjobs/shared";
 
 export function getStaticPaths() {
-  const data = snapshot as unknown as SiteSnapshot;
-  const open = data.jobs.filter((j) => !j.isClosed);
   const byCompany = new Map<string, Job[]>();
-  for (const j of open) {
+  for (const j of openJobs) {
     const list = byCompany.get(j.companySlug) ?? [];
     list.push(j);
     byCompany.set(j.companySlug, list);
   }
-  return data.companies
+  return companies
     .filter((c) => byCompany.has(c.slug))
     .map((company) => ({
       params: { slug: company.slug },
@@ -22,7 +22,15 @@ export function getStaticPaths() {
     }));
 }
 
-const { company, jobs } = Astro.props as { company: Company; jobs: Job[] };
+type Props = InferGetStaticPropsType<typeof getStaticPaths>;
+const { company, jobs } = Astro.props as Props;
+
+// Company domains come from seed data, but validate the shape anyway before
+// composing a URL from it.
+const domainHref =
+  company.domain && /^[a-z0-9.-]+\.[a-z]{2,}$/i.test(company.domain)
+    ? `https://${company.domain}`
+    : null;
 
 // Distinct stack across this company's roles.
 const stack = [...new Set(jobs.flatMap((j) => j.skills))].slice(0, 14);
@@ -32,12 +40,12 @@ const jsonLd = {
   "@context": "https://schema.org",
   "@type": "Organization",
   name: company.name,
-  ...(company.domain ? { url: `https://${company.domain}` } : {}),
+  ...(domainHref ? { url: domainHref } : {}),
 };
 ---
 
 <Base
-  title={`${company.name} AI engineering jobs (${jobs.length}) — aiengjobs`}
+  title={`${company.name} AI engineering jobs`}
   description={`Open AI-engineering roles at ${company.name}${stack.length ? ` — ${stack.slice(0, 6).join(", ")}.` : "."}`}
 >
   <section class="hero" style="padding-bottom:8px;text-align:left">
@@ -47,24 +55,29 @@ const jsonLd = {
       {jobs.length} open AI-engineering role{jobs.length === 1 ? "" : "s"}
       {withSalary > 0 ? ` · ${withSalary} with salary` : ""}
       {company.stage ? ` · ${company.stage}-stage` : ""}
-      {company.domain ? (
+      {domainHref ? (
         <>
           {" · "}
-          <a href={`https://${company.domain}`} target="_blank" rel="noopener nofollow" style="color:var(--accent)">{company.domain}</a>
+          <a
+            href={domainHref}
+            target="_blank"
+            rel="noopener nofollow"
+            style="color:var(--accent-text)"
+          >{company.domain}<span class="sr-only"> (opens in new tab)</span></a>
         </>
       ) : null}
     </p>
   </section>
 
   {stack.length > 0 && (
-    <div class="meta" style="margin:6px 0 20px">
+    <div class="meta" style="margin:6px 0 20px;display:flex;flex-wrap:wrap;gap:8px">
       {stack.map((s) => <span class="badge skill">{s}</span>)}
     </div>
   )}
 
-  <div class="jobs">
-    {jobs.map((job) => <JobCard job={job} href={url(`/jobs/${job.slug}`)} />)}
-  </div>
+  <ul class="jobs">
+    {jobs.map((job) => <JobCard job={job} href={url(`/jobs/${job.slug}/`)} />)}
+  </ul>
 
-  <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} is:inline />
+  <script type="application/ld+json" set:html={jsonLdScript(jsonLd)} is:inline />
 </Base>

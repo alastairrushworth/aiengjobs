@@ -1,6 +1,7 @@
 import type { Connector, RawPosting } from "./types.ts";
 import type { RemoteType } from "@aiengjobs/shared";
-import { USER_AGENT, stripHtml } from "../util/html.ts";
+import { stripHtml } from "../util/html.ts";
+import { fetchRetry } from "../util/fetch.ts";
 
 interface LeverPosting {
   id: string;
@@ -34,9 +35,7 @@ export const lever: Connector = {
   provider: "lever",
   endpoint: (slug) => `https://api.lever.co/v0/postings/${slug}?mode=json`,
   async fetchPostings(slug) {
-    const res = await fetch(lever.endpoint(slug), {
-      headers: { "User-Agent": USER_AGENT },
-    });
+    const res = await fetchRetry(lever.endpoint(slug));
     if (!res.ok) throw new Error(`lever ${slug} HTTP ${res.status}`);
     const data = await res.json();
     if (!Array.isArray(data)) return [];

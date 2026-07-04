@@ -1,58 +1,44 @@
 ---
 import type { Job } from "@aiengjobs/shared";
-import { formatSalary, remoteLabel, roleType, seniorityLabel } from "../lib/format.ts";
+import {
+  formatSalary,
+  isNewJob,
+  postedAgo,
+  remoteLabel,
+  seniorityLabel,
+} from "../lib/format.ts";
+import { generatedAt } from "../lib/data.ts";
 
 interface Props {
   job: Job;
   href: string;
-  // Landing-page salary ranking, set only by the home page. A number is this
-  // card's pay rank within the visible top-50 (0 = best paid); `null` marks an
-  // index card outside that set (rendered hidden until a filter is active);
-  // `undefined` (other pages) means no landing behaviour at all.
-  homeRank?: number | null;
 }
 
-const { job, href, homeRank } = Astro.props;
+const { job, href } = Astro.props;
 const salary = formatSalary(job);
 const remote = remoteLabel(job.remoteType);
 const sen = seniorityLabel(job.seniority);
-const role = roleType(job);
-const searchBlob =
-  `${job.title} ${job.companyName} ${job.skills.join(" ")} ${job.locationRaw ?? ""}`.toLowerCase();
-
-// Initial state for the home page: top-50 cards are ordered by salary via CSS
-// `order`; the rest start hidden. Other pages pass no homeRank and get neither.
-const inHome = typeof homeRank === "number";
-const initialStyle =
-  homeRank === undefined ? undefined : inHome ? `order:${homeRank}` : "display:none";
+const posted = postedAgo(job.postedAt, generatedAt);
+const isNew = isNewJob(job.postedAt, generatedAt);
 ---
 
-<a
-  class="job-card"
-  href={href}
-  style={initialStyle}
-  data-search={searchBlob}
-  data-clusters={job.clusters.join(" ")}
-  data-remote={job.remoteType ?? ""}
-  data-seniority={job.seniority ?? ""}
-  data-country={job.country ?? ""}
-  data-role={role}
-  data-home-rank={inHome ? homeRank : undefined}
->
-  <div class="top">
-    <div>
-      <h3>{job.title}</h3>
-      <div class="company">
-        {job.companyName}{job.locationRaw ? ` · ${job.locationRaw}` : ""}
+<li>
+  <a class="job-card" href={href}>
+    <div class="top">
+      <div>
+        <div class="title">{job.title}</div>
+        <div class="company">
+          {job.companyName}{job.locationRaw ? ` · ${job.locationRaw}` : ""}
+        </div>
       </div>
+      {salary && <div class="salary">{salary}</div>}
     </div>
-    {salary && <div class="salary">{salary}</div>}
-  </div>
-  <div class="meta">
-    {job.isNew && <span class="badge new">New</span>}
-    {job.isFeatured && <span class="badge featured">Featured</span>}
-    {remote && <span class="badge">{remote}</span>}
-    {sen && <span class="badge">{sen}</span>}
-    {job.skills.slice(0, 4).map((s) => <span class="badge skill">{s}</span>)}
-  </div>
-</a>
+    <div class="meta" aria-hidden="true">
+      {isNew && <span class="badge new">New</span>}
+      {remote && <span class="badge">{remote}</span>}
+      {sen && <span class="badge">{sen}</span>}
+      {job.skills.slice(0, 4).map((s) => <span class="badge skill">{s}</span>)}
+      {posted && <span class="posted">Posted {posted}</span>}
+    </div>
+  </a>
+</li>

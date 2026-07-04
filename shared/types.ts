@@ -15,15 +15,20 @@ export type AtsProvider =
 
 export type RemoteType = "remote" | "hybrid" | "onsite";
 
-export type Seniority =
-  | "intern"
-  | "junior"
-  | "mid"
-  | "senior"
-  | "staff"
-  | "principal"
-  | "lead"
-  | "manager";
+/** Canonical seniority ladder, in display order. Single source of truth for the
+ *  type, filter options, and stats ordering. */
+export const SENIORITIES = [
+  "intern",
+  "junior",
+  "mid",
+  "senior",
+  "staff",
+  "principal",
+  "lead",
+  "manager",
+] as const;
+
+export type Seniority = (typeof SENIORITIES)[number];
 
 export type Classification = "in" | "out";
 
@@ -34,7 +39,9 @@ export interface Company {
   name: string;
   slug: string;
   domain?: string;
-  atsProvider: AtsProvider;
+  /** Internal provenance — the engine sets these, but the exporter omits them
+   *  from the public snapshot. */
+  atsProvider?: AtsProvider;
   atsToken?: string;
   stage?: string;
   size?: string;
@@ -43,9 +50,10 @@ export interface Company {
 }
 
 export interface Job {
-  id: string;
+  /** Internal ids — present in the engine, omitted from the public snapshot. */
+  id?: string;
+  companyId?: string;
   slug: string;
-  companyId: string;
   companyName: string;
   companySlug: string;
 
@@ -68,7 +76,9 @@ export interface Job {
   salaryCurrency?: string;
   salaryPeriod?: SalaryPeriod;
 
-  classification: Classification;
+  /** Engine-internal classification — omitted from the public snapshot (the
+   *  exporter only writes classification='in' jobs). */
+  classification?: Classification;
   classificationConfidence?: number;
 
   /** Canonical skill names (from the taxonomy) extracted from title + description. */
@@ -76,10 +86,11 @@ export interface Job {
   /** Distinct clusters the skills roll up to — the browse facets. */
   clusters: ClusterId[];
 
-  isFeatured: boolean;
-  isDirect: boolean;
-  isNew: boolean;
-  isClosed: boolean;
+  isFeatured?: boolean;
+  isDirect?: boolean;
+  /** True when the role vanished from its feed — exported (recently-closed only)
+   *  so the site can render a tombstone page instead of a 404. */
+  isClosed?: boolean;
 
   postedAt?: string;
   updatedAt?: string;
@@ -100,9 +111,4 @@ export interface SiteSnapshot {
   fxRates: Record<string, number>;
   jobs: Job[];
   companies: Company[];
-  facets: {
-    clusters: { id: ClusterId; label: string; count: number }[];
-    seniority: { id: Seniority; count: number }[];
-    remoteType: { id: RemoteType; count: number }[];
-  };
 }

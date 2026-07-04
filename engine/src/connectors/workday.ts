@@ -1,5 +1,6 @@
 import type { Connector, RawPosting } from "./types.ts";
-import { USER_AGENT, stripHtml } from "../util/html.ts";
+import { stripHtml } from "../util/html.ts";
+import { fetchRetry } from "../util/fetch.ts";
 import { mapPool } from "../util/concurrency.ts";
 
 // Workday "CXS" career-site API. A Workday site is keyed by THREE parts — tenant,
@@ -20,7 +21,6 @@ const MAX_DETAIL = 50; // cap on per-job detail fetches per run
 const DETAIL_CONCURRENCY = 4;
 const TECH_TITLE =
   /\b(engineer|engineering|developer|software|swe|machine learning|\bml\b|\bai\b|data|scien|research|quant|analytics|platform|infrastructure|architect|llm|nlp|intelligence|model|mlops|devops|sre)\b/i;
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 interface WdParts {
   tenant: string;
@@ -34,21 +34,6 @@ function parseSlug(slug: string): WdParts {
     throw new Error(`workday slug must be "tenant:dc:site", got "${slug}"`);
   }
   return { tenant, dc, site, base: `https://${tenant}.${dc}.myworkdayjobs.com` };
-}
-
-async function wdFetch(url: string, init?: RequestInit, attempts = 3): Promise<Response> {
-  for (let i = 0; ; i++) {
-    const res = await fetch(url, {
-      ...init,
-      headers: {
-        "User-Agent": USER_AGENT,
-        Accept: "application/json",
-        ...(init?.headers ?? {}),
-      },
-    });
-    if (res.status !== 429 || i >= attempts - 1) return res;
-    await sleep(500 * 2 ** i); // 500ms, 1s, 2s
-  }
 }
 
 interface WdListJob {
@@ -81,15 +66,20 @@ export const workday: Connector = {
     const byPath = new Map<string, WdListJob>();
     for (const q of QUERIES) {
       for (let offset = 0; offset < PER_QUERY_MAX; offset += PAGE) {
-        const res = await wdFetch(jobsUrl, {
+        const res = await fetchRetry(jobsUrl, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", Accept: "application/json" },
           body: JSON.stringify({ appliedFacets: {}, limit: PAGE, offset, searchText: q }),
         });
         if (!res.ok) throw new Error(`workday ${p.tenant} HTTP ${res.status}`);
         const data = (await res.json()) as { total?: number; jobPostings?: WdListJob[] };
         const batch = data.jobPostings ?? [];
-        for (const j of batch) if (j.externalPath) byPath.set(j.externalPath, j);
+        for (const j of batch) {
+          // externalPath comes from the API response — only accept plain
+          // absolute paths so a crafted value can't redirect the detail fetch.
+          if (j.externalPath?.startsWith("/") && !j.externalPath.includes(".."))
+            byPath.set(j.externalPath, j);
+        }
         if (batch.length < PAGE) break;
       }
     }
@@ -108,7 +98,10 @@ export const workday: Connector = {
       // to the list row (title-only) if a single detail fetch fails.
       let info: WdInfo | undefined;
       try {
-        const dr = await wdFetch(`${p.base}/wday/cxs/${p.tenant}/${p.site}${j.externalPath}`);
+        const dr = await fetchRetry(
+          `${p.base}/wday/cxs/${p.tenant}/${p.site}${j.externalPath}`,
+          { headers: { Accept: "application/json" } },
+        );
         if (dr.ok) info = ((await dr.json()) as { jobPostingInfo?: WdInfo }).jobPostingInfo;
       } catch {
         info = undefined;

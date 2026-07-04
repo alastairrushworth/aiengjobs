@@ -1,6 +1,7 @@
 import type { Connector, RawPosting } from "./types.ts";
 import type { RemoteType } from "@aiengjobs/shared";
-import { USER_AGENT, stripHtml } from "../util/html.ts";
+import { stripHtml } from "../util/html.ts";
+import { fetchRetry } from "../util/fetch.ts";
 import { mapPool } from "../util/concurrency.ts";
 
 // SmartRecruiters' public Posting API paginates (max 100/page) and omits the job
@@ -11,15 +12,6 @@ import { mapPool } from "../util/concurrency.ts";
 const PAGE = 100;
 const MAX_JOBS = 3000; // pagination safety cap
 const DETAIL_CONCURRENCY = 4;
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
-
-async function srFetch(url: string, attempts = 3): Promise<Response> {
-  for (let i = 0; ; i++) {
-    const res = await fetch(url, { headers: { "User-Agent": USER_AGENT } });
-    if (res.status !== 429 || i >= attempts - 1) return res;
-    await sleep(500 * 2 ** i); // 500ms, 1s, 2s
-  }
-}
 
 interface SrLocation {
   city?: string;
@@ -74,7 +66,7 @@ export const smartrecruiters: Connector = {
   async fetchPostings(slug) {
     const list: SrListItem[] = [];
     for (let offset = 0; offset < MAX_JOBS; offset += PAGE) {
-      const res = await srFetch(
+      const res = await fetchRetry(
         `https://api.smartrecruiters.com/v1/companies/${slug}/postings?limit=${PAGE}&offset=${offset}`,
       );
       if (!res.ok) throw new Error(`smartrecruiters ${slug} HTTP ${res.status}`);
@@ -88,7 +80,7 @@ export const smartrecruiters: Connector = {
       // Detail carries the job ad + apply URL; degrade to list-only on failure.
       let detail: SrDetail | undefined;
       try {
-        const dr = await srFetch(
+        const dr = await fetchRetry(
           j.ref ?? `https://api.smartrecruiters.com/v1/companies/${slug}/postings/${j.id}`,
         );
         if (dr.ok) detail = (await dr.json()) as SrDetail;

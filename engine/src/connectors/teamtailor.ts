@@ -1,5 +1,6 @@
 import type { Connector, RawPosting } from "./types.ts";
-import { USER_AGENT, stripHtml } from "../util/html.ts";
+import { stripHtml } from "../util/html.ts";
+import { fetchRetry } from "../util/fetch.ts";
 
 interface TtAddress {
   addressLocality?: string;
@@ -32,9 +33,7 @@ export const teamtailor: Connector = {
   provider: "teamtailor",
   endpoint: (slug) => `https://${slug}.teamtailor.com/jobs.json`,
   async fetchPostings(slug) {
-    const res = await fetch(teamtailor.endpoint(slug), {
-      headers: { "User-Agent": USER_AGENT },
-    });
+    const res = await fetchRetry(teamtailor.endpoint(slug));
     if (!res.ok) throw new Error(`teamtailor ${slug} HTTP ${res.status}`);
     const data = (await res.json()) as { items?: TtItem[] };
 
