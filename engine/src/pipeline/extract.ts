@@ -52,7 +52,7 @@ const SCHEMA = {
   properties: {
     inScope: {
       type: "boolean",
-      description: "True if the role is primarily AI-engineering (LLM apps, RAG, agents, evals, inference/serving, fine-tuning).",
+      description: "True if the role is a hands-on individual contributor building or researching AI models/systems (LLM apps, RAG, agents, evals, inference/serving, fine-tuning, or AI/ML research). False for non-IC management, data/analytics roles, and generic software not building AI.",
     },
     confidence: { type: "number", description: "0..1 confidence in inScope." },
     skills: {
@@ -97,8 +97,13 @@ const SCHEMA = {
 
 const SYSTEM =
   "You extract structured data from a single job posting for a STRICT AI-engineering job board. " +
-  "IN scope: roles building LLM applications, RAG/retrieval, AI agents, evals/quality, inference/serving, or fine-tuning. " +
-  "OUT of scope: data analyst/BI, pure data/research scientist, sales/marketing/PM, generic software roles with only a token \"AI a plus\", and non-engineering AI-tool-user roles. " +
+  "IN scope: hands-on individual-contributor roles building or researching AI models and systems — " +
+  "LLM applications, RAG/retrieval, AI agents, evals/quality, inference/serving, fine-tuning, and AI/ML research " +
+  "(research scientists and research engineers are IN). " +
+  "OUT of scope: data analyst/BI and data scientists doing analytics/reporting; sales/marketing/PM; " +
+  "non-IC people-management or leadership roles (manager, director, head of, VP) unless the work is primarily hands-on building AI systems; " +
+  "generic software/infra roles not building AI models or systems (internal tooling, platform, frontend, generic SWE) even at an AI company, including those with only a token \"AI a plus\"; " +
+  "and non-engineering AI-tool-user roles. " +
   "Extract salary ONLY when the posting explicitly states figures — never invent or estimate a range. " +
   "Country must be an ISO 3166-1 alpha-2 code: infer it from ANY city, state, or region mentioned " +
   "(e.g. 'Redwood City' or 'Palo Alto, CA' → US; 'London' → GB; 'Bengaluru' → IN; 'Berlin' → DE), " +
