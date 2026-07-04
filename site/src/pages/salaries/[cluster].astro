@@ -1,102 +1,113 @@
 ---
+import type { InferGetStaticPropsType } from "astro";
 import Base from "../../layouts/Base.astro";
+import JobCard from "../../components/JobCard.astro";
 import { url } from "../../lib/url.ts";
-import { formatSalary } from "../../lib/format.ts";
-import snapshot from "../../data/snapshot.json";
+import { kUsd, median, percentile, salaryMidpointUsd } from "../../lib/format.ts";
+import { jsonLdScript } from "../../lib/jsonld.ts";
+import { openJobs, fxRates, generatedAt } from "../../lib/data.ts";
+import { countryName } from "../../lib/format.ts";
 import { CLUSTER_PAGES } from "../../lib/clusters.ts";
-import type { SiteSnapshot, Job } from "@aiengjobs/shared";
-import type { ClusterPage } from "../../lib/clusters.ts";
 
 export function getStaticPaths() {
-  const data = snapshot as unknown as SiteSnapshot;
-  const open = data.jobs.filter((j) => !j.isClosed);
   return CLUSTER_PAGES.map((page) => {
-    const salaried = open.filter(
-      (j) =>
-        j.clusters.includes(page.id) &&
-        j.salaryMin &&
-        (!j.salaryCurrency || j.salaryCurrency === "USD") &&
-        (!j.salaryPeriod || j.salaryPeriod === "year"),
-    );
+    // Every role with a usable published range, any currency — midpoints are
+    // annualized + converted to USD (live FX from the snapshot), and implausible
+    // parses are dropped by salaryMidpointUsd's floor/ceiling.
+    const salaried = openJobs
+      .map((job) => ({ job, mid: salaryMidpointUsd(job, fxRates) }))
+      .filter(
+        (x): x is { job: (typeof openJobs)[number]; mid: number } =>
+          x.mid !== null && x.job.clusters.includes(page.id),
+      )
+      .sort((a, b) => b.mid - a.mid);
     return { params: { cluster: page.id }, props: { page, salaried } };
   });
 }
 
-const { page, salaried } = Astro.props as { page: ClusterPage; salaried: Job[] };
+type Props = InferGetStaticPropsType<typeof getStaticPaths>;
+const { page, salaried } = Astro.props as Props;
 
-const mids = salaried
-  .map((j) => (j.salaryMax ? (j.salaryMin! + j.salaryMax) / 2 : j.salaryMin!))
-  .sort((a, b) => a - b);
-
-function median(xs: number[]): number {
-  if (xs.length === 0) return 0;
-  const m = Math.floor(xs.length / 2);
-  return xs.length % 2 ? xs[m] : (xs[m - 1] + xs[m]) / 2;
-}
-const k = (n: number) => `$${Math.round(n / 1000)}k`;
-
+const mids = salaried.map((x) => x.mid);
 const stats =
   mids.length > 0
-    ? { count: mids.length, min: mids[0], median: median(mids), max: mids[mids.length - 1] }
+    ? {
+        count: mids.length,
+        p10: percentile(mids, 10),
+        median: median(mids),
+        p90: percentile(mids, 90),
+      }
     : null;
 
 const roleNoun = page.label.replace(/ \/.*/, "");
+const canonical = new URL(url(`/salaries/${page.id}/`), Astro.site).href;
+
+// The country most of this cluster's priced roles are in — used for the
+// Occupation markup's required occupationLocation.
+const countryTally = new Map<string, number>();
+for (const { job } of salaried) {
+  if (job.country) countryTally.set(job.country, (countryTally.get(job.country) ?? 0) + 1);
+}
+const topCountry =
+  [...countryTally.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? "US";
+
 const jsonLd = stats
   ? {
       "@context": "https://schema.org",
       "@type": "Occupation",
       name: `${roleNoun} (AI engineering)`,
+      mainEntityOfPage: {
+        "@type": "WebPage",
+        "@id": canonical,
+        lastReviewed: generatedAt.slice(0, 10),
+      },
+      occupationLocation: [
+        { "@type": "Country", name: countryName(topCountry) ?? topCountry },
+      ],
       estimatedSalary: {
         "@type": "MonetaryAmountDistribution",
+        name: "base",
         currency: "USD",
         duration: "P1Y",
         median: Math.round(stats.median),
-        percentile10: Math.round(stats.min),
-        percentile90: Math.round(stats.max),
+        percentile10: Math.round(stats.p10),
+        percentile90: Math.round(stats.p90),
       },
     }
   : null;
 ---
 
 <Base
-  title={`${roleNoun} salaries — AI engineering pay data — aiengjobs`}
+  title={`${roleNoun} salaries — AI engineering pay data`}
   description={
     stats
-      ? `${roleNoun} salaries from ${stats.count} live roles: median ${k(stats.median)}, range ${k(stats.min)}–${k(stats.max)} (USD/yr).`
+      ? `${roleNoun} salaries from ${stats.count} live roles: median ${kUsd(stats.median)}, typical range ${kUsd(stats.p10)}–${kUsd(stats.p90)} (USD/yr).`
       : `${roleNoun} salary data from live AI-engineering roles.`
   }
 >
   <section class="hero" style="padding-bottom:8px">
     <h1>{roleNoun} salaries</h1>
     <p>
-      Live salary data from first-party {page.label} postings (USD/yr).
-      No surveys — pay ranges employers actually publish.
+      Live salary data from first-party {page.label} postings — pay ranges
+      employers actually publish, converted to USD/yr. No surveys.
     </p>
   </section>
 
   {stats ? (
     <>
       <div class="salary-stats">
-        <div><span class="num">{k(stats.median)}</span><span class="lbl">median</span></div>
-        <div><span class="num">{k(stats.min)}</span><span class="lbl">low</span></div>
-        <div><span class="num">{k(stats.max)}</span><span class="lbl">high</span></div>
+        <div><span class="num">{kUsd(stats.median)}</span><span class="lbl">median</span></div>
+        <div><span class="num">{kUsd(stats.p10)}</span><span class="lbl">10th percentile</span></div>
+        <div><span class="num">{kUsd(stats.p90)}</span><span class="lbl">90th percentile</span></div>
         <div><span class="num">{stats.count}</span><span class="lbl">data points</span></div>
       </div>
 
       <h2 style="margin-top:28px;font-size:1.1rem">Roles with published pay</h2>
-      <div class="jobs">
-        {salaried.map((j) => (
-          <a class="job-card" href={url(`/jobs/${j.slug}`)}>
-            <div class="top">
-              <div>
-                <h3>{j.title}</h3>
-                <div class="company">{j.companyName}{j.locationRaw ? ` · ${j.locationRaw}` : ""}</div>
-              </div>
-              <div class="salary">{formatSalary(j)}</div>
-            </div>
-          </a>
+      <ul class="jobs">
+        {salaried.map(({ job }) => (
+          <JobCard job={job} href={url(`/jobs/${job.slug}/`)} />
         ))}
-      </div>
+      </ul>
     </>
   ) : (
     <p style="text-align:center;color:var(--muted);padding:32px 0">
@@ -104,13 +115,13 @@ const jsonLd = stats
     </p>
   )}
 
-  <nav class="browse" style="margin-top:40px">
+  <nav class="browse" style="margin-top:40px" aria-label="Related pages">
     <span style="color:var(--muted);font-size:.85rem">More:</span>
-    <a href={url(`/${page.slug}`)}>All {page.label} jobs →</a>
+    <a href={url(`/${page.slug}/`)}>All {page.label} jobs →</a>
     {CLUSTER_PAGES.filter((p) => p.id !== page.id).map((p) => (
-      <a href={url(`/salaries/${p.id}`)}>{p.label} pay</a>
+      <a href={url(`/salaries/${p.id}/`)}>{p.label} pay</a>
     ))}
   </nav>
 
-  {jsonLd && <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} is:inline />}
+  {jsonLd && <script type="application/ld+json" set:html={jsonLdScript(jsonLd)} is:inline />}
 </Base>

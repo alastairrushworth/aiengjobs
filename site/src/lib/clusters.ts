@@ -59,6 +59,3 @@ export const CLUSTER_PAGES: ClusterPage[] = [
     intro: "Model-adaptation roles — LoRA/PEFT, RLHF/DPO, distillation.",
   },
 ];
-
-export const CLUSTER_PAGE_BY_ID: Partial<Record<ClusterId, ClusterPage>> =
-  Object.fromEntries(CLUSTER_PAGES.map((p) => [p.id, p]));

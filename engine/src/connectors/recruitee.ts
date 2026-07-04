@@ -1,6 +1,7 @@
 import type { Connector, RawPosting } from "./types.ts";
 import type { RemoteType } from "@aiengjobs/shared";
-import { USER_AGENT, stripHtml } from "../util/html.ts";
+import { stripHtml } from "../util/html.ts";
+import { fetchRetry } from "../util/fetch.ts";
 
 interface RecruiteeOffer {
   id: number;
@@ -41,9 +42,7 @@ export const recruitee: Connector = {
   provider: "recruitee",
   endpoint: (slug) => `https://${slug}.recruitee.com/api/offers/`,
   async fetchPostings(slug) {
-    const res = await fetch(recruitee.endpoint(slug), {
-      headers: { "User-Agent": USER_AGENT },
-    });
+    const res = await fetchRetry(recruitee.endpoint(slug));
     if (!res.ok) throw new Error(`recruitee ${slug} HTTP ${res.status}`);
     const data = (await res.json()) as { offers?: RecruiteeOffer[] };
 

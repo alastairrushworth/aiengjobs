@@ -1,14 +1,10 @@
 name: Deploy site to GitHub Pages
 
+# No paths filter: engine-only pushes must still run the check job, and the
+# nightly snapshot push rebuilds the site anyway.
 on:
   push:
     branches: [main]
-    paths:
-      - "site/**"
-      - "shared/**"
-      - "package.json"
-      - "package-lock.json"
-      - ".github/workflows/deploy.yml"
   workflow_dispatch:
 
 # Allow the workflow to publish to Pages
@@ -23,6 +19,23 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Typecheck engine
+        run: npm run typecheck -w @aiengjobs/engine
+      - name: Check site
+        run: npm run check -w @aiengjobs/site
+      - name: Run tests
+        run: npm test
+
   build:
     runs-on: ubuntu-latest
     steps:
@@ -41,7 +54,7 @@ jobs:
           path: site/dist
 
   deploy:
-    needs: build
+    needs: [build, check]
     runs-on: ubuntu-latest
     environment:
       name: github-pages

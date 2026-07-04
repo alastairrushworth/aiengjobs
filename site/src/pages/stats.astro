@@ -1,26 +1,21 @@
 ---
 import Base from "../layouts/Base.astro";
 import { url } from "../lib/url.ts";
-import { salaryMidpointUsd, seniorityLabel } from "../lib/format.ts";
-import snapshot from "../data/snapshot.json";
-import type { SiteSnapshot, Job, Seniority } from "@aiengjobs/shared";
+import {
+  countryName,
+  kUsd as k,
+  median,
+  salaryMidpointUsd,
+} from "../lib/format.ts";
+import { SENIORITY_OPTIONS } from "../lib/format.ts";
+import { openJobs as open, fxRates, generatedAt } from "../lib/data.ts";
+import type { Job } from "@aiengjobs/shared";
 
-const data = snapshot as unknown as SiteSnapshot;
-const open = data.jobs.filter((j) => !j.isClosed);
-
-function median(xs: number[]): number {
-  if (!xs.length) return 0;
-  const s = [...xs].sort((a, b) => a - b);
-  const m = Math.floor(s.length / 2);
-  return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
-}
-const k = (n: number) => `$${Math.round(n / 1000)}k`;
 const pct = (n: number, d: number) => (d ? Math.round((n / d) * 100) : 0);
 
 // Salary midpoints (annualized USD) paired with their job — used everywhere we
 // compare pay. Midpoint of the published range, converted to USD with the
 // snapshot's live FX rates (£/€/etc. → $).
-const fxRates = data.fxRates;
 const paid = open
   .map((j) => ({ job: j, pay: salaryMidpointUsd(j, fxRates) }))
   .filter((x): x is { job: Job; pay: number } => x.pay !== null);
@@ -33,9 +28,9 @@ const hybridCount = open.filter((j) => j.remoteType === "hybrid").length;
 const onsiteCount = open.filter((j) => j.remoteType === "onsite").length;
 const medianPay = median(paid.map((x) => x.pay));
 
-// Freshness from the employer's own posting date (isNew/ingestedAt aren't
-// reliable signals — the board re-ingests everything nightly).
-const genMs = new Date(data.generatedAt).getTime();
+// Freshness from the employer's own posting date (ingestedAt isn't a reliable
+// signal — the board re-ingests everything nightly).
+const genMs = new Date(generatedAt).getTime();
 const DAY = 86_400_000;
 const postedThisWeek = open.filter(
   (j) => j.postedAt && genMs - new Date(j.postedAt).getTime() <= 7 * DAY,
@@ -94,25 +89,21 @@ const topPaidSkills = [...paysBySkill.entries()]
   .slice(0, 6);
 
 // ── Seniority mix ──────────────────────────────────────────────────────────
-const SEN_ORDER: Seniority[] = [
-  "intern", "junior", "mid", "senior", "staff", "principal", "lead", "manager",
-];
-const seniorityMix = SEN_ORDER.map((id) => ({
+const seniorityMix = SENIORITY_OPTIONS.map(({ id, label }) => ({
   id,
-  label: seniorityLabel(id)!,
+  label,
   n: open.filter((j) => j.seniority === id).length,
 })).filter((s) => s.n > 0);
 
 // ── Top countries ──────────────────────────────────────────────────────────
-const countryNames = new Intl.DisplayNames(["en"], { type: "region" });
 const countryCount = new Map<string, number>();
 for (const j of open) if (j.country) countryCount.set(j.country, (countryCount.get(j.country) ?? 0) + 1);
 const topCountries = [...countryCount.entries()]
-  .map(([code, n]) => ({ code, label: countryNames.of(code) ?? code, n }))
+  .map(([code, n]) => ({ code, label: countryName(code) ?? code, n }))
   .sort((a, b) => b.n - a.n)
   .slice(0, 6);
 
-const updated = new Date(data.generatedAt).toLocaleDateString("en-US", {
+const updated = new Date(generatedAt).toLocaleDateString("en-US", {
   year: "numeric",
   month: "short",
   day: "numeric",
@@ -128,7 +119,7 @@ const maxCountry = topCountries[0]?.n ?? 1;
 ---
 
 <Base
-  title="AI engineering job market stats — salaries, top companies, in-demand skills"
+  title="AI engineering job market stats"
   description={`Live stats across ${totalRoles} open AI-engineering roles: median pay ${k(medianPay)}, top-paying companies, most-requested skills, remote split. Updated ${updated}.`}
 >
   <section class="hero" style="padding-bottom:10px">
@@ -149,13 +140,13 @@ const maxCountry = topCountries[0]?.n ?? 1;
   <!-- Top companies -->
   <div class="cols">
     <section class="panel">
-      <h2>💰 Top-paying companies</h2>
+      <h2><span aria-hidden="true">💰</span> Top-paying companies</h2>
       <p class="sub">By median salary midpoint · {MIN_PAY_ROLES}+ priced roles</p>
       <ol class="board">
         {topPayCompanies.map((c, i) => (
           <li>
             <span class="rank">{i + 1}</span>
-            <a class="bl" href={url(`/companies/${c.slug}`)}>{c.name}</a>
+            <a class="bl" href={url(`/companies/${c.slug}/`)}>{c.name}</a>
             <span class="bar"><span class="fill" style={`width:${(c.value / maxPayCo) * 100}%`}></span></span>
             <span class="bv">{k(c.value)}</span>
           </li>
@@ -164,13 +155,13 @@ const maxCountry = topCountries[0]?.n ?? 1;
     </section>
 
     <section class="panel">
-      <h2>📋 Most open positions</h2>
+      <h2><span aria-hidden="true">📋</span> Most open positions</h2>
       <p class="sub">Companies hiring the most right now</p>
       <ol class="board">
         {topHiringCompanies.map((c, i) => (
           <li>
             <span class="rank">{i + 1}</span>
-            <a class="bl" href={url(`/companies/${c.slug}`)}>{c.name}</a>
+            <a class="bl" href={url(`/companies/${c.slug}/`)}>{c.name}</a>
             <span class="bar"><span class="fill alt" style={`width:${(c.n / maxHireCo) * 100}%`}></span></span>
             <span class="bv">{c.n}</span>
           </li>
@@ -181,8 +172,9 @@ const maxCountry = topCountries[0]?.n ?? 1;
 
   <!-- Remote split -->
   <section class="panel">
-    <h2>🌍 Where the work happens</h2>
-    <div class="split">
+    <h2><span aria-hidden="true">🌍</span> Where the work happens</h2>
+    {/* Decorative — the legend below is the accessible representation. */}
+    <div class="split" aria-hidden="true">
       <span class="seg remote" style={`width:${pct(remoteCount, totalRoles)}%`}></span>
       <span class="seg hybrid" style={`width:${pct(hybridCount, totalRoles)}%`}></span>
       <span class="seg onsite" style={`width:${pct(onsiteCount, totalRoles)}%`}></span>
@@ -197,7 +189,7 @@ const maxCountry = topCountries[0]?.n ?? 1;
   <!-- Skills -->
   <div class="cols">
     <section class="panel">
-      <h2>🔧 Most-wanted skills</h2>
+      <h2><span aria-hidden="true">🔧</span> Most-wanted skills</h2>
       <p class="sub">Open roles naming each skill</p>
       <ul class="bars">
         {topSkills.map((s) => (
@@ -211,7 +203,7 @@ const maxCountry = topCountries[0]?.n ?? 1;
     </section>
 
     <section class="panel">
-      <h2>📈 Best-paid skills</h2>
+      <h2><span aria-hidden="true">📈</span> Best-paid skills</h2>
       <p class="sub">Median salary of roles asking for it · {MIN_SKILL_PAY_ROLES}+ priced roles</p>
       <ul class="bars">
         {topPaidSkills.map((s) => (
@@ -228,7 +220,7 @@ const maxCountry = topCountries[0]?.n ?? 1;
   <!-- Seniority + countries -->
   <div class="cols">
     <section class="panel">
-      <h2>🪜 Seniority mix</h2>
+      <h2><span aria-hidden="true">🪜</span> Seniority mix</h2>
       <ul class="bars">
         {seniorityMix.map((s) => (
           <li>
@@ -241,7 +233,7 @@ const maxCountry = topCountries[0]?.n ?? 1;
     </section>
 
     <section class="panel">
-      <h2>📍 Top locations</h2>
+      <h2><span aria-hidden="true">📍</span> Top locations</h2>
       <ul class="bars">
         {topCountries.map((c) => (
           <li>
@@ -323,7 +315,8 @@ const maxCountry = topCountries[0]?.n ?? 1;
     color: var(--text);
   }
   a.bl { border-bottom: 1px solid transparent; }
-  a.bl:hover { color: var(--accent); border-color: var(--accent); }
+  a.bl:hover,
+  a.bl:focus-visible { color: var(--accent-text); border-color: var(--accent-text); }
   .bar {
     flex: 1 1 auto;
     height: 9px;
@@ -351,6 +344,7 @@ const maxCountry = topCountries[0]?.n ?? 1;
   /* Remote split bar */
   .split {
     display: flex;
+    gap: 3px; /* visible seams so adjacent segments don't rely on hue alone */
     height: 16px;
     border-radius: 999px;
     overflow: hidden;
@@ -360,7 +354,8 @@ const maxCountry = topCountries[0]?.n ?? 1;
   .split .seg { height: 100%; }
   .seg.remote, .dot.remote { background: var(--accent-2); }
   .seg.hybrid, .dot.hybrid { background: var(--accent); }
-  .seg.onsite, .dot.onsite { background: #4a5163; }
+  /* ≥3:1 against the --surface-2 track (WCAG 1.4.11). */
+  .seg.onsite, .dot.onsite { background: #6a7286; }
   .legend { display: flex; flex-wrap: wrap; gap: 8px 18px; color: var(--muted); font-size: 0.84rem; }
   .legend .dot {
     display: inline-block;

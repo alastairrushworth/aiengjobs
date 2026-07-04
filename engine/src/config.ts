@@ -1,18 +1,3 @@
-import type { ClusterId } from "@aiengjobs/shared/taxonomy";
-
-// --- Scope configuration (spec §4) -----------------------------------------
-// STRICT AI-engineering core. This is intentionally config-driven: to widen the
-// board to adjacents (e.g. add "mlops", "core_ml") later, edit this one list —
-// no pipeline code changes needed. See the "strict-core thinness" risk in the plan.
-export const INCLUDED_CLUSTERS: ClusterId[] = [
-  "llm",
-  "rag",
-  "agents",
-  "evals",
-  "inference",
-  "finetuning",
-];
-
 // Title signals that strongly indicate an in-scope AI-engineering role.
 export const IN_TITLE_PATTERNS: RegExp[] = [
   /\bai engineer\b/i,
@@ -46,5 +31,3 @@ export const OUT_TITLE_PATTERNS: RegExp[] = [
 export const LLM_MODEL = process.env.OPENAI_MODEL ?? "gpt-5.4-nano";
 export const OPENAI_API_KEY = process.env.OPENAI_API_KEY ?? "";
 
-// Confidence below this routes a job to the manual review queue rather than auto-listing.
-export const REVIEW_CONFIDENCE_THRESHOLD = 0.6;

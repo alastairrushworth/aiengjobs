@@ -1,0 +1,22 @@
+---
+import Base from "../layouts/Base.astro";
+import { url } from "../lib/url.ts";
+import { CLUSTER_PAGES } from "../lib/clusters.ts";
+---
+
+<Base title="Page not found" noindex>
+  <section class="hero">
+    <h1>That page doesn't exist</h1>
+    <p>
+      If you followed a link to a job, the role has probably closed and been
+      removed from the board — listings are re-verified nightly.
+    </p>
+  </section>
+
+  <nav class="browse" style="justify-content:center" aria-label="Browse">
+    <a href={url("/")}>Browse all jobs</a>
+    {CLUSTER_PAGES.map((p) => <a href={url(`/${p.slug}/`)}>{p.label}</a>)}
+    <a href={url("/salaries/")}>Salaries</a>
+    <a href={url("/stats/")}>Stats</a>
+  </nav>
+</Base>

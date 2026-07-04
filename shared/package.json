@@ -4,6 +4,8 @@
   "type": "module",
   "exports": {
     ".": "./types.ts",
-    "./taxonomy": "./taxonomy.ts"
+    "./taxonomy": "./taxonomy.ts",
+    "./text": "./text.ts",
+    "./fx": "./fx.ts"
   }
 }

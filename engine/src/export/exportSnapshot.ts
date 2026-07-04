@@ -4,8 +4,6 @@ import { fileURLToPath } from "node:url";
 import { openDb } from "../db/index.ts";
 import { stripHtml } from "../util/html.ts";
 import { fetchFxRates } from "../util/fx.ts";
-import { CLUSTER_BY_ID } from "@aiengjobs/shared/taxonomy";
-import type { ClusterId } from "@aiengjobs/shared/taxonomy";
 import type {
   SiteSnapshot,
   Job,
@@ -13,8 +11,8 @@ import type {
   RemoteType,
   Seniority,
   SalaryPeriod,
-  Classification,
 } from "@aiengjobs/shared";
+import type { ClusterId } from "@aiengjobs/shared/taxonomy";
 
 const here = dirname(fileURLToPath(import.meta.url));
 
@@ -32,10 +30,13 @@ export const SNAPSHOT_OUT =
   process.env.SNAPSHOT_OUT ??
   join(here, "..", "..", "..", "site", "src", "data", "snapshot.json");
 
+// Roles that vanished from their feed stay in the snapshot for this long so the
+// site can render a "role closed" tombstone instead of 404ing shared links.
+const CLOSED_RETENTION_DAYS = 30;
+
 interface JobRow {
   id: string;
   slug: string;
-  company_id: string;
   company_name: string;
   company_slug: string;
   title: string;
@@ -53,17 +54,11 @@ interface JobRow {
   salary_max: number | null;
   salary_currency: string | null;
   salary_period: string | null;
-  classification: string;
-  classification_confidence: number | null;
-  is_featured: number;
-  is_direct: number;
-  is_new: number;
   is_closed: number;
   posted_at: string | null;
   updated_at: string | null;
   ingested_at: string;
   expires_at: string | null;
-  content_hash: string | null;
 }
 
 interface CompanyRow {
@@ -71,42 +66,45 @@ interface CompanyRow {
   name: string;
   slug: string;
   domain: string | null;
-  ats_provider: string;
-  ats_token: string | null;
   stage: string | null;
   size: string | null;
   logo_url: string | null;
   description: string | null;
 }
 
-const NEW_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
-
 export async function exportSnapshot(): Promise<void> {
   const db = openDb();
-  const now = Date.now();
 
-  const companyRows = db.prepare("SELECT * FROM companies").all() as unknown as CompanyRow[];
+  // Public fields only — internal provenance (ats_provider, ats_token) stays
+  // out of the published snapshot.
+  const companyRows = db
+    .prepare(
+      "SELECT id, name, slug, domain, stage, size, logo_url, description FROM companies",
+    )
+    .all() as unknown as CompanyRow[];
   const companies: Company[] = companyRows.map((c) => ({
     id: c.id,
     name: c.name,
     slug: c.slug,
     domain: c.domain ?? undefined,
-    atsProvider: c.ats_provider as Company["atsProvider"],
-    atsToken: c.ats_token ?? undefined,
     stage: c.stage ?? undefined,
     size: c.size ?? undefined,
     logoUrl: c.logo_url ?? undefined,
     description: c.description ?? undefined,
   }));
 
+  const closedCutoff = new Date(
+    Date.now() - CLOSED_RETENTION_DAYS * 86_400_000,
+  ).toISOString();
   const rows = db
     .prepare(
       `SELECT j.*, c.name AS company_name, c.slug AS company_slug
        FROM jobs j JOIN companies c ON c.id = j.company_id
-       WHERE j.classification = 'in' AND j.is_closed = 0
+       WHERE j.classification = 'in'
+         AND (j.is_closed = 0 OR (j.is_closed = 1 AND j.last_seen_at >= ?))
        ORDER BY j.is_featured DESC, j.ingested_at DESC, j.id`,
     )
-    .all() as unknown as JobRow[];
+    .all(closedCutoff) as unknown as JobRow[];
 
   const skillRows = db
     .prepare(
@@ -128,15 +126,16 @@ export async function exportSnapshot(): Promise<void> {
 
   const jobs: Job[] = rows.map((r) => {
     const sk = skillsByJob.get(r.id) ?? { names: [], clusters: new Set<ClusterId>() };
+    const closed = !!r.is_closed;
     return {
-      id: r.id,
       slug: r.slug,
-      companyId: r.company_id,
       companyName: r.company_name,
       companySlug: r.company_slug,
       title: r.title,
       normalizedTitle: r.normalized_title,
-      descriptionText: displayText(r),
+      // Tombstones drop the description — the page shows a "role closed"
+      // banner + facts, and the text is the snapshot's dominant weight.
+      descriptionText: closed ? undefined : displayText(r),
       applyUrl: r.apply_url,
       locationRaw: r.location_raw ?? undefined,
       country: r.country ?? undefined,
@@ -148,30 +147,15 @@ export async function exportSnapshot(): Promise<void> {
       salaryMax: r.salary_max ?? undefined,
       salaryCurrency: r.salary_currency ?? undefined,
       salaryPeriod: (r.salary_period as SalaryPeriod) ?? undefined,
-      classification: r.classification as Classification,
-      classificationConfidence: r.classification_confidence ?? undefined,
       skills: sk.names,
       clusters: [...sk.clusters],
-      isFeatured: !!r.is_featured,
-      isDirect: !!r.is_direct,
-      isNew: Date.parse(r.ingested_at) > now - NEW_WINDOW_MS,
-      isClosed: !!r.is_closed,
+      ...(closed ? { isClosed: true } : {}),
       postedAt: r.posted_at ?? undefined,
       updatedAt: r.updated_at ?? undefined,
       ingestedAt: r.ingested_at,
       expiresAt: r.expires_at ?? undefined,
-      contentHash: r.content_hash ?? undefined,
     };
   });
-
-  const clusterCounts = new Map<ClusterId, number>();
-  const senCounts = new Map<Seniority, number>();
-  const remoteCounts = new Map<RemoteType, number>();
-  for (const j of jobs) {
-    for (const c of j.clusters) clusterCounts.set(c, (clusterCounts.get(c) ?? 0) + 1);
-    if (j.seniority) senCounts.set(j.seniority, (senCounts.get(j.seniority) ?? 0) + 1);
-    if (j.remoteType) remoteCounts.set(j.remoteType, (remoteCounts.get(j.remoteType) ?? 0) + 1);
-  }
 
   // Live currency conversion rates, pulled fresh each run (falls back to static
   // approximations if the feed is unreachable).
@@ -182,18 +166,14 @@ export async function exportSnapshot(): Promise<void> {
     fxRates,
     jobs,
     companies,
-    facets: {
-      clusters: [...clusterCounts.entries()]
-        .map(([id, count]) => ({ id, label: CLUSTER_BY_ID[id].label, count }))
-        .sort((a, b) => b.count - a.count),
-      seniority: [...senCounts.entries()].map(([id, count]) => ({ id, count })),
-      remoteType: [...remoteCounts.entries()].map(([id, count]) => ({ id, count })),
-    },
   };
 
   db.close();
-  writeFileSync(SNAPSHOT_OUT, JSON.stringify(snapshot, null, 2) + "\n", "utf8");
+  // Compact JSON — this file is committed to git nightly; whitespace is pure
+  // repo-history bloat.
+  writeFileSync(SNAPSHOT_OUT, JSON.stringify(snapshot) + "\n", "utf8");
+  const openCount = jobs.filter((j) => !j.isClosed).length;
   console.log(
-    `Wrote ${jobs.length} jobs, ${companies.length} companies -> ${SNAPSHOT_OUT}`,
+    `Wrote ${openCount} open + ${jobs.length - openCount} closed jobs, ${companies.length} companies -> ${SNAPSHOT_OUT}`,
   );
 }

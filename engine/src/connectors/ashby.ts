@@ -1,6 +1,7 @@
 import type { Connector, RawPosting } from "./types.ts";
 import type { RemoteType } from "@aiengjobs/shared";
-import { USER_AGENT, stripHtml } from "../util/html.ts";
+import { stripHtml } from "../util/html.ts";
+import { fetchRetry } from "../util/fetch.ts";
 import { parseSalaryText } from "../pipeline/comp.ts";
 
 interface AshbyJob {
@@ -43,9 +44,7 @@ export const ashby: Connector = {
   endpoint: (slug) =>
     `https://api.ashbyhq.com/posting-api/job-board/${slug}?includeCompensation=true`,
   async fetchPostings(slug) {
-    const res = await fetch(ashby.endpoint(slug), {
-      headers: { "User-Agent": USER_AGENT },
-    });
+    const res = await fetchRetry(ashby.endpoint(slug));
     if (!res.ok) throw new Error(`ashby ${slug} HTTP ${res.status}`);
     const data = (await res.json()) as { jobs?: AshbyJob[] };
 

@@ -295,3 +295,98 @@ Citi,workday,citi:wd5:2,citi.com,late
 State Street,workday,statestreet:wd1:Global,statestreet.com,late
 Barclays,workday,barclays:wd3:External_Career_Site_Barclays,barclays.com,late
 Prudential plc,workday,prudential:wd3:prudential,prudentialplc.com,late
+
+# === EU/UK/US RETAIL & CHALLENGER BANKS / FINTECH (auto-verified live feeds) ===
+# --- US ---
+Acorns,ashby,acorns,acorns.com,growth
+Column,ashby,column,column.com,early
+Current,greenhouse,current,current.com,growth
+Dave,ashby,dave,dave.com,late
+Greenlight,lever,greenlight,greenlight.com,growth
+M1 Finance,smartrecruiters,m1finance,m1.com,growth
+Payoneer,greenhouse,payoneer,payoneer.com,late
+Piermont Bank,greenhouse,piermontbank,piermontbank.com,early
+Prosper,lever,prosper,prosper.com,late
+Public.com,greenhouse,public,public.com,growth
+Stash,ashby,stash,stash.com,growth
+Upstart,greenhouse,upstart,upstart.com,late
+# --- UK ---
+Anna Money,teamtailor,annamoney,anna.money,early
+Capital on Tap,greenhouse,capitalontap,capitalontap.com,growth
+Chip,teamtailor,chip,thisischip.com,early
+ClearBank,ashby,clearbank,clear.bank,growth
+Countingup,teamtailor,countingup,countingup.com,early
+Funding Circle,ashby,fundingcircle,fundingcircle.com,late
+GoHenry,ashby,gohenry,gohenry.com,growth
+Griffin,ashby,griffin,griffin.com,early
+InvestEngine,teamtailor,investengine,investengine.com,early
+Lendable,ashby,lendable,lendable.io,growth
+Monese,teamtailor,monese,monese.com,growth
+OakNorth,ashby,oaknorth,oaknorth.com,late
+Paysend,teamtailor,paysend,paysend.com,growth
+Trading 212,ashby,trading212,trading212.com,growth
+TrueLayer,greenhouse,truelayer,truelayer.com,growth
+Wayflyer,ashby,wayflyer,wayflyer.com,growth
+Zilch,ashby,zilch,zilch.com,growth
+# --- Europe ---
+Airwallex,ashby,airwallex,airwallex.com,growth
+Billie,ashby,billie,billie.io,growth
+Bunq,recruitee,bunq,bunq.com,growth
+DNB,lever,dnb,dnb.no,late
+Lunar,ashby,lunar,lunar.app,growth
+Qonto,lever,qonto,qonto.com,growth
+Raisin,greenhouse,raisin,raisin.com,growth
+solarisBank,greenhouse,solarisbank,solarisbank.com,growth
+Tomorrow,greenhouse,tomorrow,tomorrow.one,early
+Trade Republic,greenhouse,traderepublic,traderepublic.com,growth
+Trustly,lever,trustly,trustly.com,late
+Younited,lever,younited,younited-credit.com,late
+
+# === SAAS COMPANIES (auto-verified live feeds) ===
+1Password,ashby,1password,1password.com,late
+Airbyte,ashby,airbyte,airbyte.com,growth
+Amplitude,greenhouse,amplitude,amplitude.com,late
+Braze,greenhouse,braze,braze.com,late
+Calendly,greenhouse,calendly,calendly.com,growth
+CircleCI,greenhouse,circleci,circleci.com,growth
+ClickUp,ashby,clickup,clickup.com,growth
+Contentsquare,lever,contentsquare,contentsquare.com,growth
+Dashlane,greenhouse,dashlane,dashlane.com,growth
+Databricks,greenhouse,databricks,databricks.com,late
+Descript,greenhouse,descript,descript.com,growth
+DocuSign,smartrecruiters,docusign,docusign.com,late
+Drata,ashby,drata,drata.com,growth
+Fastly,greenhouse,fastly,fastly.com,late
+Gong,greenhouse,gongio,gong.io,growth
+Hex,greenhouse,hextechnologies,hex.tech,growth
+Intercom,greenhouse,intercom,intercom.com,late
+Iterable,greenhouse,iterable,iterable.com,growth
+JFrog,greenhouse,jfrog,jfrog.com,late
+Justworks,greenhouse,justworks,justworks.com,late
+Klaviyo,greenhouse,klaviyo,klaviyo.com,late
+LaunchDarkly,greenhouse,launchdarkly,launchdarkly.com,growth
+Linear,ashby,linear,linear.app,growth
+Make,greenhouse,make,make.com,growth
+Merge,ashby,merge,merge.dev,growth
+Metabase,lever,metabase,metabase.com,growth
+Netlify,greenhouse,netlify,netlify.com,growth
+New Relic,greenhouse,newrelic,newrelic.com,late
+Outreach,lever,outreach,outreach.io,growth
+PagerDuty,greenhouse,pagerduty,pagerduty.com,late
+PlanetScale,greenhouse,planetscale,planetscale.com,growth
+Postman,greenhouse,postman,postman.com,growth
+Railway,ashby,railway,railway.app,early
+Render,ashby,render,render.com,growth
+Replit,ashby,replit,replit.com,growth
+Secureframe,lever,secureframe,secureframe.com,growth
+Sentry,ashby,sentry,sentry.io,growth
+Sigma Computing,greenhouse,sigmacomputing,sigmacomputing.com,growth
+Smartsheet,greenhouse,smartsheet,smartsheet.com,late
+Sumo Logic,greenhouse,sumologic,sumologic.com,late
+Supabase,ashby,supabase,supabase.com,growth
+Temporal,greenhouse,temporaltechnologies,temporal.io,growth
+Typeform,greenhouse,typeform,typeform.com,growth
+Vercel,greenhouse,vercel,vercel.com,growth
+WorkOS,ashby,workos,workos.com,early
+Workato,greenhouse,workato,workato.com,growth
+Wrike,greenhouse,wrike,wrike.com,late

@@ -2,158 +2,328 @@
 import Base from "../layouts/Base.astro";
 import JobCard from "../components/JobCard.astro";
 import { url } from "../lib/url.ts";
-import { roleType, salaryRank } from "../lib/format.ts";
-import snapshot from "../data/snapshot.json";
+import {
+  countryName,
+  formatSalary,
+  isNewJob,
+  postedAgo,
+  remoteLabel,
+  roleType,
+  salaryRank,
+  seniorityLabel,
+  SENIORITY_OPTIONS,
+} from "../lib/format.ts";
+import { openJobs, fxRates, generatedAt } from "../lib/data.ts";
+import { jsonLdScript } from "../lib/jsonld.ts";
 import { CLUSTER_PAGES } from "../lib/clusters.ts";
-import type { SiteSnapshot } from "@aiengjobs/shared";
 
-const data = snapshot as unknown as SiteSnapshot;
-const jobs = data.jobs.filter((j) => !j.isClosed);
+const jobs = openJobs; // newest first (see lib/data)
 
-// Every open role is rendered (in natural snapshot order) so the client-side
-// search/filter can reach all of them. The invisible salary ranking and the
-// 50-role cap apply ONLY to the landing view: we pick the HOME_LIMIT best-paid
-// roles and remember each one's pay rank so the landing page can order them by
-// salary via CSS, without touching the DOM order. Once a query or toggle is
-// active, the full set is shown in natural order — no salary ranking.
-const HOME_LIMIT = 50;
-const homeRank = new Map<string, number>();
-[...jobs]
-  .sort((a, b) => salaryRank(b) - salaryRank(a))
-  .slice(0, HOME_LIMIT)
-  .forEach((job, i) => homeRank.set(job.slug, i));
-const homeCount = homeRank.size;
+// The landing view server-renders only the newest INITIAL cards; the rest ship
+// as a compact JSON payload and hydrate on the first filter/sort/show-all
+// interaction. Keeps the HTML small without hiding ~1,000 rendered cards.
+const INITIAL = 50;
+const initialJobs = jobs.slice(0, INITIAL);
 
-// Country filter — derived from ALL roles (not just the landing set) so you can
-// filter to a country that isn't among the top-paid 50. ISO codes get a name.
-const countryNames = new Intl.DisplayNames(["en"], { type: "region" });
+// Country filter options, most common first.
 const countryCounts = new Map<string, number>();
 for (const j of jobs) {
   if (j.country) countryCounts.set(j.country, (countryCounts.get(j.country) ?? 0) + 1);
 }
 const countries = [...countryCounts.entries()]
   .sort((a, b) => b[1] - a[1])
-  .map(([code, count]) => ({
-    code,
-    label: countryNames.of(code) ?? code,
-    count,
-  }));
+  .map(([code, count]) => ({ code, label: countryName(code) ?? code, count }));
 
-// Role-type filter — bucket every listing into a generic role family and order
-// by frequency, keeping the catch-all "Other" pinned last.
+// Role-type filter options, most common first, catch-all "Other" pinned last.
 const roleCounts = new Map<string, number>();
 for (const j of jobs) {
   const r = roleType(j);
   roleCounts.set(r, (roleCounts.get(r) ?? 0) + 1);
 }
 const roles = [...roleCounts.entries()]
-  .sort((a, b) =>
-    a[0] === "Other" ? 1 : b[0] === "Other" ? -1 : b[1] - a[1],
-  )
+  .sort((a, b) => (a[0] === "Other" ? 1 : b[0] === "Other" ? -1 : b[1] - a[1]))
   .map(([label, count]) => ({ label, count }));
+
+// Seniority options with live counts.
+const seniorities = SENIORITY_OPTIONS.map((s) => ({
+  ...s,
+  count: jobs.filter((j) => j.seniority === s.id).length,
+})).filter((s) => s.count > 0);
+
+// Compact per-job payload for client-side filtering + card rendering.
+const jobsData = jobs.map((j) => ({
+  u: url(`/jobs/${j.slug}/`),
+  t: j.title,
+  c: j.companyName,
+  l: j.locationRaw ?? "",
+  s: formatSalary(j) ?? "",
+  sr: salaryRank(j, fxRates),
+  p: postedAgo(j.postedAt, generatedAt) ?? "",
+  n: isNewJob(j.postedAt, generatedAt) ? 1 : 0,
+  r: remoteLabel(j.remoteType) ?? "",
+  sl: seniorityLabel(j.seniority) ?? "",
+  sn: j.seniority ?? "",
+  ro: roleType(j),
+  co: j.country ?? "",
+  sk: j.skills,
+}));
+
+const updated = new Date(generatedAt).toLocaleDateString("en-US", {
+  year: "numeric",
+  month: "short",
+  day: "numeric",
+});
 ---
 
-<Base title="AI Engineering Jobs — RAG, agents, evals, inference">
+<Base title="AI Engineering Jobs — RAG, agents, evals, inference" noBrandSuffix>
   <section class="hero">
     <h1>The job board for AI engineers</h1>
     <p>
       RAG, agents, evals, inference — browse <span class="count">{jobs.length}</span>
       first-party roles. Salary-transparent. No ghost jobs.
     </p>
+    <p class="updated">Updated {updated} · refreshed nightly</p>
   </section>
 
-  <nav class="browse">
+  <nav class="browse" aria-label="Browse by stack">
     <span class="browse-label">Browse by stack:</span>
-    {CLUSTER_PAGES.map((p) => <a href={url(`/${p.slug}`)}>{p.label}</a>)}
+    {CLUSTER_PAGES.map((p) => <a href={url(`/${p.slug}/`)}>{p.label}</a>)}
   </nav>
 
   <div class="filters">
-    <input
-      type="search"
-      id="q"
-      placeholder="Search title, company, skill…"
-      aria-label="Search jobs"
-    />
+    <div>
+      <label for="q">Search</label>
+      <input
+        type="search"
+        id="q"
+        placeholder="Title, company, skill…"
+      />
+    </div>
     <div class="toggles">
-      <select id="role" aria-label="Role type">
-        <option value="">Any role</option>
-        {roles.map((r) => (
-          <option value={r.label}>{r.label}</option>
-        ))}
-      </select>
-      <select id="country" aria-label="Country">
-        <option value="">Any country</option>
-        {countries.map((c) => (
-          <option value={c.code}>{c.label}</option>
-        ))}
-      </select>
-      <select id="seniority" aria-label="Seniority">
-        <option value="">Any level</option>
-        <option value="mid">Mid</option>
-        <option value="senior">Senior</option>
-        <option value="staff">Staff</option>
-        <option value="principal">Principal</option>
-        <option value="lead">Lead</option>
-      </select>
+      <div>
+        <label for="role">Role type</label>
+        <select id="role">
+          <option value="">Any role</option>
+          {roles.map((r) => (
+            <option value={r.label}>{r.label} ({r.count})</option>
+          ))}
+        </select>
+      </div>
+      <div>
+        <label for="country">Country</label>
+        <select id="country">
+          <option value="">Any country</option>
+          {countries.map((c) => (
+            <option value={c.code}>{c.label} ({c.count})</option>
+          ))}
+        </select>
+      </div>
+      <div>
+        <label for="level">Seniority</label>
+        <select id="level">
+          <option value="">Any level</option>
+          {seniorities.map((s) => (
+            <option value={s.id}>{s.label} ({s.count})</option>
+          ))}
+        </select>
+      </div>
+      <div>
+        <label for="sort">Sort by</label>
+        <select id="sort">
+          <option value="new">Newest first</option>
+          <option value="pay">Highest salary</option>
+        </select>
+      </div>
     </div>
   </div>
 
-  <p class="results-meta"><span id="shown">{homeCount}</span> of {jobs.length} roles</p>
-
-  <div class="jobs" id="jobs">
-    {jobs.map((job) => (
-      <JobCard
-        job={job}
-        href={url(`/jobs/${job.slug}`)}
-        homeRank={homeRank.get(job.slug) ?? null}
-      />
-    ))}
+  <div class="results-bar">
+    <p class="results-meta" role="status">
+      <span id="status-text">Showing the {INITIAL} newest of {jobs.length} open roles</span>
+    </p>
+    <button class="link-btn" id="clear" hidden>Clear filters</button>
   </div>
-  <p class="empty" id="empty">No roles match these filters yet.</p>
+
+  <ul class="jobs" id="jobs">
+    {initialJobs.map((job) => (
+      <JobCard job={job} href={url(`/jobs/${job.slug}/`)} />
+    ))}
+  </ul>
+  <p class="empty" id="empty" role="status">
+    No roles match these filters yet.
+  </p>
+  <div class="show-more-wrap">
+    <button class="btn-secondary" id="show-all">Show all {jobs.length} roles</button>
+  </div>
+
+  {/* jsonLdScript escapes <, >, & — job titles are untrusted feed content that
+      could otherwise break out of this script element. */}
+  <script type="application/json" id="jobs-data" is:inline set:html={jsonLdScript(jobsData)} />
 </Base>
 
+<style>
+  .results-bar { display: flex; align-items: baseline; gap: 8px; }
+</style>
+
 <script>
+  interface JobEntry {
+    u: string; t: string; c: string; l: string; s: string; sr: number;
+    p: string; n: number; r: string; sl: string; sn: string; ro: string;
+    co: string; sk: string[];
+    q?: string; // lazily-built lowercase search blob
+  }
+
+  const INITIAL = 50;
+  const data = JSON.parse(
+    document.getElementById("jobs-data")!.textContent!,
+  ) as JobEntry[];
+
   const q = document.getElementById("q") as HTMLInputElement;
   const role = document.getElementById("role") as HTMLSelectElement;
   const country = document.getElementById("country") as HTMLSelectElement;
-  const seniority = document.getElementById("seniority") as HTMLSelectElement;
+  const level = document.getElementById("level") as HTMLSelectElement;
+  const sort = document.getElementById("sort") as HTMLSelectElement;
   const jobsEl = document.getElementById("jobs")!;
-  const cards = Array.from(jobsEl.querySelectorAll<HTMLElement>(".job-card"));
-  const shown = document.getElementById("shown")!;
+  const statusText = document.getElementById("status-text")!;
   const empty = document.getElementById("empty")!;
+  const clearBtn = document.getElementById("clear") as HTMLButtonElement;
+  const showAllBtn = document.getElementById("show-all") as HTMLButtonElement;
 
-  function apply() {
-    const text = (q.value || "").trim().toLowerCase();
-    const rol = role.value;
-    const cty = country.value;
-    const sen = seniority.value;
-    const active = Boolean(text || rol || cty || sen);
-    let n = 0;
-    for (const card of cards) {
-      const isHome = card.dataset.homeRank !== undefined;
-      if (active) {
-        // Full set, natural snapshot order — salary ranking is dropped entirely.
-        const matchText = !text || (card.dataset.search || "").includes(text);
-        const matchRol = !rol || card.dataset.role === rol;
-        const matchCty = !cty || card.dataset.country === cty;
-        const matchSen = !sen || card.dataset.seniority === sen;
-        const ok = matchText && matchRol && matchCty && matchSen;
-        card.style.display = ok ? "" : "none";
-        card.style.order = "";
-        if (ok) n++;
-      } else {
-        // Landing: only the top-paid home set, ordered by salary via CSS `order`.
-        card.style.display = isHome ? "" : "none";
-        card.style.order = isHome ? card.dataset.homeRank! : "";
-        if (isHome) n++;
-      }
-    }
-    shown.textContent = String(n);
-    empty.style.display = n === 0 ? "block" : "none";
+  let showAll = false;
+
+  function searchBlob(j: JobEntry): string {
+    return (j.q ??= `${j.t} ${j.c} ${j.sk.join(" ")} ${j.l}`.toLowerCase());
   }
 
-  q.addEventListener("input", apply);
-  role.addEventListener("change", apply);
-  country.addEventListener("change", apply);
-  seniority.addEventListener("change", apply);
+  // Client-rendered card, identical markup to JobCard.astro. Built with
+  // createElement/textContent only — job data is untrusted feed content.
+  const cardCache = new Map<JobEntry, HTMLLIElement>();
+  function makeCard(j: JobEntry): HTMLLIElement {
+    const cached = cardCache.get(j);
+    if (cached) return cached;
+    const li = document.createElement("li");
+    const a = document.createElement("a");
+    a.className = "job-card";
+    a.href = j.u;
+
+    const top = document.createElement("div");
+    top.className = "top";
+    const head = document.createElement("div");
+    const title = document.createElement("div");
+    title.className = "title";
+    title.textContent = j.t;
+    const company = document.createElement("div");
+    company.className = "company";
+    company.textContent = j.l ? `${j.c} · ${j.l}` : j.c;
+    head.append(title, company);
+    top.append(head);
+    if (j.s) {
+      const salary = document.createElement("div");
+      salary.className = "salary";
+      salary.textContent = j.s;
+      top.append(salary);
+    }
+
+    const meta = document.createElement("div");
+    meta.className = "meta";
+    meta.setAttribute("aria-hidden", "true");
+    const badge = (text: string, cls = "badge") => {
+      const b = document.createElement("span");
+      b.className = cls;
+      b.textContent = text;
+      meta.append(b);
+    };
+    if (j.n) badge("New", "badge new");
+    if (j.r) badge(j.r);
+    if (j.sl) badge(j.sl);
+    for (const s of j.sk.slice(0, 4)) badge(s, "badge skill");
+    if (j.p) {
+      const posted = document.createElement("span");
+      posted.className = "posted";
+      posted.textContent = `Posted ${j.p}`;
+      meta.append(posted);
+    }
+
+    a.append(top, meta);
+    li.append(a);
+    cardCache.set(j, li);
+    return li;
+  }
+
+  function apply(syncUrl = true) {
+    const text = q.value.trim().toLowerCase();
+    const rol = role.value;
+    const cty = country.value;
+    const sen = level.value;
+    const byPay = sort.value === "pay";
+    const filtering = Boolean(text || rol || cty || sen);
+
+    let matches = data.filter(
+      (j) =>
+        (!text || searchBlob(j).includes(text)) &&
+        (!rol || j.ro === rol) &&
+        (!cty || j.co === cty) &&
+        (!sen || j.sn === sen),
+    );
+    if (byPay) {
+      // Stable sort: pay descending, ties keep the newest-first data order.
+      matches = [...matches].sort((a, b) => b.sr - a.sr);
+    }
+
+    const limit = filtering || showAll ? matches.length : INITIAL;
+    const visible = matches.slice(0, limit);
+    jobsEl.replaceChildren(...visible.map(makeCard));
+
+    const total = data.length;
+    statusText.textContent = filtering
+      ? `${matches.length} of ${total} roles match`
+      : showAll
+        ? `Showing all ${total} open roles${byPay ? ", highest salary first" : ""}`
+        : `Showing the ${Math.min(INITIAL, total)} ${byPay ? "highest-paying" : "newest"} of ${total} open roles`;
+
+    empty.style.display = matches.length === 0 ? "block" : "none";
+    clearBtn.hidden = !filtering;
+    showAllBtn.hidden = filtering || showAll || matches.length <= INITIAL;
+
+    if (syncUrl) {
+      const params = new URLSearchParams();
+      if (text) params.set("q", q.value.trim());
+      if (rol) params.set("role", rol);
+      if (cty) params.set("country", cty);
+      if (sen) params.set("level", sen);
+      if (byPay) params.set("sort", "pay");
+      if (showAll && !filtering) params.set("all", "1");
+      const qs = params.toString();
+      history.replaceState(null, "", qs ? `?${qs}` : location.pathname);
+    }
+  }
+
+  q.addEventListener("input", () => apply());
+  for (const el of [role, country, level, sort]) {
+    el.addEventListener("change", () => apply());
+  }
+  showAllBtn.addEventListener("click", () => {
+    showAll = true;
+    apply();
+  });
+  clearBtn.addEventListener("click", () => {
+    q.value = "";
+    role.value = "";
+    country.value = "";
+    level.value = "";
+    apply();
+    q.focus();
+  });
+
+  // Hydrate state from the URL so filtered views are shareable + back-button safe.
+  const params = new URLSearchParams(location.search);
+  q.value = params.get("q") ?? "";
+  role.value = params.get("role") ?? "";
+  country.value = params.get("country") ?? "";
+  level.value = params.get("level") ?? "";
+  sort.value = params.get("sort") === "pay" ? "pay" : "new";
+  showAll = params.get("all") === "1";
+  if (q.value || role.value || country.value || level.value || sort.value === "pay" || showAll) {
+    apply(false);
+  }
 </script>

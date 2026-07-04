@@ -1,5 +1,6 @@
 import type { Connector, RawPosting } from "./types.ts";
-import { USER_AGENT, decodeEntities, stripHtml } from "../util/html.ts";
+import { decodeEntities, stripHtml } from "../util/html.ts";
+import { fetchRetry } from "../util/fetch.ts";
 
 interface GhJob {
   id: number;
@@ -17,9 +18,7 @@ export const greenhouse: Connector = {
   endpoint: (slug) =>
     `https://boards-api.greenhouse.io/v1/boards/${slug}/jobs?content=true`,
   async fetchPostings(slug) {
-    const res = await fetch(greenhouse.endpoint(slug), {
-      headers: { "User-Agent": USER_AGENT },
-    });
+    const res = await fetchRetry(greenhouse.endpoint(slug));
     if (!res.ok) throw new Error(`greenhouse ${slug} HTTP ${res.status}`);
     const data = (await res.json()) as { jobs?: GhJob[] };
 
