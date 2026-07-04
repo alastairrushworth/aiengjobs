@@ -390,3 +390,96 @@ Vercel,greenhouse,vercel,vercel.com,growth
 WorkOS,ashby,workos,workos.com,early
 Workato,greenhouse,workato,workato.com,growth
 Wrike,greenhouse,wrike,wrike.com,late
+
+# === CONSULTANCIES / SIs STANDING UP AI PRACTICES (auto-verified live feeds) ===
+# --- UK ---
+Baringa Partners,greenhouse,baringa,baringa.com,growth
+Elixirr,greenhouse,elixirr,elixirr.com,growth
+Endava,smartrecruiters,endava,endava.com,late
+PA Consulting,smartrecruiters,paconsulting,paconsulting.com,late
+Version 1,smartrecruiters,version1,version1.com,late
+# --- Europe ---
+Artefact,greenhouse,artefact,artefact.com,growth
+BearingPoint,greenhouse,bearingpoint,bearingpoint.com,late
+Ekimetrics,lever,ekimetrics,ekimetrics.com,growth
+Reply,lever,reply,reply.com,late
+Roland Berger,smartrecruiters,rolandberger,rolandberger.com,late
+# --- US ---
+Oliver Wyman,lever,oliverwyman,oliverwyman.com,late
+Synechron,smartrecruiters,synechron,synechron.com,growth
+Thoughtworks,greenhouse,thoughtworks,thoughtworks.com,late
+
+# === ENTERPRISE SAAS INCUMBENTS SHIPPING AI FEATURES (auto-verified live feeds) ===
+Anaplan,greenhouse,anaplan,anaplan.com,late
+Appian,greenhouse,appian,appian.com,late
+Coupa,lever,coupa,coupa.com,late
+Freshworks,smartrecruiters,freshworks,freshworks.com,late
+ServiceNow,smartrecruiters,servicenow,servicenow.com,late
+UiPath,ashby,uipath,uipath.com,late
+
+# === AI-NATIVE DEFENSE & ROBOTICS (auto-verified live feeds) ===
+# --- UK ---
+Hadean,teamtailor,hadean,hadean.com,early
+# --- US ---
+1X Technologies,ashby,1x,1x.tech,growth
+Anduril,greenhouse,andurilindustries,anduril.com,late
+Epirus,greenhouse,epirus,epirus.com,growth
+Figure AI,greenhouse,figureai,figure.ai,growth
+Hadrian,teamtailor,hadrian,hadrian.co,growth
+Palantir,lever,palantir,palantir.com,late
+Physical Intelligence,ashby,physicalintelligence,physicalintelligence.company,early
+Saronic,ashby,saronic,saronic.com,growth
+Shield AI,lever,shieldai,shield.ai,late
+Skydio,ashby,skydio,skydio.com,growth
+Vannevar Labs,greenhouse,vannevarlabs,vannevarlabs.com,growth
+
+# === AI SILICON / CHIPS (auto-verified live feeds) ===
+# --- Europe ---
+Axelera AI,ashby,axelera,axelera.ai,growth
+SiPearl,teamtailor,sipearl,sipearl.com,growth
+# --- US ---
+Etched,ashby,etched,etched.com,early
+Lightmatter,greenhouse,lightmatter,lightmatter.co,growth
+MatX,greenhouse,matx,matx.com,early
+
+# === MLOPS / EVAL & DATA (auto-verified live feeds) ===
+Invisible Technologies,greenhouse,invisibletech,invisible.co,growth
+Monte Carlo,ashby,montecarlodata,montecarlodata.com,growth
+
+# === AUTONOMOUS VEHICLES / ROBOTICS (auto-verified live feeds) ===
+# --- Europe ---
+Vay,greenhouse,vay,vay.io,early
+# --- US ---
+Aeva,lever,aeva,aeva.com,late
+Aurora Innovation,greenhouse,aurorainnovation,aurora.tech,late
+Kodiak Robotics,greenhouse,kodiak,kodiak.ai,late
+Nuro,greenhouse,nuro,nuro.ai,growth
+Zoox,lever,zoox,zoox.com,late
+
+# === HEALTHCARE AI (auto-verified live feeds) ===
+# --- Europe ---
+Corti,ashby,corti,corti.ai,growth
+Sword Health,lever,swordhealth,swordhealth.com,growth
+# --- US ---
+Ambience Healthcare,ashby,ambiencehealthcare,ambiencehealthcare.com,growth
+Butterfly Network,greenhouse,butterflynetwork,butterflynetwork.com,late
+Cohere Health,greenhouse,coherehealth,coherehealth.com,growth
+Freenome,greenhouse,freenome,freenome.com,growth
+Komodo Health,greenhouse,komodohealth,komodohealth.com,growth
+PathAI,greenhouse,pathai,pathai.com,growth
+Regard,ashby,regard,regard.com,growth
+Suki AI,greenhouse,suki,suki.ai,growth
+Truveta,greenhouse,truveta,truveta.com,growth
+
+# === INSURTECH AI (auto-verified live feeds) ===
+# --- UK ---
+hyperexponential,ashby,hyperexponential,hyperexponential.com,growth
+# --- Europe ---
+Akur8,ashby,akur8,akur8.com,growth
+Descartes Underwriting,smartrecruiters,descartesunderwriting,descartesunderwriting.com,growth
+# --- US ---
+Bestow,ashby,bestow,bestow.com,growth
+Coalition,greenhouse,coalition,coalitioninc.com,growth
+Kettle,greenhouse,kettle,kettle.us,early
+Lemonade,ashby,lemonade,lemonade.com,late
+Root Insurance,teamtailor,root,joinroot.com,late
