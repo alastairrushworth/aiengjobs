@@ -19,7 +19,9 @@ async function main(): Promise<void> {
       await exportSnapshot();
       break;
     case "refresh":
-      // nightly: poll feeds, then regenerate the site snapshot
+      // nightly: re-seed (picks up companies.csv additions), poll feeds, then
+      // regenerate the site snapshot. seed() upserts, so it's safe to re-run.
+      seed();
       await ingest();
       await exportSnapshot();
       break;
