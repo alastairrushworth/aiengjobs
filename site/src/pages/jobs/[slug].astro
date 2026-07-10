@@ -14,7 +14,7 @@ import {
 } from "../../lib/format.ts";
 import { url } from "../../lib/url.ts";
 import { jsonLdScript } from "../../lib/jsonld.ts";
-import { openJobs, closedJobs, generatedAt } from "../../lib/data.ts";
+import { openJobs, closedJobs, companies, generatedAt } from "../../lib/data.ts";
 import type { Job } from "@aiengjobs/shared";
 
 export function getStaticPaths() {
@@ -114,6 +114,33 @@ const validThrough =
 const PERIOD_UNIT: Record<string, string> = {
   year: "YEAR", month: "MONTH", day: "DAY", hour: "HOUR",
 };
+// Google's employmentType enum, best-effort from seniority/title. FULL_TIME is
+// the safe default — these feeds are overwhelmingly full-time salaried roles.
+const employmentType =
+  job.seniority === "intern" || /\bintern(ship)?\b/i.test(job.title)
+    ? "INTERN"
+    : /\bcontract(or)?\b/i.test(job.title)
+      ? "CONTRACTOR"
+      : /\bpart[\s-]?time\b/i.test(job.title)
+        ? "PART_TIME"
+        : "FULL_TIME";
+
+// Google wants the description as HTML. The snapshot carries plain text (with
+// newline/bullet structure), so rebuild simple markup from the same blocks the
+// page renders. Raw tags are safe here: jsonLdScript escapes the JSON string.
+const escapeHtml = (s: string) =>
+  s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+const descriptionHtml = blocks
+  .map((b) =>
+    b.type === "ul"
+      ? `<ul>${b.items.map((it) => `<li>${escapeHtml(it)}</li>`).join("")}</ul>`
+      : `<p>${escapeHtml(b.text)}</p>`,
+  )
+  .join("");
+
+const company = companies.find((c) => c.slug === job.companySlug);
+const pageUrl = new URL(url(`/jobs/${job.slug}/`), Astro.site).href;
+
 const jsonLd: Record<string, unknown> | null = closed
   ? null
   : {
@@ -121,15 +148,28 @@ const jsonLd: Record<string, unknown> | null = closed
       "@type": "JobPosting",
       title: job.title,
       description:
-        job.descriptionText ??
-        `${job.title} at ${job.companyName}. Apply on the company's site.`,
-      hiringOrganization: { "@type": "Organization", name: job.companyName },
-      employmentType: "FULL_TIME",
+        descriptionHtml ||
+        `<p>${escapeHtml(`${job.title} at ${job.companyName}. Apply on the company's site.`)}</p>`,
+      identifier: {
+        "@type": "PropertyValue",
+        name: job.companyName,
+        value: job.slug,
+      },
+      url: pageUrl,
+      hiringOrganization: {
+        "@type": "Organization",
+        name: job.companyName,
+        ...(company?.domain ? { sameAs: `https://${company.domain}/` } : {}),
+        ...(company?.logoUrl ? { logo: company.logoUrl } : {}),
+      },
+      employmentType,
+      // datePosted is required for the rich result; first-seen is the honest
+      // fallback when a feed carries no posted date.
+      datePosted: job.postedAt ?? job.ingestedAt,
       validThrough,
       directApply: false,
     };
 if (jsonLd) {
-  if (job.postedAt) jsonLd.datePosted = job.postedAt;
   if (job.remoteType === "remote") {
     jsonLd.jobLocationType = "TELECOMMUTE";
     if (job.country) {
