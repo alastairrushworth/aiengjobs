@@ -2,18 +2,8 @@
 import Base from "../layouts/Base.astro";
 import JobCard from "../components/JobCard.astro";
 import { url } from "../lib/url.ts";
-import {
-  countryName,
-  formatSalary,
-  isNewJob,
-  postedAgo,
-  remoteLabel,
-  roleType,
-  salaryRank,
-  seniorityLabel,
-  SENIORITY_OPTIONS,
-} from "../lib/format.ts";
-import { openJobs, fxRates, generatedAt } from "../lib/data.ts";
+import { countryName, roleType, SENIORITY_OPTIONS } from "../lib/format.ts";
+import { openJobs, generatedAt } from "../lib/data.ts";
 import { jsonLdScript } from "../lib/jsonld.ts";
 import { CLUSTER_PAGES } from "../lib/clusters.ts";
 
@@ -50,23 +40,33 @@ const seniorities = SENIORITY_OPTIONS.map((s) => ({
   count: jobs.filter((j) => j.seniority === s.id).length,
 })).filter((s) => s.count > 0);
 
-// Compact per-job payload for client-side filtering + card rendering.
-const jobsData = jobs.map((j) => ({
-  u: url(`/jobs/${j.slug}/`),
-  t: j.title,
-  c: j.companyName,
-  l: j.locationRaw ?? "",
-  s: formatSalary(j) ?? "",
-  sr: salaryRank(j, fxRates),
-  p: postedAgo(j.postedAt, generatedAt) ?? "",
-  n: isNewJob(j.postedAt, generatedAt) ? 1 : 0,
-  r: remoteLabel(j.remoteType) ?? "",
-  sl: seniorityLabel(j.seniority) ?? "",
-  sn: j.seniority ?? "",
-  ro: roleType(j),
-  co: j.country ?? "",
-  sk: j.skills,
-}));
+// The full job list ships separately as /jobs-data.json (see lib/jobsPayload)
+// and is fetched by the filter script on first interaction, so index.html
+// stays a constant size as the board grows.
+
+const homeUrl = new URL(`${url("/")}/`, Astro.site).href;
+const jsonLd = [
+  {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    name: "aiengjobs",
+    url: homeUrl,
+    description:
+      "The job board for AI engineers — RAG, agents, evals, inference. Salary-transparent, no ghost jobs.",
+  },
+  {
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    name: "Newest AI engineering jobs",
+    numberOfItems: jobs.length,
+    itemListElement: initialJobs.map((j, i) => ({
+      "@type": "ListItem",
+      position: i + 1,
+      url: new URL(url(`/jobs/${j.slug}/`), Astro.site).href,
+      name: `${j.title} — ${j.companyName}`,
+    })),
+  },
+];
 
 const updated = new Date(generatedAt).toLocaleDateString("en-US", {
   year: "numeric",
@@ -144,7 +144,12 @@ const updated = new Date(generatedAt).toLocaleDateString("en-US", {
     <button class="link-btn" id="clear" hidden>Clear filters</button>
   </div>
 
-  <ul class="jobs" id="jobs">
+  <ul
+    class="jobs"
+    id="jobs"
+    data-src={url("/jobs-data.json")}
+    data-job-base={url("/jobs/")}
+  >
     {initialJobs.map((job) => (
       <JobCard job={job} href={url(`/jobs/${job.slug}/`)} />
     ))}
@@ -157,8 +162,10 @@ const updated = new Date(generatedAt).toLocaleDateString("en-US", {
   </div>
 
   {/* jsonLdScript escapes <, >, & — job titles are untrusted feed content that
-      could otherwise break out of this script element. */}
-  <script type="application/json" id="jobs-data" is:inline set:html={jsonLdScript(jobsData)} />
+      could otherwise break out of these script elements. */}
+  {jsonLd.map((block) => (
+    <script type="application/ld+json" set:html={jsonLdScript(block)} is:inline />
+  ))}
 </Base>
 
 <style>
@@ -167,16 +174,13 @@ const updated = new Date(generatedAt).toLocaleDateString("en-US", {
 
 <script>
   interface JobEntry {
-    u: string; t: string; c: string; l: string; s: string; sr: number;
+    slug: string; t: string; c: string; l: string; s: string; sr: number;
     p: string; n: number; r: string; sl: string; sn: string; ro: string;
     co: string; sk: string[];
     q?: string; // lazily-built lowercase search blob
   }
 
   const INITIAL = 50;
-  const data = JSON.parse(
-    document.getElementById("jobs-data")!.textContent!,
-  ) as JobEntry[];
 
   const q = document.getElementById("q") as HTMLInputElement;
   const role = document.getElementById("role") as HTMLSelectElement;
@@ -191,6 +195,17 @@ const updated = new Date(generatedAt).toLocaleDateString("en-US", {
 
   let showAll = false;
 
+  // The full job list lives in a separate cacheable JSON file (constant-size
+  // index.html); fetch it once, on the first interaction that needs it.
+  const jobBase = jobsEl.dataset.jobBase!;
+  let dataPromise: Promise<JobEntry[]> | null = null;
+  function loadData(): Promise<JobEntry[]> {
+    return (dataPromise ??= fetch(jobsEl.dataset.src!).then((res) => {
+      if (!res.ok) throw new Error(`jobs-data ${res.status}`);
+      return res.json() as Promise<JobEntry[]>;
+    }));
+  }
+
   function searchBlob(j: JobEntry): string {
     return (j.q ??= `${j.t} ${j.c} ${j.sk.join(" ")} ${j.l}`.toLowerCase());
   }
@@ -204,7 +219,7 @@ const updated = new Date(generatedAt).toLocaleDateString("en-US", {
     const li = document.createElement("li");
     const a = document.createElement("a");
     a.className = "job-card";
-    a.href = j.u;
+    a.href = `${jobBase}${j.slug}/`;
 
     const top = document.createElement("div");
     top.className = "top";
@@ -226,7 +241,6 @@ const updated = new Date(generatedAt).toLocaleDateString("en-US", {
 
     const meta = document.createElement("div");
     meta.className = "meta";
-    meta.setAttribute("aria-hidden", "true");
     const badge = (text: string, cls = "badge") => {
       const b = document.createElement("span");
       b.className = cls;
@@ -250,7 +264,22 @@ const updated = new Date(generatedAt).toLocaleDateString("en-US", {
     return li;
   }
 
-  function apply(syncUrl = true) {
+  // Guards against out-of-order renders while the data fetch is in flight
+  // (e.g. the user keeps typing before the first response lands).
+  let applySeq = 0;
+
+  async function apply(syncUrl = true) {
+    const seq = ++applySeq;
+    let data: JobEntry[];
+    try {
+      data = await loadData();
+    } catch {
+      dataPromise = null; // allow a retry on the next interaction
+      statusText.textContent = "Couldn't load the full job list — try again.";
+      return;
+    }
+    if (seq !== applySeq) return; // superseded by a newer interaction
+
     const text = q.value.trim().toLowerCase();
     const rol = role.value;
     const cty = country.value;

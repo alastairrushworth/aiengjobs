@@ -2,6 +2,7 @@
 import type { InferGetStaticPropsType } from "astro";
 import Base from "../layouts/Base.astro";
 import JobCard from "../components/JobCard.astro";
+import BrowseNav from "../components/BrowseNav.astro";
 import { url } from "../lib/url.ts";
 import { jsonLdScript } from "../lib/jsonld.ts";
 import { openJobs } from "../lib/data.ts";
@@ -51,11 +52,13 @@ const others = CLUSTER_PAGES.filter((p) => p.id !== page.id);
     </p>
   )}
 
-  <nav class="browse" style="margin-top:40px" aria-label="Related pages">
-    <span style="color:var(--muted);font-size:.85rem">Browse:</span>
-    {others.map((p) => <a href={url(`/${p.slug}/`)}>{p.label}</a>)}
-    <a href={url(`/salaries/${page.id}/`)}>{page.label} salaries →</a>
-  </nav>
+  <BrowseNav
+    label="Browse:"
+    links={[
+      ...others.map((p) => ({ href: url(`/${p.slug}/`), text: p.label })),
+      { href: url(`/salaries/${page.id}/`), text: `${page.label} salaries →` },
+    ]}
+  />
 
   <script type="application/ld+json" set:html={jsonLdScript(itemList)} is:inline />
 </Base>

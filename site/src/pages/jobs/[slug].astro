@@ -14,10 +14,21 @@ import {
 } from "../../lib/format.ts";
 import { url } from "../../lib/url.ts";
 import { jsonLdScript } from "../../lib/jsonld.ts";
-import { openJobs, closedJobs, companies, generatedAt } from "../../lib/data.ts";
+import { openJobs, closedJobs, companies, generatedAt, fxRates } from "../../lib/data.ts";
 import type { Job } from "@aiengjobs/shared";
 
 export function getStaticPaths() {
+  // Same title + company across several locations (common for multi-office
+  // postings) would otherwise emit identical <title> tags; flag them so the
+  // page can disambiguate with the location.
+  const titleCount = new Map<string, number>();
+  for (const j of [...openJobs, ...closedJobs]) {
+    const k = `${j.title}·${j.companyName}`;
+    titleCount.set(k, (titleCount.get(k) ?? 0) + 1);
+  }
+  const dupTitle = (job: Job) =>
+    (titleCount.get(`${job.title}·${job.companyName}`) ?? 0) > 1;
+
   const related = (job: Job) => {
     const atCompany = openJobs
       .filter((j) => j.companySlug === job.companySlug && j.slug !== job.slug)
@@ -37,21 +48,21 @@ export function getStaticPaths() {
     // Open roles get full, indexable pages.
     ...openJobs.map((job) => ({
       params: { slug: job.slug },
-      props: { job, closed: false, ...related(job) },
+      props: { job, closed: false, dupTitle: dupTitle(job), ...related(job) },
     })),
     // Recently-closed roles keep a noindexed tombstone page instead of 404ing
     // links from search results, newsletters, and shares.
     ...closedJobs.map((job) => ({
       params: { slug: job.slug },
-      props: { job, closed: true, ...related(job) },
+      props: { job, closed: true, dupTitle: dupTitle(job), ...related(job) },
     })),
   ];
 }
 
 type Props = InferGetStaticPropsType<typeof getStaticPaths>;
-const { job, closed, atCompany, similar } = Astro.props as Props;
+const { job, closed, dupTitle, atCompany, similar } = Astro.props as Props;
 
-const salary = formatSalary(job);
+const salary = formatSalary(job, fxRates);
 const role = roleType(job);
 const applyHref = safeUrl(job.applyUrl);
 const posted = postedAgo(job.postedAt, generatedAt);
@@ -63,8 +74,12 @@ const location =
   (job.locationRaw && decodeEntities(job.locationRaw)) ||
   [job.city, country].filter(Boolean).join(", ") ||
   null;
-const facts: { label: string; value: string }[] = [
-  salary && { label: "Salary", value: salary },
+const facts: { label: string; value: string; muted?: boolean }[] = [
+  // Honesty on a salary-transparent board: say so when a range isn't published
+  // rather than silently omitting the row.
+  salary
+    ? { label: "Salary", value: salary }
+    : { label: "Salary", value: "Not published", muted: true },
   location && { label: "Location", value: location },
   remoteLabel(job.remoteType) && {
     label: "Work type",
@@ -76,7 +91,7 @@ const facts: { label: string; value: string }[] = [
   },
   role && role !== "Other" && { label: "Role", value: role },
   posted && { label: "Posted", value: posted },
-].filter(Boolean) as { label: string; value: string }[];
+].filter(Boolean) as { label: string; value: string; muted?: boolean }[];
 
 // Cap the skill wall; the long tail adds noise more than signal.
 const MAX_SKILLS = 16;
@@ -141,7 +156,16 @@ const descriptionHtml = blocks
 const company = companies.find((c) => c.slug === job.companySlug);
 const pageUrl = new URL(url(`/jobs/${job.slug}/`), Astro.site).href;
 
-const jsonLd: Record<string, unknown> | null = closed
+// Google requires a resolvable location: TELECOMMUTE roles need
+// applicantLocationRequirements (we derive it from country), everything else
+// needs a jobLocation. A posting with neither would be a guaranteed Search
+// Console error, so emit no JobPosting at all rather than a half-valid one.
+const hasUsableLocation =
+  job.remoteType === "remote"
+    ? Boolean(job.country)
+    : Boolean(job.city || job.region || job.country);
+
+const jsonLd: Record<string, unknown> | null = closed || !hasUsableLocation
   ? null
   : {
       "@context": "https://schema.org/",
@@ -189,19 +213,31 @@ if (jsonLd) {
       },
     };
   }
-  if (job.salaryMin && salary) {
+  if ((job.salaryMin || job.salaryMax) && salary) {
     jsonLd.baseSalary = {
       "@type": "MonetaryAmount",
       currency: job.salaryCurrency ?? "USD",
       value: {
         "@type": "QuantitativeValue",
-        minValue: job.salaryMin,
+        minValue: job.salaryMin ?? job.salaryMax,
         maxValue: job.salaryMax ?? job.salaryMin,
         unitText: PERIOD_UNIT[job.salaryPeriod ?? "year"] ?? "YEAR",
       },
     };
   }
 }
+
+// Disambiguate the <title> when the same title+company posts in several
+// locations; prefer the short city over the (possibly multi-office) raw string.
+const titleDisambig = job.city ?? country ?? location;
+const pageTitle =
+  dupTitle && titleDisambig
+    ? `${job.title} · ${job.companyName} · ${titleDisambig}`
+    : `${job.title} · ${job.companyName}`;
+
+// Tombstones can outlive their company page (it's only built while the company
+// has open roles) — don't link into a 404.
+const companyPageExists = openJobs.some((j) => j.companySlug === job.companySlug);
 
 const descBits = [
   `${job.title} at ${job.companyName}`,
@@ -213,7 +249,7 @@ const metaDescription = `${descBits.join(" — ")}.`.slice(0, 300);
 ---
 
 <Base
-  title={`${job.title} · ${job.companyName}`}
+  title={pageTitle}
   description={metaDescription}
   noindex={closed}
 >
@@ -227,21 +263,25 @@ const metaDescription = `${descBits.join(" — ")}.`.slice(0, 300);
     )}
     <h1>{job.title}</h1>
     <p class="company">
-      <a href={url(`/companies/${job.companySlug}/`)}>{job.companyName}</a>
+      {companyPageExists ? (
+        <a href={url(`/companies/${job.companySlug}/`)}>{job.companyName}</a>
+      ) : (
+        job.companyName
+      )}
     </p>
     {facts.length > 0 && (
       <dl class="facts">
         {facts.map((f) => (
           <div class="fact">
             <dt>{f.label}</dt>
-            <dd class={f.label === "Salary" ? "salary" : undefined}>{f.value}</dd>
+            <dd class={f.muted ? "muted" : f.label === "Salary" ? "salary" : undefined}>{f.value}</dd>
           </div>
         ))}
       </dl>
     )}
     {!closed && applyHref && (
       <p class="apply-wrap top-apply">
-        <a class="apply" href={applyHref} target="_blank" rel="noopener nofollow">
+        <a class="apply" href={applyHref} target="_blank" rel="noopener noreferrer nofollow">
           Apply on company site <span aria-hidden="true">→</span><span class="sr-only">(opens in new tab)</span>
         </a>
       </p>
@@ -272,7 +312,7 @@ const metaDescription = `${descBits.join(" — ")}.`.slice(0, 300);
     )}
     {!closed && applyHref && blocks.length > 0 && (
       <p class="apply-wrap">
-        <a class="apply" href={applyHref} target="_blank" rel="noopener nofollow">
+        <a class="apply" href={applyHref} target="_blank" rel="noopener noreferrer nofollow">
           Apply on company site <span aria-hidden="true">→</span><span class="sr-only">(opens in new tab)</span>
         </a>
       </p>
@@ -348,6 +388,7 @@ const metaDescription = `${descBits.join(" — ")}.`.slice(0, 300);
   }
   .facts dd { margin: 0; font-size: 0.95rem; font-weight: 600; }
   .facts dd.salary { color: var(--accent-2); }
+  .facts dd.muted { color: var(--muted); font-weight: 500; }
   .job-detail .meta { display: flex; flex-wrap: wrap; gap: 8px; }
   .job-detail .skills { margin-top: 16px; }
   .badge.more { color: var(--muted); }

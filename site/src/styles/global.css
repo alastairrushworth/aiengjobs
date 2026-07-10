@@ -23,6 +23,10 @@
 
 * { box-sizing: border-box; }
 
+/* The UA's [hidden] rule loses to any author `display:` (this bit the
+   show-all button, which sets display: inline-block); make it absolute. */
+[hidden] { display: none !important; }
+
 @media (prefers-reduced-motion: no-preference) {
   html { scroll-behavior: smooth; }
 }
@@ -151,7 +155,7 @@ a { color: inherit; text-decoration: none; }
   color: var(--text);
   padding: 9px 12px;
   border-radius: 8px;
-  font-size: 0.9rem;
+  font-size: 1rem; /* ≥16px — anything smaller makes iOS Safari zoom on focus */
   width: 100%;
 }
 .filters .toggles { display: flex; flex-wrap: wrap; gap: 10px; }
@@ -159,7 +163,6 @@ a { color: inherit; text-decoration: none; }
 
 /* Job list */
 .results-meta { color: var(--muted); font-size: 0.85rem; margin: 6px 2px 14px; }
-.results-meta .link-btn { margin-left: 10px; }
 
 .link-btn {
   background: none;

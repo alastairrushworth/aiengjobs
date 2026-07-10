@@ -34,7 +34,7 @@ const domainHref =
 
 // Distinct stack across this company's roles.
 const stack = [...new Set(jobs.flatMap((j) => j.skills))].slice(0, 14);
-const withSalary = jobs.filter((j) => j.salaryMin).length;
+const withSalary = jobs.filter((j) => j.salaryMin || j.salaryMax).length;
 
 const jsonLd = {
   "@context": "https://schema.org",
@@ -61,7 +61,7 @@ const jsonLd = {
           <a
             href={domainHref}
             target="_blank"
-            rel="noopener nofollow"
+            rel="noopener noreferrer nofollow"
             style="color:var(--accent-text)"
           >{company.domain}<span class="sr-only"> (opens in new tab)</span></a>
         </>

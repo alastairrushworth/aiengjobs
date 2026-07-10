@@ -7,7 +7,7 @@ import {
   remoteLabel,
   seniorityLabel,
 } from "../lib/format.ts";
-import { generatedAt } from "../lib/data.ts";
+import { generatedAt, fxRates } from "../lib/data.ts";
 
 interface Props {
   job: Job;
@@ -15,7 +15,7 @@ interface Props {
 }
 
 const { job, href } = Astro.props;
-const salary = formatSalary(job);
+const salary = formatSalary(job, fxRates);
 const remote = remoteLabel(job.remoteType);
 const sen = seniorityLabel(job.seniority);
 const posted = postedAgo(job.postedAt, generatedAt);
@@ -33,7 +33,7 @@ const isNew = isNewJob(job.postedAt, generatedAt);
       </div>
       {salary && <div class="salary">{salary}</div>}
     </div>
-    <div class="meta" aria-hidden="true">
+    <div class="meta">
       {isNew && <span class="badge new">New</span>}
       {remote && <span class="badge">{remote}</span>}
       {sen && <span class="badge">{sen}</span>}

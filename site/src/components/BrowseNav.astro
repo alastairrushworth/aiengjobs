@@ -1,0 +1,26 @@
+---
+// Cross-link nav for the bottom of listing pages ("Browse:", "More:") and the
+// 404 page — one component instead of four hand-rolled inline-styled copies.
+interface Link {
+  href: string;
+  text: string;
+}
+interface Props {
+  links: Link[];
+  label?: string;
+  ariaLabel?: string;
+  center?: boolean;
+}
+const { links, label, ariaLabel = "Related pages", center = false } = Astro.props;
+---
+
+<nav class:list={["browse", "related-nav", { center }]} aria-label={ariaLabel}>
+  {label && <span class="note">{label}</span>}
+  {links.map((l) => <a href={l.href}>{l.text}</a>)}
+</nav>
+
+<style>
+  .related-nav { margin-top: 40px; }
+  .center { justify-content: center; }
+  .note { color: var(--muted); font-size: 0.85rem; }
+</style>
