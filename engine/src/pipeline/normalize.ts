@@ -1,5 +1,5 @@
 import type { RawPosting } from "../connectors/types.ts";
-import { stripHtml } from "../util/html.ts";
+import { decodeEntities, stripHtml } from "../util/html.ts";
 
 export interface NormalizedJob {
   title: string;
@@ -13,22 +13,27 @@ export interface NormalizedJob {
 }
 
 export function normalize(raw: RawPosting, companySlug: string): NormalizedJob {
-  const normalizedTitle = raw.title
+  // ATS feeds deliver titles/locations with HTML entities ("&amp;", "&#8211;");
+  // decode once here so every downstream consumer (site cards, JSON-LD, meta
+  // tags) gets clean text. stripHtml already decodes descriptions.
+  const title = decodeEntities(raw.title);
+  const locationRaw = raw.locationRaw ? decodeEntities(raw.locationRaw) : undefined;
+  const normalizedTitle = title
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, " ")
     .trim();
   const descriptionText =
     raw.descriptionText ??
     (raw.descriptionHtml ? stripHtml(raw.descriptionHtml) : undefined);
-  const dedupKey = `${companySlug}|${normalizedTitle}|${(raw.locationRaw ?? "").toLowerCase()}`;
+  const dedupKey = `${companySlug}|${normalizedTitle}|${(locationRaw ?? "").toLowerCase()}`;
 
   return {
-    title: raw.title,
+    title,
     normalizedTitle,
     applyUrl: raw.applyUrl,
     descriptionHtml: raw.descriptionHtml,
     descriptionText,
-    locationRaw: raw.locationRaw,
+    locationRaw,
     dedupKey,
   };
 }
