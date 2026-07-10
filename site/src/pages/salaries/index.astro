@@ -1,5 +1,6 @@
 ---
 import Base from "../../layouts/Base.astro";
+import BrowseNav from "../../components/BrowseNav.astro";
 import { url } from "../../lib/url.ts";
 import { kUsd, median, salaryMidpointUsd } from "../../lib/format.ts";
 import { openJobs, fxRates } from "../../lib/data.ts";
@@ -48,9 +49,11 @@ const allMids = openJobs
     ))}
   </ul>
 
-  <nav class="browse" style="margin-top:40px" aria-label="Related pages">
-    <span style="color:var(--muted);font-size:.85rem">More:</span>
-    <a href={url("/")}>All jobs</a>
-    <a href={url("/stats/")}>Market stats</a>
-  </nav>
+  <BrowseNav
+    label="More:"
+    links={[
+      { href: url("/"), text: "All jobs" },
+      { href: url("/stats/"), text: "Market stats" },
+    ]}
+  />
 </Base>

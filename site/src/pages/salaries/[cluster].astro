@@ -2,6 +2,7 @@
 import type { InferGetStaticPropsType } from "astro";
 import Base from "../../layouts/Base.astro";
 import JobCard from "../../components/JobCard.astro";
+import BrowseNav from "../../components/BrowseNav.astro";
 import { url } from "../../lib/url.ts";
 import { kUsd, median, percentile, salaryMidpointUsd } from "../../lib/format.ts";
 import { jsonLdScript } from "../../lib/jsonld.ts";
@@ -42,14 +43,18 @@ const stats =
 const roleNoun = page.label.replace(/ \/.*/, "");
 const canonical = new URL(url(`/salaries/${page.id}/`), Astro.site).href;
 
-// The country most of this cluster's priced roles are in — used for the
-// Occupation markup's required occupationLocation.
+// The countries this cluster's priced roles are actually in — the salary
+// distribution is computed across all of them, so the Occupation markup's
+// occupationLocation should reflect that, not just the single modal country.
 const countryTally = new Map<string, number>();
 for (const { job } of salaried) {
   if (job.country) countryTally.set(job.country, (countryTally.get(job.country) ?? 0) + 1);
 }
-const topCountry =
-  [...countryTally.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? "US";
+const topCountries = [...countryTally.entries()]
+  .sort((a, b) => b[1] - a[1])
+  .slice(0, 3)
+  .map(([code]) => code);
+if (topCountries.length === 0) topCountries.push("US");
 
 const jsonLd = stats
   ? {
@@ -61,9 +66,10 @@ const jsonLd = stats
         "@id": canonical,
         lastReviewed: generatedAt.slice(0, 10),
       },
-      occupationLocation: [
-        { "@type": "Country", name: countryName(topCountry) ?? topCountry },
-      ],
+      occupationLocation: topCountries.map((code) => ({
+        "@type": "Country",
+        name: countryName(code) ?? code,
+      })),
       estimatedSalary: {
         "@type": "MonetaryAmountDistribution",
         name: "base",
@@ -115,13 +121,16 @@ const jsonLd = stats
     </p>
   )}
 
-  <nav class="browse" style="margin-top:40px" aria-label="Related pages">
-    <span style="color:var(--muted);font-size:.85rem">More:</span>
-    <a href={url(`/${page.slug}/`)}>All {page.label} jobs →</a>
-    {CLUSTER_PAGES.filter((p) => p.id !== page.id).map((p) => (
-      <a href={url(`/salaries/${p.id}/`)}>{p.label} pay</a>
-    ))}
-  </nav>
+  <BrowseNav
+    label="More:"
+    links={[
+      { href: url(`/${page.slug}/`), text: `All ${page.label} jobs →` },
+      ...CLUSTER_PAGES.filter((p) => p.id !== page.id).map((p) => ({
+        href: url(`/salaries/${p.id}/`),
+        text: `${p.label} pay`,
+      })),
+    ]}
+  />
 
   {jsonLd && <script type="application/ld+json" set:html={jsonLdScript(jsonLd)} is:inline />}
 </Base>

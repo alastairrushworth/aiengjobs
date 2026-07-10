@@ -39,10 +39,13 @@ function annualUsd(job: SalaryFields, fxRates?: Record<string, number>): number 
   return base * perYear * fx;
 }
 
-export function formatSalary(job: SalaryFields): string | null {
+export function formatSalary(
+  job: SalaryFields,
+  fxRates?: Record<string, number>,
+): string | null {
   const { salaryMin, salaryMax, salaryCurrency, salaryPeriod } = job;
   if (!salaryMin && !salaryMax) return null;
-  const annual = annualUsd(job);
+  const annual = annualUsd(job, fxRates);
   if (annual < SALARY_FLOOR_USD || annual > SALARY_CEILING_USD) return null; // implausible parse — hide
 
   const cur = salaryCurrency ?? "USD";
