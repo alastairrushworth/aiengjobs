@@ -39,6 +39,9 @@ export const OUT_TITLE_PATTERNS: RegExp[] = [
   /\baccount executive\b/i,
   /\bproduct manager\b/i,
   /\boutcomes manager\b/i,
+  // Catch-all postings, not a specific engineering role.
+  /\b(open|spontaneous|general) application\b/i,
+  /\btalent (pool|community|network)\b/i,
 ];
 
 // --- LLM configuration ------------------------------------------------------
@@ -46,8 +49,10 @@ export const OUT_TITLE_PATTERNS: RegExp[] = [
 export const LLM_MODEL = process.env.OPENAI_MODEL ?? "gpt-5.4-nano";
 export const OPENAI_API_KEY = process.env.OPENAI_API_KEY ?? "";
 
-// Confidence below this routes a job to the manual review queue rather than auto-listing.
-export const REVIEW_CONFIDENCE_THRESHOLD = 0.6;
+// An ambiguous-title job is decided solely by the LLM; an "in" below this floor
+// is classified OUT rather than listed. Low-confidence INs were letting junk
+// through ("Open Application", rotation programs, generic SWE at 0.55–0.65).
+export const LLM_IN_CONFIDENCE_FLOOR = 0.7;
 
 // A heuristic IN title is only overturned when the LLM is at least this sure the
 // role is OUT. Set conservatively so a stray LLM "out" can't suppress a clear

@@ -8,6 +8,8 @@
     "seed": "tsx src/cli.ts seed",
     "ingest": "tsx src/cli.ts ingest",
     "export": "tsx src/cli.ts export",
+    "retag": "tsx src/cli.ts retag",
+    "reclassify": "tsx src/cli.ts reclassify",
     "refresh": "tsx src/cli.ts refresh",
     "typecheck": "tsc --noEmit"
   },

@@ -45,12 +45,15 @@ export const CLUSTERS: SkillCluster[] = [
   {
     id: "evals",
     label: "Evals & quality",
-    skills: ["Eval harnesses", "LLM-as-judge", "LangSmith", "Arize", "Observability"],
+    // No "Observability": it matches Datadog-style infra monitoring in any
+    // backend JD and was facet-listing generic jobs under evals.
+    skills: ["Eval harnesses", "LLM-as-judge", "LangSmith", "Arize"],
   },
   {
     id: "inference",
     label: "Inference / serving",
-    skills: ["GPU", "Triton", "TensorRT", "Quantization", "Latency", "Throughput"],
+    // No "Latency"/"Throughput": every backend/API posting mentions them.
+    skills: ["GPU", "Triton", "TensorRT", "Quantization"],
   },
   {
     id: "finetuning",

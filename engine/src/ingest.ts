@@ -16,7 +16,7 @@ import { parseLocation } from "./pipeline/location.ts";
 import { extractListing, type ExtractResult } from "./pipeline/extract.ts";
 import { contentHash } from "./pipeline/hash.ts";
 import { llmEnabled } from "./pipeline/llm.ts";
-import { LLM_VETO_CONFIDENCE } from "./config.ts";
+import { LLM_IN_CONFIDENCE_FLOOR, LLM_VETO_CONFIDENCE } from "./config.ts";
 import { jobId, jobSlug } from "./util/id.ts";
 import { mapPool } from "./util/concurrency.ts";
 
@@ -112,10 +112,15 @@ export async function ingest(): Promise<void> {
                 ? { classification: "out", confidence: ex.confidence, via: "llm" }
                 : heuristicClass;
           } else {
-            // Ambiguous title → the LLM decides outright.
+            // Ambiguous title → the LLM decides outright, but an IN must clear
+            // the confidence floor: below it the posting is excluded to keep
+            // the board credible (spec: no borderline listings).
             cls = ex
               ? {
-                  classification: ex.inScope ? "in" : "out",
+                  classification:
+                    ex.inScope && ex.confidence >= LLM_IN_CONFIDENCE_FLOOR
+                      ? "in"
+                      : "out",
                   confidence: ex.confidence,
                   via: "llm",
                 }
