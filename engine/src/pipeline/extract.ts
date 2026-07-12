@@ -57,7 +57,7 @@ const SCHEMA = {
     confidence: { type: "number", description: "0..1 confidence in inScope." },
     skills: {
       type: "array",
-      description: "AI-engineering skills/technologies explicitly present, from the allowed list only.",
+      description: "Skills/technologies from the allowed list whose name is explicitly written in the posting text. Omit anything not literally mentioned — never infer a skill from the kind of role, and never pad the list.",
       items: { type: "string", enum: ALL_SKILLS },
     },
     seniority: {
@@ -103,6 +103,8 @@ const SYSTEM =
   "OUT of scope: data analyst/BI and data scientists doing analytics/reporting; sales/marketing/PM; " +
   "non-IC people-management or leadership roles (manager, director, head of, VP) unless the work is primarily hands-on building AI systems; " +
   "generic software/infra roles not building AI models or systems (internal tooling, platform, frontend, generic SWE) even at an AI company, including those with only a token \"AI a plus\"; " +
+  "roles that merely consume or integrate models built by another team — e.g. backend services that \"apply\", \"integrate with\", or \"call\" ML/statistical models owned by a data-science team — unless the role itself trains, fine-tunes, evaluates, serves, or builds LLM/agent systems; " +
+  "catch-all postings that are not a specific engineering role (open/spontaneous applications, talent pools, rotation programs); " +
   "and non-engineering AI-tool-user roles. " +
   "Extract salary ONLY when the posting explicitly states figures — never invent or estimate a range. " +
   "Country must be an ISO 3166-1 alpha-2 code: infer it from ANY city, state, or region mentioned " +
