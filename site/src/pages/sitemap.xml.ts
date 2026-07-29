@@ -1,5 +1,5 @@
 import type { APIRoute } from "astro";
-import { CLUSTER_PAGES } from "../lib/clusters.ts";
+import { CLUSTER_PAGES, CLUSTER_PAGE_SIZE } from "../lib/clusters.ts";
 import { url } from "../lib/url.ts";
 import { openJobs, generatedAt } from "../lib/data.ts";
 
@@ -18,7 +18,14 @@ export const GET: APIRoute = ({ site }) => {
     { loc: abs("/salaries"), lastmod: day(generatedAt) },
   ];
   for (const p of CLUSTER_PAGES) {
+    // Cluster pages are paginated; list every slice so the roles past page 1
+    // stay discoverable (see pages/[topic]/[...page].astro).
+    const count = openJobs.filter((j) => j.clusters.includes(p.id)).length;
+    const lastPage = Math.max(1, Math.ceil(count / CLUSTER_PAGE_SIZE));
     entries.push({ loc: abs(`/${p.slug}`), lastmod: day(generatedAt) });
+    for (let n = 2; n <= lastPage; n++) {
+      entries.push({ loc: abs(`/${p.slug}/${n}`), lastmod: day(generatedAt) });
+    }
     entries.push({ loc: abs(`/salaries/${p.id}`), lastmod: day(generatedAt) });
   }
   for (const slug of new Set(openJobs.map((j) => j.companySlug))) {

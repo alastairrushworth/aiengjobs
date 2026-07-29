@@ -1,5 +1,9 @@
 import type { ClusterId } from "@aiengjobs/shared/taxonomy";
 
+/** Roles per cluster-page slice. Shared by [topic]/[...page].astro and the
+ *  sitemap so the two can't disagree about how many pages exist. */
+export const CLUSTER_PAGE_SIZE = 100;
+
 export interface ClusterPage {
   id: ClusterId;
   /** URL slug for the programmatic page, e.g. "rag-engineer-jobs" → /rag-engineer-jobs */
