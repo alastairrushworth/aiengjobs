@@ -1,0 +1,119 @@
+---
+import type { LandingStats } from "../lib/landingStats.ts";
+import { kUsd } from "../lib/format.ts";
+import { url } from "../lib/url.ts";
+
+interface Props {
+  stats: LandingStats;
+  /** Noun phrase for the copy, e.g. "London, United Kingdom" or "AI Agents". */
+  where: string;
+}
+
+const { stats, where } = Astro.props;
+
+const pct = (n: number) => Math.round((n / Math.max(stats.total, 1)) * 100);
+
+// Only the tiles we can actually fill — an empty "Median salary" box on a page
+// where nobody publishes ranges is worse than not showing the tile.
+const tiles: { label: string; value: string; note?: string }[] = [
+  { label: "Open roles", value: String(stats.total) },
+  stats.medianUsd !== null && {
+    label: "Median salary",
+    value: kUsd(stats.medianUsd),
+    note: `${pct(stats.pricedCount)}% publish a range`,
+  },
+  stats.remote > 0 && {
+    label: "Remote",
+    value: `${pct(stats.remote)}%`,
+    note: `${stats.hybrid > 0 ? `${pct(stats.hybrid)}% hybrid` : ""}`,
+  },
+  stats.topSkills.length > 0 && {
+    label: "Top skill",
+    value: stats.topSkills[0]!.name,
+    note: `in ${pct(stats.topSkills[0]!.count)}% of roles`,
+  },
+].filter(Boolean) as { label: string; value: string; note?: string }[];
+---
+
+<section class="landing-stats" aria-label={`Hiring snapshot for ${where}`}>
+  <dl class="tiles">
+    {tiles.map((t) => (
+      <div class="tile">
+        <dt>{t.label}</dt>
+        <dd>{t.value}</dd>
+        {t.note && <p class="note">{t.note}</p>}
+      </div>
+    ))}
+  </dl>
+
+  {stats.topCompanies.length > 0 && (
+    <p class="line">
+      <span class="lead">Hiring most:</span>
+      {stats.topCompanies.map((c, i) => (
+        <>
+          {i > 0 && <span class="sep">·</span>}
+          {c.slug ? (
+            <a href={url(`/companies/${c.slug}/`)}>{c.name}</a>
+          ) : (
+            <span>{c.name}</span>
+          )}
+          <span class="n">{c.count}</span>
+        </>
+      ))}
+    </p>
+  )}
+
+  {stats.topSkills.length > 1 && (
+    <p class="line">
+      <span class="lead">Common stack:</span>
+      {stats.topSkills.map((s, i) => (
+        <>
+          {i > 0 && <span class="sep">·</span>}
+          <span>{s.name}</span>
+          <span class="n">{s.count}</span>
+        </>
+      ))}
+    </p>
+  )}
+</section>
+
+<style>
+  .landing-stats { margin: 20px 0 8px; }
+  .tiles {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1px;
+    margin: 0 0 16px;
+    background: var(--border);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+  .tile { background: var(--surface); padding: 12px 14px; }
+  .tile dt {
+    color: var(--muted);
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-bottom: 4px;
+  }
+  .tile dd {
+    margin: 0;
+    font-size: 1.15rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    overflow-wrap: anywhere;
+  }
+  .tile .note { margin: 2px 0 0; color: var(--muted); font-size: 0.75rem; }
+  .line {
+    margin: 0 0 8px;
+    font-size: 0.9rem;
+    line-height: 1.9;
+    color: var(--text);
+  }
+  .line .lead { color: var(--muted); margin-right: 6px; }
+  .line .sep { color: var(--border-strong); margin: 0 6px; }
+  .line .n { color: var(--muted); font-size: 0.78rem; margin-left: 3px; }
+  .line a { color: var(--accent-text); }
+  .line a:hover { text-decoration: underline; }
+</style>

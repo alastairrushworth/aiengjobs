@@ -43,6 +43,15 @@ const stats =
 const roleNoun = page.label.replace(/ \/.*/, "");
 const canonical = new URL(url(`/salaries/${page.id}/`), Astro.site).href;
 
+// The distribution above is the content here; the listing is supporting
+// evidence, so show the best-paid slice rather than all 470+ cards (which made
+// this a 290KB page). Capped, not paginated — paginating would spawn near-
+// duplicate pages sharing one stats block. Every role stays reachable via the
+// cluster page, its company page and the sitemap.
+const MAX_LISTED = 100;
+const listed = salaried.slice(0, MAX_LISTED);
+const unlisted = salaried.length - listed.length;
+
 // The countries this cluster's priced roles are actually in — the salary
 // distribution is computed across all of them, so the Occupation markup's
 // occupationLocation should reflect that, not just the single modal country.
@@ -108,12 +117,23 @@ const jsonLd = stats
         <div><span class="num">{stats.count}</span><span class="lbl">data points</span></div>
       </div>
 
-      <h2 style="margin-top:28px;font-size:1.1rem">Roles with published pay</h2>
+      <h2 style="margin-top:28px;font-size:1.1rem">
+        {unlisted > 0
+          ? `Top ${listed.length} best-paid roles with published pay`
+          : "Roles with published pay"}
+      </h2>
       <ul class="jobs">
-        {salaried.map(({ job }) => (
+        {listed.map(({ job }) => (
           <JobCard job={job} href={url(`/jobs/${job.slug}/`)} />
         ))}
       </ul>
+      {unlisted > 0 && (
+        <p style="text-align:center;padding:20px 0">
+          <a class="back" href={url(`/${page.slug}/`)}>
+            + {unlisted} more {page.label} role{unlisted === 1 ? "" : "s"} with published pay →
+          </a>
+        </p>
+      )}
     </>
   ) : (
     <p style="text-align:center;color:var(--muted);padding:32px 0">

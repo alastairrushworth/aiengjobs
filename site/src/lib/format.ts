@@ -17,7 +17,7 @@ export function safeUrl(u?: string | null): string | null {
   return /^https?:\/\//i.test(t) ? t : null;
 }
 
-type SalaryFields = Pick<
+export type SalaryFields = Pick<
   Job,
   "salaryMin" | "salaryMax" | "salaryCurrency" | "salaryPeriod"
 >;
@@ -30,13 +30,20 @@ const PERIOD_TO_YEAR: Record<string, number> = {
 const SALARY_FLOOR_USD = 10_000;
 const SALARY_CEILING_USD = 2_000_000;
 
-function annualUsd(job: SalaryFields, fxRates?: Record<string, number>): number {
-  const base = job.salaryMax ?? job.salaryMin;
-  if (!base) return 0;
-  const cur = (job.salaryCurrency ?? "USD").toUpperCase();
-  const fx = fxRates?.[cur] ?? FX_FALLBACK_TO_USD[cur] ?? 1;
-  const perYear = PERIOD_TO_YEAR[job.salaryPeriod ?? "year"] ?? 1;
-  return base * perYear * fx;
+/**
+ * Currency → USD multiplier, preferring the snapshot's live rates and falling
+ * back to the static table. Returns null when we have no rate for the currency:
+ * silently assuming 1:1 inflates a CZK/BRL/JPY range by 5–150×, which then tops
+ * the "highest salary" sort and drags the salary-page percentiles up with it.
+ * An unconvertible salary is treated as unpriced, never as a huge one.
+ */
+function fxToUsd(
+  currency: string | undefined,
+  fxRates?: Record<string, number>,
+): number | null {
+  const cur = (currency ?? "USD").toUpperCase();
+  if (cur === "USD") return 1;
+  return fxRates?.[cur] ?? FX_FALLBACK_TO_USD[cur] ?? null;
 }
 
 export function formatSalary(
@@ -44,9 +51,9 @@ export function formatSalary(
   fxRates?: Record<string, number>,
 ): string | null {
   const { salaryMin, salaryMax, salaryCurrency, salaryPeriod } = job;
-  if (!salaryMin && !salaryMax) return null;
-  const annual = annualUsd(job, fxRates);
-  if (annual < SALARY_FLOOR_USD || annual > SALARY_CEILING_USD) return null; // implausible parse — hide
+  // One gate for everything: if the role isn't priced for comparison, it isn't
+  // priced for display either (see salaryMidpointUsd).
+  if (salaryMidpointUsd(job, fxRates) === null) return null;
 
   const cur = salaryCurrency ?? "USD";
   const sym = cur === "USD" ? "$" : cur === "GBP" ? "£" : cur === "EUR" ? "€" : `${cur} `;
@@ -60,20 +67,24 @@ export function formatSalary(
   return `${sym}${range}${per}`;
 }
 
-// Salary sort key: highest annual pay first; implausible parses and no-salary
-// roles sink to the bottom (0).
+// Salary sort key: highest annual pay first; unpriced, unconvertible and
+// implausible roles sink to the bottom (0).
 export function salaryRank(job: SalaryFields, fxRates?: Record<string, number>): number {
-  const annual = annualUsd(job, fxRates);
-  return annual < SALARY_FLOOR_USD || annual > SALARY_CEILING_USD ? 0 : annual;
+  return salaryMidpointUsd(job, fxRates) ?? 0;
 }
 
 /**
  * Annualized USD *midpoint* of a pay range (mean of min & max, or the lone bound
- * when only one is given). Returns null when there's no usable salary or the
- * figure looks like a parse error. The single comparator for all like-for-like
- * pay comparisons (stats + salary pages) — hence midpoint rather than
- * top-of-range. Pass `fxRates` (the snapshot's live rates) to convert local
- * currencies; falls back to the shared static table when a rate is missing.
+ * when only one is given). Returns null when there's no usable salary, no FX
+ * rate for its currency, or the figure looks like a parse error. Pass `fxRates`
+ * (the snapshot's live rates) to convert local currencies; falls back to the
+ * shared static table when a rate is missing.
+ *
+ * This is the single gate for every pay decision on the site — display, sorting
+ * and the salary/stats aggregates all derive from it, so a role is either priced
+ * everywhere or nowhere. It used to be three separate checks, two of which gated
+ * on the *top* of the range: a role could then be selected onto "Roles with
+ * published pay" (and sorted to the top of it) while its card showed no pay.
  */
 export function salaryMidpointUsd(
   job: SalaryFields,
@@ -81,10 +92,10 @@ export function salaryMidpointUsd(
 ): number | null {
   const { salaryMin, salaryMax } = job;
   if (!salaryMin && !salaryMax) return null;
+  const fx = fxToUsd(job.salaryCurrency, fxRates);
+  if (fx === null) return null; // unknown currency — unpriced, not 1:1 with USD
   const lo = salaryMin ?? salaryMax!;
   const hi = salaryMax ?? salaryMin!;
-  const cur = (job.salaryCurrency ?? "USD").toUpperCase();
-  const fx = fxRates?.[cur] ?? FX_FALLBACK_TO_USD[cur] ?? 1;
   const perYear = PERIOD_TO_YEAR[job.salaryPeriod ?? "year"] ?? 1;
   const annual = ((lo + hi) / 2) * perYear * fx;
   if (annual < SALARY_FLOOR_USD || annual > SALARY_CEILING_USD) return null;

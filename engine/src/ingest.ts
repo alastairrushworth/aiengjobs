@@ -17,6 +17,7 @@ import { extractListing, type ExtractResult } from "./pipeline/extract.ts";
 import { contentHash } from "./pipeline/hash.ts";
 import { llmEnabled } from "./pipeline/llm.ts";
 import { LLM_IN_CONFIDENCE_FLOOR, LLM_VETO_CONFIDENCE } from "./config.ts";
+import { canonicalCity } from "@aiengjobs/shared/city";
 import { jobId, jobSlug } from "./util/id.ts";
 import { mapPool } from "./util/concurrency.ts";
 
@@ -149,7 +150,10 @@ export async function ingest(): Promise<void> {
           applyUrl: raw.applyUrl,
           locationRaw: raw.locationRaw,
           country: loc.country ?? ex?.country ?? undefined,
-          city: loc.city ?? ex?.city ?? undefined,
+          // The LLM's city has to go through the same gate as the parsed one —
+          // it happily returns "null", "Headquarters" or "Bay Area", and this
+          // field is published as addressLocality in the JobPosting markup.
+          city: loc.city ?? canonicalCity(ex?.city) ?? undefined,
           remoteType: loc.remoteType ?? ex?.remoteType ?? undefined,
           seniority: inferSeniority(raw.title) ?? ex?.seniority ?? undefined,
           salaryMin: raw.salaryMin ?? ex?.salaryMin ?? undefined,

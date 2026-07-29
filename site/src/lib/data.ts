@@ -1,5 +1,6 @@
 import snapshot from "../data/snapshot.json";
 import type { SiteSnapshot, Job } from "@aiengjobs/shared";
+import { canonicalCity } from "@aiengjobs/shared/city";
 
 // The single place the untyped snapshot JSON crosses into typed code, with a
 // cheap shape assertion so a malformed nightly export fails the build loudly
@@ -34,10 +35,42 @@ export const companies = data.companies;
 
 const postedTs = (j: Job): number => (j.postedAt ? Date.parse(j.postedAt) || 0 : 0);
 
+// The snapshot is produced by whatever engine version last ran on the droplet,
+// so the site canonicalizes city names on read rather than trusting the file.
+// Without this the site is one nightly export behind its own rules — enough to
+// split /ai-jobs-bangalore from /ai-jobs-bengaluru and to publish a junk
+// addressLocality in the JobPosting markup. canonicalCity is idempotent, so a
+// snapshot that's already clean passes through untouched.
+const withCanonicalCity = (j: Job): Job => {
+  const city = canonicalCity(j.city);
+  return city === j.city ? j : { ...j, city };
+};
+
 /** Open roles, newest first (roles without a posted date sink to the bottom). */
 export const openJobs: Job[] = data.jobs
   .filter((j) => !j.isClosed)
+  .map(withCanonicalCity)
   .sort((a, b) => postedTs(b) - postedTs(a));
 
 /** Recently-closed roles — rendered as noindexed tombstone pages, not listed. */
-export const closedJobs: Job[] = data.jobs.filter((j) => j.isClosed);
+export const closedJobs: Job[] = data.jobs.filter((j) => j.isClosed).map(withCanonicalCity);
+
+// Employers routinely open several ATS requisitions for one role at one site
+// (6x "Forward Deployed Engineer · Workato · Hyderabad" today). Each is a
+// distinct posting with its own apply URL, but they render byte-identical
+// pages, so we nominate the newest as canonical. The rest stay live and
+// applicable — they just point their canonical at it, skip the JobPosting
+// markup and stay out of the sitemap, so Google consolidates them deliberately
+// instead of picking one arbitrarily and calling the others duplicate content.
+const dupKey = (j: Job) => [j.title, j.companySlug, j.locationRaw ?? ""].join(" ");
+const canonicalByKey = new Map<string, string>();
+for (const j of openJobs) {
+  // openJobs is newest-first, so the first slug seen for a key is the newest.
+  if (!canonicalByKey.has(dupKey(j))) canonicalByKey.set(dupKey(j), j.slug);
+}
+
+/** The slug of the posting this one duplicates, or null when it's canonical. */
+export function duplicateOf(job: Job): string | null {
+  const canonical = canonicalByKey.get(dupKey(job));
+  return canonical && canonical !== job.slug ? canonical : null;
+}
