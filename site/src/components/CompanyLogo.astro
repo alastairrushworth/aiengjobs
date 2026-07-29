@@ -1,6 +1,6 @@
 ---
 import { url } from "../lib/url.ts";
-import { logoFile } from "../lib/logos.ts";
+import { logo } from "../lib/logos.ts";
 
 interface Props {
   name: string;
@@ -9,7 +9,7 @@ interface Props {
   size?: number;
 }
 const { name, slug, size = 44 } = Astro.props;
-const file = logoFile(slug);
+const entry = logo(slug);
 
 // Decorative: the company name is always rendered next to this, so alt text
 // would just make a screen reader say it twice.
@@ -17,10 +17,10 @@ const initial = name.trim().slice(0, 1).toUpperCase() || "?";
 ---
 
 {
-  file ? (
+  entry ? (
     <img
       class="company-logo"
-      src={url(`/logos/${file}`)}
+      src={url(`/logos/${entry.file}`)}
       alt=""
       width={size}
       height={size}

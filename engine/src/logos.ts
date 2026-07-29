@@ -31,10 +31,13 @@ const here = dirname(fileURLToPath(import.meta.url));
 const REPO = join(here, "..", "..");
 const SNAPSHOT = join(REPO, "site", "src", "data", "snapshot.json");
 const OUT_DIR = join(REPO, "site", "public", "logos");
+const MANIFEST = join(REPO, "site", "src", "data", "logos.json");
 const CONCURRENCY = Number(process.env.LOGO_CONCURRENCY ?? 8);
-// Google wants a logo it can actually render; below this it's a browser-tab
-// favicon, not a brand mark.
-const MIN_PX = 64;
+// Plenty of sites top out at a 48px .ico — that's still a real brand mark and
+// renders 1:1 in the ~44px slot the site gives it, so take it. Whether it's
+// good enough to *claim* in structured data is a separate call the site makes
+// from the recorded dimensions (see LOGO_MARKUP_MIN_PX in site/src/lib/logos).
+const MIN_PX = 48;
 const MAX_BYTES = 300_000;
 
 interface Probe {
@@ -228,6 +231,17 @@ export interface LogoResult {
   slug: string;
   status: "written" | "skipped" | "failed";
   detail: string;
+  file?: string;
+  width?: number;
+  height?: number;
+}
+
+function existingManifest(): Record<string, { file: string; w: number; h: number }> {
+  try {
+    return JSON.parse(readFileSync(MANIFEST, "utf8"));
+  } catch {
+    return {};
+  }
 }
 
 export async function fetchLogos(opts: { force?: boolean } = {}): Promise<void> {
@@ -258,11 +272,21 @@ export async function fetchLogos(opts: { force?: boolean } = {}): Promise<void> 
     const base = new URL(`https://${company.domain}/`);
     let html = "";
     try {
-      const res = await fetchRetry(
+      // A few apexes refuse us but the www host answers fine.
+      let res = await fetchRetry(
         base.href,
         { redirect: "follow" },
         { attempts: 2, timeoutMs: 15_000 },
-      );
+      ).catch(() => null);
+      if (!res?.ok && !company.domain!.startsWith("www.")) {
+        res =
+          (await fetchRetry(
+            `https://www.${company.domain}/`,
+            { redirect: "follow" },
+            { attempts: 1, timeoutMs: 12_000 },
+          ).catch(() => null)) ?? res;
+      }
+      if (!res) throw new Error("unreachable");
       // Resolve icon hrefs against the *final* URL — plenty of these redirect
       // to a www or regional host, and a relative href follows the redirect.
       if (res.ok) {
@@ -293,14 +317,37 @@ export async function fetchLogos(opts: { force?: boolean } = {}): Promise<void> 
         slug,
         status: "written",
         detail: `${got.probe.width}x${got.probe.height} ${got.probe.ext} ${Math.round(got.buf.length / 1024)}KB`,
+        file: `${slug}.${got.probe.ext}`,
+        width: got.probe.width,
+        height: got.probe.height,
       };
     }
     return { slug, status: "failed", detail: `no usable icon at ${company.domain}` };
   });
 
   const by = (s: LogoResult["status"]) => results.filter((r) => r.status === s);
+
+  // Manifest, so the site doesn't have to re-open every image at build time to
+  // learn its size — and so it can decide separately whether a logo is big
+  // enough to claim in structured data. Rebuilt from the directory, not just
+  // this run's results, so a skipped (already-stored) logo survives.
+  const manifest: Record<string, { file: string; w: number; h: number }> = {};
+  for (const r of results) {
+    if (r.file && r.width && r.height) manifest[r.slug] = { file: r.file, w: r.width, h: r.height };
+  }
+  const prior = existingManifest();
+  for (const [slug, entry] of Object.entries(prior)) {
+    if (!manifest[slug] && readdirSync(OUT_DIR).includes(entry.file)) manifest[slug] = entry;
+  }
+  writeFileSync(
+    MANIFEST,
+    `${JSON.stringify(Object.fromEntries(Object.entries(manifest).sort()), null, 1)}\n`,
+    "utf8",
+  );
+
   console.log(
-    `\nwritten ${by("written").length}  skipped ${by("skipped").length}  failed ${by("failed").length}`,
+    `\nwritten ${by("written").length}  skipped ${by("skipped").length}  failed ${by("failed").length}` +
+      `  -> ${Object.keys(manifest).length} in logos.json`,
   );
   for (const r of by("failed")) console.log(`  no logo: ${r.slug} — ${r.detail}`);
 }
