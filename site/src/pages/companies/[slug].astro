@@ -2,6 +2,8 @@
 import type { InferGetStaticPropsType } from "astro";
 import Base from "../../layouts/Base.astro";
 import JobCard from "../../components/JobCard.astro";
+import BrowseNav from "../../components/BrowseNav.astro";
+import { CLUSTER_PAGES } from "../../lib/clusters.ts";
 import { url } from "../../lib/url.ts";
 import { jsonLdScript } from "../../lib/jsonld.ts";
 import { openJobs, companies } from "../../lib/data.ts";
@@ -78,6 +80,14 @@ const jsonLd = {
   <ul class="jobs">
     {jobs.map((job) => <JobCard job={job} href={url(`/jobs/${job.slug}/`)} />)}
   </ul>
+
+  <BrowseNav
+    label="Browse:"
+    links={[
+      ...CLUSTER_PAGES.map((p) => ({ href: url(`/${p.slug}/`), text: p.label })),
+      { href: url("/salaries/"), text: "Salaries" },
+    ]}
+  />
 
   <script type="application/ld+json" set:html={jsonLdScript(jsonLd)} is:inline />
 </Base>

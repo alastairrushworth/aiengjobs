@@ -49,7 +49,13 @@ const seniorities = SENIORITY_OPTIONS.map((s) => ({
 // and is fetched by the filter script on first interaction, so index.html
 // stays a constant size as the board grows.
 
-const homeUrl = new URL(`${url("/")}/`, Astro.site).href;
+// Matches the canonical Base.astro emits: the trailing-slash form GitHub Pages
+// serves. Not `${url("/")}/` — url("/") returns the base without its trailing
+// slash ("/aiengjobs"), so appending one works today but yields "//" once base
+// drops to "/" for the custom domain astro.config.mjs anticipates, and
+// new URL("//", site) throws.
+const homePath = url("/");
+const homeUrl = new URL(homePath.endsWith("/") ? homePath : `${homePath}/`, Astro.site).href;
 const jsonLd = [
   {
     "@context": "https://schema.org",
@@ -63,7 +69,9 @@ const jsonLd = [
     "@context": "https://schema.org",
     "@type": "ItemList",
     name: "Newest AI engineering jobs",
-    numberOfItems: jobs.length,
+    // The count has to match the list actually emitted, not the whole board —
+    // only the newest INITIAL cards are server-rendered here.
+    numberOfItems: initialJobs.length,
     itemListElement: initialJobs.map((j, i) => ({
       "@type": "ListItem",
       position: i + 1,
@@ -166,7 +174,9 @@ const updated = new Date(generatedAt).toLocaleDateString("en-US", {
       <JobCard job={job} href={url(`/jobs/${job.slug}/`)} />
     ))}
   </ul>
-  <p class="empty" id="empty" role="status">
+  {/* No role="status" here: the results line above is already a live region,
+      and announcing both makes a zero-result filter speak twice. */}
+  <p class="empty" id="empty">
     No roles match these filters yet.
   </p>
   <div class="show-more-wrap">
