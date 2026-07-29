@@ -14,7 +14,14 @@ import {
 } from "../../lib/format.ts";
 import { url } from "../../lib/url.ts";
 import { jsonLdScript } from "../../lib/jsonld.ts";
-import { openJobs, closedJobs, companies, generatedAt, fxRates } from "../../lib/data.ts";
+import {
+  openJobs,
+  closedJobs,
+  companies,
+  generatedAt,
+  fxRates,
+  duplicateOf,
+} from "../../lib/data.ts";
 import type { Job } from "@aiengjobs/shared";
 
 export function getStaticPaths() {
@@ -161,6 +168,13 @@ const descriptionHtml = blocks
 const company = companies.find((c) => c.slug === job.companySlug);
 const pageUrl = new URL(url(`/jobs/${job.slug}/`), Astro.site).href;
 
+// One of several identical requisitions for the same role at the same site?
+// Consolidate onto the newest rather than letting them compete with each other
+// in search. The page stays live and applicable — it just stops claiming to be
+// the canonical one, and drops the JobPosting markup so Google has a single
+// listing for the role instead of six.
+const dupCanonicalSlug = closed ? null : duplicateOf(job);
+
 // Google requires a resolvable location: TELECOMMUTE roles need
 // applicantLocationRequirements (we derive it from country), everything else
 // needs a jobLocation. A posting with neither would be a guaranteed Search
@@ -170,7 +184,7 @@ const hasUsableLocation =
     ? Boolean(job.country)
     : Boolean(job.city || job.region || job.country);
 
-const jsonLd: Record<string, unknown> | null = closed || !hasUsableLocation
+const jsonLd: Record<string, unknown> | null = closed || dupCanonicalSlug || !hasUsableLocation
   ? null
   : {
       "@context": "https://schema.org/",
@@ -257,6 +271,7 @@ const metaDescription = `${descBits.join(" — ")}.`.slice(0, 300);
   title={pageTitle}
   description={metaDescription}
   noindex={closed}
+  canonicalOverride={dupCanonicalSlug ? url(`/jobs/${dupCanonicalSlug}/`) : undefined}
 >
   <article class="job-detail">
     <p><a class="back" href={url("/")}>← All jobs</a></p>

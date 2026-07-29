@@ -1,4 +1,5 @@
 import type { RemoteType } from "@aiengjobs/shared";
+import { canonicalCity, NON_CITY } from "@aiengjobs/shared/city";
 
 export interface LocationInfo {
   remoteType?: RemoteType;
@@ -90,29 +91,8 @@ function inferCountry(loc: string): string | undefined {
   return undefined;
 }
 
-// Country and multi-country region names that feeds put in the location slot —
-// never a city (drives the site's jobLocation/addressLocality markup, so a
-// wrong "city" like "Sweden" or "Europe" ends up in Google's structured data).
-const NON_CITY = new Set(
-  `united states,usa,us,u.s.,u.s.a.,united kingdom,uk,u.k.,england,scotland,wales,
-   canada,germany,france,netherlands,ireland,india,australia,japan,korea,south korea,
-   china,taiwan,switzerland,sweden,spain,italy,poland,portugal,brazil,mexico,
-   united arab emirates,uae,israel,austria,belgium,denmark,norway,finland,
-   czech republic,czechia,greece,romania,hungary,new zealand,south africa,argentina,
-   colombia,chile,turkey,türkiye,vietnam,thailand,indonesia,philippines,malaysia,
-   estonia,ukraine,serbia,croatia,bulgaria,slovakia,slovenia,lithuania,latvia,
-   nigeria,kenya,egypt,saudi arabia,pakistan,
-   europe,emea,apac,latam,north america,south america,americas,asia,asia pacific,
-   africa,oceania,worldwide,international,
-   alabama,alaska,arizona,arkansas,california,colorado,connecticut,delaware,florida,
-   hawaii,idaho,illinois,indiana,iowa,kansas,kentucky,louisiana,maine,maryland,
-   massachusetts,michigan,minnesota,mississippi,missouri,montana,nebraska,nevada,
-   new hampshire,new jersey,new mexico,new york state,north carolina,north dakota,
-   ohio,oklahoma,oregon,pennsylvania,rhode island,south carolina,south dakota,
-   tennessee,texas,utah,vermont,virginia,west virginia,wisconsin,wyoming`
-    .split(",")
-    .map((s) => s.trim().toLowerCase()),
-);
+// The "never a city" vocabulary now lives in @aiengjobs/shared/city, so the
+// export path and the site's location pages apply exactly the same rules.
 
 /** Classify remote policy + best-effort country/city from the raw location string. */
 export function parseLocation(
@@ -136,7 +116,7 @@ export function parseLocation(
     firstSegment &&
     !/remote|hybrid|onsite|anywhere|global/i.test(firstSegment) &&
     !NON_CITY.has(firstSegment.toLowerCase())
-      ? firstSegment
+      ? canonicalCity(firstSegment)
       : undefined;
 
   return { remoteType, country, city };
