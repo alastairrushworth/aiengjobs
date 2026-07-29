@@ -12,6 +12,14 @@ interface Props {
   /** Paginated sequences: adjacent slice URLs (already base-prefixed). */
   prev?: string;
   next?: string;
+  /** RSS feed for this page (already base-prefixed), advertised to readers. */
+  feed?: string;
+  feedTitle?: string;
+  /**
+   * Point the canonical at a different page (already base-prefixed). Used by
+   * duplicate ATS requisitions, which consolidate onto the newest of the set.
+   */
+  canonicalOverride?: string;
 }
 
 const {
@@ -21,13 +29,16 @@ const {
   noindex = false,
   prev,
   next,
+  feed,
+  feedTitle,
+  canonicalOverride,
 } = Astro.props;
 
 const fullTitle = noBrandSuffix ? title : `${title} — aiengjobs`;
 
 // Canonical always uses the trailing-slash form GitHub Pages actually serves
 // (directory URLs 301 to it), so we never canonicalize to a redirect.
-const path = Astro.url.pathname;
+const path = canonicalOverride ?? Astro.url.pathname;
 const canonicalPath = path.endsWith("/") || /\.[a-z]+$/i.test(path) ? path : `${path}/`;
 const canonical = new URL(canonicalPath, Astro.site).href;
 const ogImage = new URL(url("/og-default.png"), Astro.site).href;
@@ -44,6 +55,12 @@ const ogImage = new URL(url("/og-default.png"), Astro.site).href;
     <link rel="canonical" href={canonical} />
     {prev && <link rel="prev" href={new URL(prev, Astro.site).href} />}
     {next && <link rel="next" href={new URL(next, Astro.site).href} />}
+    <link
+      rel="alternate"
+      type="application/rss+xml"
+      title={feedTitle ?? "aiengjobs — newest AI engineering jobs"}
+      href={new URL(feed ?? url("/rss.xml"), Astro.site).href}
+    />
     <link rel="icon" type="image/svg+xml" href={url("/favicon.svg")} />
     <link rel="icon" type="image/png" sizes="32x32" href={url("/favicon-32.png")} />
     <link rel="apple-touch-icon" href={url("/apple-touch-icon.png")} />
@@ -95,6 +112,8 @@ const ogImage = new URL(url("/og-default.png"), Astro.site).href;
           <a href={url("/ai-eval-jobs/")}>Eval jobs</a>
           <a href={url("/inference-engineer-jobs/")}>Inference jobs</a>
           <a href={url("/fine-tuning-jobs/")}>Fine-tuning jobs</a>
+          <a href={url("/remote-ai-jobs/")}>Remote AI jobs</a>
+          <a href={url("/rss.xml")}>RSS</a>
         </nav>
         <p>
           AI Engineering Jobs · first-party ATS listings, salary-transparent, no ghost jobs.
