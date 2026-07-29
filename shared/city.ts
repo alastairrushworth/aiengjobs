@@ -24,12 +24,28 @@ export const NON_CITY: ReadonlySet<string> = new Set(
    nigeria,kenya,egypt,saudi arabia,pakistan,
    europe,emea,apac,latam,namer,noram,north america,south america,americas,asia,
    asia pacific,africa,oceania,worldwide,international,global,anywhere,
+   amer,amers,nam,eu,eea,uki,anz,mena,dach,benelux,nordics,apj,japac,sea,
+   remote,fully remote,distributed,
    alabama,alaska,arizona,arkansas,california,colorado,connecticut,delaware,florida,
    hawaii,idaho,illinois,indiana,iowa,kansas,kentucky,louisiana,maine,maryland,
    massachusetts,michigan,minnesota,mississippi,missouri,montana,nebraska,nevada,
    new hampshire,new jersey,new mexico,new york state,north carolina,north dakota,
    ohio,oklahoma,oregon,pennsylvania,rhode island,south carolina,south dakota,
    tennessee,texas,utah,vermont,virginia,west virginia,wisconsin,wyoming`
+    .split(",")
+    .map((s) => s.trim().toLowerCase()),
+);
+
+/**
+ * Multi-country regions that feeds put in the location slot ("EMEA", "AMER",
+ * "Europe"). They name a hiring territory, not a workplace, so a role located
+ * only there isn't on-site anywhere — see parseLocation. Deliberately excludes
+ * single countries and US states, which are real (if coarse) onsite locations.
+ */
+export const MULTI_COUNTRY_REGION: ReadonlySet<string> = new Set(
+  `europe,emea,apac,latam,namer,noram,north america,south america,americas,asia,
+   asia pacific,africa,oceania,worldwide,international,global,anywhere,
+   amer,amers,nam,eu,eea,uki,anz,mena,dach,benelux,nordics,apj,japac`
     .split(",")
     .map((s) => s.trim().toLowerCase()),
 );

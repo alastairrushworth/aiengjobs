@@ -10,7 +10,7 @@ import { url } from "../lib/url.ts";
 import { jsonLdScript } from "../lib/jsonld.ts";
 import { computeLandingStats } from "../lib/landingStats.ts";
 import { fxRates } from "../lib/data.ts";
-import { CLUSTER_PAGES } from "../lib/clusters.ts";
+import { CLUSTER_PAGES, salarySlug } from "../lib/clusters.ts";
 import { LOCATION_LANDINGS } from "../lib/landings.ts";
 
 interface Props {
@@ -65,7 +65,7 @@ if (landing.kind === "cluster") {
   const cluster = CLUSTER_PAGES.find((p) => p.slug === landing.slug);
   if (cluster) {
     crossLinks.push({
-      href: url(`/salaries/${cluster.id}/`),
+      href: url(`/salaries/${salarySlug(cluster.id)}/`),
       text: `${cluster.label} salaries →`,
     });
   }

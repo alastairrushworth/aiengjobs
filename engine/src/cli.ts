@@ -4,6 +4,7 @@ import { ingest } from "./ingest.ts";
 import { retag, reclassify } from "./retag.ts";
 import { exportSnapshot } from "./export/exportSnapshot.ts";
 import { notify } from "./notify.ts";
+import { fetchLogos } from "./logos.ts";
 
 async function main(): Promise<void> {
   const cmd = process.argv[2];
@@ -36,6 +37,11 @@ async function main(): Promise<void> {
       seed();
       await ingest();
       await exportSnapshot();
+      break;
+    case "logos":
+      // Fetch each company's logo into site/public/logos/. Run occasionally —
+      // logos are write-once per company, not part of the nightly refresh.
+      await fetchLogos({ force: process.argv.includes("--force") });
       break;
     case "notify": {
       // Announce new/closed job URLs to IndexNow. Takes the pre-refresh

@@ -10,7 +10,7 @@ import {
 import { getConnector } from "./connectors/index.ts";
 import { normalize } from "./pipeline/normalize.ts";
 import { classifyHeuristic, type ClassifyResult } from "./pipeline/classify.ts";
-import { combineSkills } from "./pipeline/tag.ts";
+import { tagHeuristic } from "./pipeline/tag.ts";
 import { inferSeniority } from "./pipeline/seniority.ts";
 import { parseLocation } from "./pipeline/location.ts";
 import { extractListing, type ExtractResult } from "./pipeline/extract.ts";
@@ -28,6 +28,44 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 // Apply links come from third-party feeds and end up as hrefs on the site —
 // only plain web URLs are acceptable (a javascript: link would be an XSS).
 const isHttpUrl = (u: string) => /^https?:\/\//i.test(u);
+
+// Connectors use undefined for "absent"; the LLM extractor uses null.
+interface PayFields {
+  salaryMin?: number | null;
+  salaryMax?: number | null;
+  salaryCurrency?: string | null;
+  salaryPeriod?: string | null;
+}
+
+/**
+ * Pay fields, but only when the currency is known. Feed pay and LLM-extracted
+ * pay are taken as a unit rather than field-by-field, so a range can't be
+ * paired with a currency parsed from a different source.
+ */
+function pay(
+  raw: PayFields,
+  ex?: PayFields | null,
+): {
+  salaryMin?: number;
+  salaryMax?: number;
+  salaryCurrency?: string;
+  salaryPeriod?: string;
+} {
+  for (const src of [raw, ex]) {
+    if (!src) continue;
+    const min = src.salaryMin;
+    const max = src.salaryMax;
+    if ((min || max) && src.salaryCurrency) {
+      return {
+        salaryMin: min ?? undefined,
+        salaryMax: max ?? undefined,
+        salaryCurrency: src.salaryCurrency,
+        salaryPeriod: src.salaryPeriod ?? undefined,
+      };
+    }
+  }
+  return {};
+}
 
 /** Poll every seeded source, classify/tag, upsert, then expire vanished jobs (§6.4–6.5). */
 export async function ingest(): Promise<void> {
@@ -95,7 +133,7 @@ export async function ingest(): Promise<void> {
         const loc = parseLocation(raw.locationRaw, raw.remoteType, raw.remoteHint);
         const heuristicClass = classifyHeuristic(raw.title);
 
-        // One LLM call does classification + skills + salary + location + seniority.
+        // One LLM call does classification + salary + location + seniority.
         // Skip it for titles the heuristic already rules OUT — they're discarded,
         // so there's nothing worth extracting (and it keeps the LLM bill down).
         let cls: ClassifyResult;
@@ -133,7 +171,7 @@ export async function ingest(): Promise<void> {
         }
 
         const skills =
-          cls.classification === "in" ? combineSkills(text, ex?.skills).skills : [];
+          cls.classification === "in" ? tagHeuristic(text).skills : [];
 
         // Prefer the ATS/role payload (and the heuristics derived from it); fall
         // back to the LLM extraction only where the payload is silent.
@@ -156,10 +194,11 @@ export async function ingest(): Promise<void> {
           city: loc.city ?? canonicalCity(ex?.city) ?? undefined,
           remoteType: loc.remoteType ?? ex?.remoteType ?? undefined,
           seniority: inferSeniority(raw.title) ?? ex?.seniority ?? undefined,
-          salaryMin: raw.salaryMin ?? ex?.salaryMin ?? undefined,
-          salaryMax: raw.salaryMax ?? ex?.salaryMax ?? undefined,
-          salaryCurrency: raw.salaryCurrency ?? ex?.salaryCurrency ?? undefined,
-          salaryPeriod: raw.salaryPeriod ?? ex?.salaryPeriod ?? undefined,
+          // An unlabelled number isn't a salary: the site would render it as
+          // USD, and feeds that omit the currency are usually the non-USD ones
+          // (a Graphcore posting shipped a bare 260400-352200, which is PLN —
+          // ~$70k shown as $260k). Drop the pay rather than guess at it.
+          ...pay(raw, ex),
           classification: cls.classification,
           classificationConfidence: cls.confidence,
           isDirect: 0,

@@ -639,3 +639,206 @@ Intercontinental Exchange,icims,careers-ice,ice.com,late
 # --- SuccessFactors (slug = host:company) ---
 Reckitt,successfactors,career2.successfactors.eu:reckittb01,reckitt.com,late
 Bentley Systems,successfactors,career4.successfactors.com:bentleyprod,bentley.com,late
+
+# ===========================================================================
+# AI-first additions, verified 2026-07-29. Sourced from the YC directory
+# (yc-oss API, hiring + AI-tagged) and a curated list of notable AI companies.
+# Every board below was confirmed live via its public API, and the slug was
+# identity-checked against the board name / the company careers page to avoid
+# same-name collisions. All had AI-engineering roles posted at time of adding.
+# ===========================================================================
+# --- greenhouse (AI additions) ---
+Agility Robotics,greenhouse,agilityrobotics,agilityrobotics.com,growth
+AlphaSense,greenhouse,alphasense,alpha-sense.com,late
+Apptronik,greenhouse,apptronik,apptronik.com,growth
+Bitmovin,greenhouse,bitmovin,bitmovin.com,growth
+Clara,greenhouse,clara,askclara.com,early
+Cline,greenhouse,cline,cline.bot,early
+EnCharge AI,greenhouse,enchargeai36,enchargeai.com,growth
+HeyGen,greenhouse,heygen,heygen.com,growth
+Icarus,greenhouse,icarus,icarus.one,early
+Inflection AI,greenhouse,inflectionai,inflection.ai,growth
+NanoNets,greenhouse,nanonets,nanonets.com,growth
+Nebius,greenhouse,nebius,nebius.com,late
+Nimble Robotics,greenhouse,nimblerobotics,nimble.ai,growth
+Observe.AI,greenhouse,observeai,observe.ai,growth
+Otter.ai,greenhouse,otterai,otter.ai,growth
+Path Robotics,greenhouse,pathrobotics,path-robotics.com,growth
+Patronus AI,greenhouse,patronusaiinc,patronus.ai,early
+Prodigal,greenhouse,prodigal,prodigaltech.com,early
+Sourcegraph,greenhouse,sourcegraph91,sourcegraph.com,growth
+Spaceium Inc,greenhouse,spaceium,spaceium.com,early
+Tenstorrent,greenhouse,tenstorrent,tenstorrent.com,late
+Thinking Machines Lab,greenhouse,thinkingmachines,thinkingmachines.ai,growth
+Toloka,greenhouse,toloka,toloka.ai,growth
+Torc Robotics,greenhouse,torcrobotics,torc.ai,growth
+Turing,greenhouse,turing,turing.com,growth
+Udio,greenhouse,udio,udio.com,early
+World Labs,greenhouse,worldlabs,worldlabs.ai,growth
+Xaira Therapeutics,greenhouse,xairatherapeutics,xaira.com,growth
+# --- ashby (AI additions) ---
+Abacum,ashby,abacum,abacum.ai,growth
+Abundant,ashby,abundant,abundant.ai,early
+Adaptyv,ashby,adaptyv,adaptyvbio.com,early
+AfterQuery,ashby,afterquery,afterquery.com,growth
+AiPrise,ashby,aiprise,aiprise.com,early
+All Hands AI,ashby,OpenHands,all-hands.dev,early
+Anterior,ashby,anterior,anterior.com,early
+Anthrogen,ashby,anthrogen,anthrogen.com,early
+Apify,ashby,apify,apify.com,growth
+Arini,ashby,arini,arini.ai,early
+Artisan,ashby,artisan,artisan.co,growth
+Artos,ashby,artosai,artosai.com,early
+Assembled,ashby,assembledhq,assembled.com,growth
+Auctor,ashby,auctor,getauctor.com,early
+Automat,ashby,automat,runautomat.com,growth
+Avallon AI,ashby,avallon,avallon.ai,early
+Aviator,ashby,aviator,aviator.co,early
+Avoca,ashby,avoca,avoca.ai,growth
+Bild AI,ashby,bild-ai,bild.ai,early
+Bland AI,ashby,bland,bland.com,growth
+Blaxel,ashby,blaxel,blaxel.ai,early
+Bretton AI,ashby,brettonai,bretton.com,growth
+Browserbase,ashby,browserbase,browserbase.com,growth
+Bunkerhill Health,ashby,bunkerhillhealth,bunkerhillhealth.com,growth
+Campfire,ashby,campfire,campfire.ai,growth
+Captions,ashby,mirage,captions.ai,growth
+Cartesia,ashby,cartesia,cartesia.ai,growth
+Casca,ashby,casca,cascading.ai,growth
+Chai Discovery,ashby,chaidiscovery,chaidiscovery.com,early
+Chalk,ashby,chalk,chalk.ai,early
+Cinder,ashby,cinder,cinder.ai,growth
+Claim Health,ashby,claim-health,claimhealth.com,early
+Clarion,ashby,clarion,clarionhealth.com,early
+Clearly AI,ashby,clearly-ai,clearly-ai.com,early
+Comena,ashby,comena,comena.ai,early
+CommodityAI,ashby,commodityai,commodityai.io,early
+Commure,ashby,commure,commure.com,late
+Concourse,ashby,concourse,concourse.co,early
+Confido,ashby,confido,confidotech.com,growth
+Credal.ai,ashby,credal,credal.ai,early
+CTGT,ashby,ctgt,ctgt.ai,early
+Datafold,ashby,datafold,datafold.com,growth
+Dataleap,ashby,dataleap,dataleap.ai,early
+David AI,ashby,david-ai,withdavid.ai,growth
+Decoda Health,ashby,decodahealth,decodahealth.com,early
+Distyl AI,ashby,distyl,distyl.ai,growth
+E2B,ashby,e2b,e2b.dev,early
+Eloquent AI,ashby,eloquentai,eloquentai.co,early
+Exa,ashby,exa,exa.ai,growth
+Extropic,ashby,extropic,extropic.ai,early
+Factory,ashby,factory,factory.ai,growth
+Finvest,ashby,finvest,getfinvest.com,early
+Firecrawl,ashby,firecrawl,firecrawl.dev,growth
+FleetWorks,ashby,fleetworks,fleetworks.ai,early
+Flint,ashby,flint,flintk12.com,growth
+FuriosaAI,ashby,furiosa-ai,furiosa.ai,growth
+FurtherAI,ashby,furtherai,furtherai.com,growth
+Gamma,ashby,gamma,gamma.app,growth
+Genesis AI,ashby,genesis,genesis-ai.com,early
+Gradient Labs,ashby,gradient-labs,gradient-labs.ai,early
+Granola,ashby,granola,granola.ai,early
+Greptile,ashby,greptile,greptile.com,early
+Halluminate,ashby,halluminate,halluminate.ai,early
+Harper,ashby,harperinsure,harperinsure.com,growth
+Healthtech 1,ashby,healthtech-1,healthtech1.uk,early
+Hebbia,ashby,hebbia-ai,hebbia.com,growth
+Hedra,ashby,hedra,hedra.com,early
+Higgsfield,ashby,higgsfieldai,higgsfield.ai,early
+HUD,ashby,hud,hud.ai,early
+Humaans,ashby,humaans,humaans.io,growth
+Human Archive,ashby,humanarchive,humanarchive.ai,early
+Hyperbolic,ashby,hyperbolic,hyperbolic.ai,early
+Inkeep,ashby,inkeep,inkeep.com,early
+Interface,ashby,interface,theinterface.com,early
+Juicebox,ashby,juicebox,juicebox.ai,growth
+Kastle,ashby,kastle,kastle.ai,early
+Lago,ashby,lago,getlago.com,growth
+Latent Labs,ashby,latentlabs,latentlabs.com,early
+Liquid AI,ashby,liquid,liquid.ai,growth
+LiveFlow,ashby,liveflow,liveflow.com,growth
+Lucis,ashby,lucis,lucis.life,growth
+Luma AI,ashby,lumaai,lumalabs.ai,growth
+Magic,ashby,magic.dev,magic.dev,growth
+Maven AGI,ashby,maven-agi,mavenagi.com,early
+Mem0,ashby,mem0,mem0.ai,growth
+Mercura,ashby,mercura,mercura.ai,early
+Metal,ashby,metal,metal.ai,early
+Meticulous,ashby,meticulous,meticulous.ai,growth
+Middesk,ashby,middesk,middesk.com,growth
+Minerva,ashby,minerva,tryminerva.ai,early
+Mintlify,ashby,mintlify,mintlify.com,growth
+Miso,ashby,miso,miso.kr,growth
+Moss,ashby,moss,moss.dev,early
+Normal Computing,ashby,normalcomputing,normalcomputing.ai,early
+Numeric,ashby,numeric,numeric.io,early
+OneSchema,ashby,oneschema,oneschema.co,early
+OpenEvidence,ashby,openevidence,openevidence.com,growth
+OpenRouter,ashby,openrouter,openrouter.ai,growth
+Overview,ashby,overview,overview.ai,growth
+PermitFlow,ashby,permitflow,permitflow.com,growth
+Pingo,ashby,pingo,pingo.ai,early
+PointOne,ashby,pointone,pointone.com,early
+Polymath,ashby,polymath,polymathlabs.ai,early
+Prox,ashby,prox,useprox.com,early
+Pylon,ashby,pylon,usepylon.com,growth
+Qdrant,ashby,qdrant.tech,qdrant.tech,growth
+Rain AI,ashby,rain,rain.ai,growth
+Reducto,ashby,reducto,reducto.ai,early
+Reflection AI,ashby,reflectionai,reflection.ai,growth
+Retell AI,ashby,retell-ai,retellai.com,early
+Rime,ashby,rime,rime.ai,early
+Roboflow,ashby,roboflow,roboflow.com,growth
+Rogo,ashby,rogo,rogo.ai,growth
+RunPod,ashby,runpod,runpod.io,growth
+SafetyKit,ashby,safetykit,safetykit.com,growth
+Sage Care,ashby,sagecare,sagecare.ai,early
+SalesPatriot,ashby,salespatriot,salespatriot.com,early
+Salient,ashby,salient,trysalient.com,growth
+Sarvam AI,ashby,sarvam,sarvam.ai,growth
+Sema4.ai,ashby,sema4.ai,sema4.ai,early
+Serve Robotics,ashby,serverobotics,serverobotics.com,growth
+Sieve,ashby,sieve,sievedata.com,growth
+Sift,ashby,sift,sift.com,growth
+Sim,ashby,sim,sim.ai,early
+Simple AI,ashby,simple-ai,usesimple.ai,early
+Solva,ashby,solva,solvatechnology.com,early
+Solve Intelligence,ashby,solveintelligence,solveintelligence.com,growth
+Speak,ashby,speak,speak.com,growth
+Spellbook,ashby,spellbook.com,spellbook.legal,growth
+Spellbrush,ashby,spellbrush,spellbrush.com,growth
+Sphere,ashby,sphere,getsphere.com,growth
+Spur,ashby,spur,spurtest.com,early
+Standard Bots,ashby,standardbots,standardbots.com,early
+Substrate,ashby,substrate,substrate.cc,early
+Surge AI,ashby,surge-ai,surgehq.ai,growth
+Sygaldry Technologies,ashby,sygaldry-technologies,sygaldry.com,growth
+Tailor,ashby,tailor,tailor.tech,early
+Tamarind Bio,ashby,tamarindbio,tamarind.bio,growth
+Tavily,ashby,tavily,tavily.com,early
+Tempo,ashby,tempo,tempo.fit,growth
+Topline Pro,ashby,topline-pro,toplinepro.com,early
+Triomics,ashby,triomics,triomics.com,growth
+truthsystems,ashby,truthsystems,truthsystems.ai,early
+Turbopuffer,ashby,turbopuffer,turbopuffer.com,early
+Twelve Labs,ashby,twelve-labs,twelvelabs.io,growth
+Unstructured,ashby,unstructured,unstructured.io,growth
+Uplane,ashby,uplane,uplane.com,early
+Usul,ashby,usul,usul.com,early
+V7,ashby,v7labs.com,v7labs.com,growth
+Veritus,ashby,veritus,veritus.com,early
+Vooma,ashby,vooma,vooma.ai,growth
+WarpBuild,ashby,warpbuild,warpbuild.com,early
+Weave,ashby,weave,weaveos.com,early
+Zeit AI,ashby,zeit-ai,zeit-ai.com,early
+# --- lever (AI additions) ---
+Ambi Robotics,lever,ambirobotics,ambirobotics.com,early
+Dexterity,lever,dexterity,dexterity.ai,growth
+Handoff,lever,handoff,handoff.ai,early
+Multiply Labs,lever,multiplylabs,multiplylabs.com,growth
+Netomi,lever,netomi,netomi.com,early
+Plus,lever,plus-2,plus.ai,growth
+Regal,lever,regal.ai,regal.ai,growth
+Superannotate,lever,superannotate,superannotate.com,growth
+Waabi,lever,waabi,waabi.ai,growth
+Zuma,lever,getzuma,getzuma.com,growth

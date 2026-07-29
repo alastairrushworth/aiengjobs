@@ -1,13 +1,18 @@
 import type { RemoteType, SalaryPeriod, Seniority } from "@aiengjobs/shared";
 import { llmStructured } from "./llm.ts";
-import { ALL_SKILLS } from "./tag.ts";
 
-/** Everything the LLM pulls out of a posting in a single structured call. */
+/**
+ * Everything the LLM pulls out of a posting in a single structured call.
+ *
+ * Deliberately no `skills`: tags are derived from the description text by
+ * tagHeuristic, and every LLM-proposed skill had to clear the same word-boundary
+ * matchers — so the LLM's list was always a subset of what the regexes already
+ * found. Asking for it cost tokens (a 54-item enum) and returned nothing.
+ */
 export interface ExtractResult {
   /** In scope for the AI-engineering board? Mirrors the heuristic classifier. */
   inScope: boolean;
   confidence: number;
-  skills: string[];
   seniority: Seniority | null;
   /** ISO 3166-1 alpha-2, e.g. "US", "GB". */
   country: string | null;
@@ -39,7 +44,6 @@ const SCHEMA = {
   required: [
     "inScope",
     "confidence",
-    "skills",
     "seniority",
     "country",
     "city",
@@ -55,11 +59,6 @@ const SCHEMA = {
       description: "True if the role is a hands-on individual contributor building or researching AI models/systems (LLM apps, RAG, agents, evals, inference/serving, fine-tuning, or AI/ML research). False for non-IC management, data/analytics roles, and generic software not building AI.",
     },
     confidence: { type: "number", description: "0..1 confidence in inScope." },
-    skills: {
-      type: "array",
-      description: "Skills/technologies from the allowed list whose name is explicitly written in the posting text. Omit anything not literally mentioned — never infer a skill from the kind of role, and never pad the list.",
-      items: { type: "string", enum: ALL_SKILLS },
-    },
     seniority: {
       type: ["string", "null"],
       enum: [...SENIORITY, null],
@@ -115,7 +114,7 @@ const SYSTEM =
 const MAX_CHARS = 6000; // enough to reach most comp/location sections; cheap on nano
 
 /**
- * Single GPT-5.4-nano structured-output call: classification + skills + salary +
+ * Single GPT-5.4-nano structured-output call: classification + salary +
  * location + seniority. Returns null when the LLM is disabled or the call fails,
  * so the caller falls back to heuristics. Strict schema guarantees the shape.
  */
@@ -141,9 +140,6 @@ export async function extractListing(
   return {
     inScope: out.inScope,
     confidence: typeof out.confidence === "number" ? out.confidence : 0.6,
-    skills: Array.isArray(out.skills)
-      ? (out.skills as unknown[]).filter((s): s is string => typeof s === "string")
-      : [],
     seniority: (str(out.seniority) as Seniority | null) ?? null,
     country: str(out.country)?.toUpperCase() ?? null,
     city: str(out.city),

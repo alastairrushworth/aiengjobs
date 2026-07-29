@@ -14,6 +14,9 @@ import {
 } from "../../lib/format.ts";
 import { url } from "../../lib/url.ts";
 import { jsonLdScript } from "../../lib/jsonld.ts";
+import { buildJobTitles } from "../../lib/jobTitle.ts";
+import CompanyLogo from "../../components/CompanyLogo.astro";
+import { markupLogo } from "../../lib/logos.ts";
 import {
   openJobs,
   closedJobs,
@@ -25,16 +28,9 @@ import {
 import type { Job } from "@aiengjobs/shared";
 
 export function getStaticPaths() {
-  // Same title + company across several locations (common for multi-office
-  // postings) would otherwise emit identical <title> tags; flag them so the
-  // page can disambiguate with the location.
-  const titleCount = new Map<string, number>();
-  for (const j of [...openJobs, ...closedJobs]) {
-    const k = `${j.title}·${j.companyName}`;
-    titleCount.set(k, (titleCount.get(k) ?? 0) + 1);
-  }
-  const dupTitle = (job: Job) =>
-    (titleCount.get(`${job.title}·${job.companyName}`) ?? 0) > 1;
+  // <title> needs whole-corpus knowledge: it trims over-long feed titles, but
+  // only where the trim doesn't merge two distinct roles. See lib/jobTitle.
+  const titles = buildJobTitles([...openJobs, ...closedJobs]);
 
   const related = (job: Job) => {
     const atCompany = openJobs
@@ -55,19 +51,19 @@ export function getStaticPaths() {
     // Open roles get full, indexable pages.
     ...openJobs.map((job) => ({
       params: { slug: job.slug },
-      props: { job, closed: false, dupTitle: dupTitle(job), ...related(job) },
+      props: { job, closed: false, pageTitle: titles.get(job.slug)!, ...related(job) },
     })),
     // Recently-closed roles keep a noindexed tombstone page instead of 404ing
     // links from search results, newsletters, and shares.
     ...closedJobs.map((job) => ({
       params: { slug: job.slug },
-      props: { job, closed: true, dupTitle: dupTitle(job), ...related(job) },
+      props: { job, closed: true, pageTitle: titles.get(job.slug)!, ...related(job) },
     })),
   ];
 }
 
 type Props = InferGetStaticPropsType<typeof getStaticPaths>;
-const { job, closed, dupTitle, atCompany, similar } = Astro.props as Props;
+const { job, closed, pageTitle, atCompany, similar } = Astro.props as Props;
 
 const salary = formatSalary(job, fxRates);
 const role = roleType(job);
@@ -166,6 +162,8 @@ const descriptionHtml = blocks
   .join("");
 
 const company = companies.find((c) => c.slug === job.companySlug);
+const markLogo = markupLogo(job.companySlug);
+const logoUrl = markLogo ? new URL(url(`/logos/${markLogo.file}`), Astro.site).href : null;
 const pageUrl = new URL(url(`/jobs/${job.slug}/`), Astro.site).href;
 
 // One of several identical requisitions for the same role at the same site?
@@ -203,7 +201,10 @@ const jsonLd: Record<string, unknown> | null = closed || dupCanonicalSlug || !ha
         "@type": "Organization",
         name: job.companyName,
         ...(company?.domain ? { sameAs: `https://${company.domain}/` } : {}),
-        ...(company?.logoUrl ? { logo: company.logoUrl } : {}),
+        // Only claimed when we hold the bytes and render them on this page —
+        // Google expects markup to reflect visible content, and a logo URL we
+        // haven't verified would be a 404 in the index.
+        ...(logoUrl ? { logo: logoUrl } : {}),
       },
       employmentType,
       // datePosted is required for the rich result; first-seen is the honest
@@ -246,13 +247,8 @@ if (jsonLd) {
   }
 }
 
-// Disambiguate the <title> when the same title+company posts in several
-// locations; prefer the short city over the (possibly multi-office) raw string.
-const titleDisambig = job.city ?? country ?? location;
-const pageTitle =
-  dupTitle && titleDisambig
-    ? `${job.title} · ${job.companyName} · ${titleDisambig}`
-    : `${job.title} · ${job.companyName}`;
+// The <title> is computed across the whole corpus in getStaticPaths so that
+// trimming long feed titles can't silently merge two distinct roles.
 
 // Tombstones can outlive their company page (it's only built while the company
 // has open roles) — don't link into a 404.
@@ -282,13 +278,16 @@ const metaDescription = `${descBits.join(" — ")}.`.slice(0, 300);
       </p>
     )}
     <h1>{job.title}</h1>
-    <p class="company">
-      {companyPageExists ? (
-        <a href={url(`/companies/${job.companySlug}/`)}>{job.companyName}</a>
-      ) : (
-        job.companyName
-      )}
-    </p>
+    <div class="company-row">
+      <CompanyLogo name={job.companyName} slug={job.companySlug} size={40} />
+      <p class="company">
+        {companyPageExists ? (
+          <a href={url(`/companies/${job.companySlug}/`)}>{job.companyName}</a>
+        ) : (
+          job.companyName
+        )}
+      </p>
+    </div>
     {facts.length > 0 && (
       <dl class="facts">
         {facts.map((f) => (
@@ -377,7 +376,8 @@ const metaDescription = `${descBits.join(" — ")}.`.slice(0, 300);
     margin: 12px 0 6px;
     overflow-wrap: anywhere;
   }
-  .job-detail .company { margin: 0 0 16px; }
+  .company-row { display: flex; align-items: center; gap: 12px; margin: 0 0 16px; }
+  .job-detail .company { margin: 0; overflow-wrap: anywhere; }
   .job-detail .company a { color: var(--accent-text); }
   .job-detail .company a:hover { text-decoration: underline; }
   .closed-banner {

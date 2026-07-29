@@ -8,7 +8,7 @@ import { kUsd, median, percentile, salaryMidpointUsd } from "../../lib/format.ts
 import { jsonLdScript } from "../../lib/jsonld.ts";
 import { openJobs, fxRates, generatedAt } from "../../lib/data.ts";
 import { countryName } from "../../lib/format.ts";
-import { CLUSTER_PAGES } from "../../lib/clusters.ts";
+import { CLUSTER_PAGES, salarySlug } from "../../lib/clusters.ts";
 
 export function getStaticPaths() {
   return CLUSTER_PAGES.map((page) => {
@@ -22,7 +22,7 @@ export function getStaticPaths() {
           x.mid !== null && x.job.clusters.includes(page.id),
       )
       .sort((a, b) => b.mid - a.mid);
-    return { params: { cluster: page.id }, props: { page, salaried } };
+    return { params: { cluster: salarySlug(page.id) }, props: { page, salaried } };
   });
 }
 
@@ -41,7 +41,7 @@ const stats =
     : null;
 
 const roleNoun = page.label.replace(/ \/.*/, "");
-const canonical = new URL(url(`/salaries/${page.id}/`), Astro.site).href;
+const canonical = new URL(url(`/salaries/${salarySlug(page.id)}/`), Astro.site).href;
 
 // The distribution above is the content here; the listing is supporting
 // evidence, so show the best-paid slice rather than all 470+ cards (which made
@@ -146,7 +146,7 @@ const jsonLd = stats
     links={[
       { href: url(`/${page.slug}/`), text: `All ${page.label} jobs →` },
       ...CLUSTER_PAGES.filter((p) => p.id !== page.id).map((p) => ({
-        href: url(`/salaries/${p.id}/`),
+        href: url(`/salaries/${salarySlug(p.id)}/`),
         text: `${p.label} pay`,
       })),
     ]}
