@@ -1,0 +1,60 @@
+---
+import { url } from "../lib/url.ts";
+import { logoFile } from "../lib/logos.ts";
+
+interface Props {
+  name: string;
+  slug: string;
+  /** Rendered box size in px. */
+  size?: number;
+}
+const { name, slug, size = 44 } = Astro.props;
+const file = logoFile(slug);
+
+// Decorative: the company name is always rendered next to this, so alt text
+// would just make a screen reader say it twice.
+const initial = name.trim().slice(0, 1).toUpperCase() || "?";
+---
+
+{
+  file ? (
+    <img
+      class="company-logo"
+      src={url(`/logos/${file}`)}
+      alt=""
+      width={size}
+      height={size}
+      loading="lazy"
+      decoding="async"
+      style={`--logo-size:${size}px`}
+    />
+  ) : (
+    <span class="company-logo monogram" aria-hidden="true" style={`--logo-size:${size}px`}>
+      {initial}
+    </span>
+  )
+}
+
+<style>
+  .company-logo {
+    width: var(--logo-size);
+    height: var(--logo-size);
+    flex: 0 0 var(--logo-size);
+    border-radius: 10px;
+    /* Logos are mostly square marks on a transparent or white ground; a light
+       plate keeps dark-on-transparent ones legible against the dark surface. */
+    background: #fff;
+    border: 1px solid var(--border);
+    object-fit: contain;
+    padding: 5px;
+  }
+  .monogram {
+    display: grid;
+    place-items: center;
+    background: var(--surface-2);
+    color: var(--accent-text);
+    font-weight: 700;
+    font-size: calc(var(--logo-size) * 0.45);
+    padding: 0;
+  }
+</style>

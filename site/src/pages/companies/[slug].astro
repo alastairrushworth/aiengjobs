@@ -3,6 +3,8 @@ import type { InferGetStaticPropsType } from "astro";
 import Base from "../../layouts/Base.astro";
 import JobCard from "../../components/JobCard.astro";
 import BrowseNav from "../../components/BrowseNav.astro";
+import CompanyLogo from "../../components/CompanyLogo.astro";
+import { logoFile } from "../../lib/logos.ts";
 import { CLUSTER_PAGES } from "../../lib/clusters.ts";
 import { url } from "../../lib/url.ts";
 import { jsonLdScript } from "../../lib/jsonld.ts";
@@ -38,11 +40,17 @@ const domainHref =
 const stack = [...new Set(jobs.flatMap((j) => j.skills))].slice(0, 14);
 const withSalary = jobs.filter((j) => j.salaryMin || j.salaryMax).length;
 
+// Absolute, as schema.org requires — and only when the file really exists, so
+// we never point Google at a 404.
+const logo = logoFile(company.slug);
+const logoUrl = logo ? new URL(url(`/logos/${logo}`), Astro.site).href : null;
+
 const jsonLd = {
   "@context": "https://schema.org",
   "@type": "Organization",
   name: company.name,
   ...(domainHref ? { url: domainHref } : {}),
+  ...(logoUrl ? { logo: logoUrl } : {}),
 };
 ---
 
@@ -52,7 +60,10 @@ const jsonLd = {
 >
   <section class="hero" style="padding-bottom:8px;text-align:left">
     <p style="margin:0"><a class="back" href={url("/")}>← All jobs</a></p>
-    <h1>{company.name}</h1>
+    <div class="company-head">
+      <CompanyLogo name={company.name} slug={company.slug} size={56} />
+      <h1>{company.name}</h1>
+    </div>
     <p>
       {jobs.length} open AI-engineering role{jobs.length === 1 ? "" : "s"}
       {withSalary > 0 ? ` · ${withSalary} with salary` : ""}
@@ -91,3 +102,8 @@ const jsonLd = {
 
   <script type="application/ld+json" set:html={jsonLdScript(jsonLd)} is:inline />
 </Base>
+
+<style>
+  .company-head { display: flex; align-items: center; gap: 14px; }
+  .company-head h1 { margin: 0; overflow-wrap: anywhere; }
+</style>
