@@ -1,9 +1,8 @@
 import { CLUSTERS, CLUSTER_OF_SKILL } from "@aiengjobs/shared/taxonomy";
 import type { ClusterId } from "@aiengjobs/shared/taxonomy";
 
-/** The full taxonomy skill list — also handed to the LLM extractor as its enum. */
+/** The full taxonomy skill list. */
 export const ALL_SKILLS = CLUSTERS.flatMap((c) => c.skills);
-const SKILL_SET = new Set(ALL_SKILLS.map((s) => s.toLowerCase()));
 
 function escapeRegex(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -38,14 +37,18 @@ const SKILL_MATCHERS: { name: string; re: RegExp }[] = ALL_SKILLS.map((name) => 
   };
 });
 
-const MATCHER_OF_SKILL = new Map(SKILL_MATCHERS.map((m) => [m.name.toLowerCase(), m.re]));
-
 export interface TagResult {
   skills: string[];
   clusters: ClusterId[];
 }
 
-/** Word-boundary taxonomy-term matches in the text — cheap first pass. */
+/**
+ * Word-boundary taxonomy-term matches in the text — the only source of tags.
+ *
+ * The LLM extractor used to propose skills too, but every proposal had to clear
+ * these same matchers as an anti-enum-spraying guard, which made its output a
+ * strict subset of this function's. It no longer asks for them.
+ */
 export function tagHeuristic(text: string): TagResult {
   const hay = text.toLowerCase();
   const skills: string[] = [];
@@ -53,30 +56,6 @@ export function tagHeuristic(text: string): TagResult {
     if (re.test(hay)) skills.push(name);
   }
   return finalize(skills);
-}
-
-/**
- * Merge heuristic + LLM-extracted skills, drop non-taxonomy terms, roll up clusters.
- *
- * An LLM-proposed skill must clear the same textual-evidence bar as the
- * heuristic (canonical name or a SYNONYMS variant present in the text). The
- * extractor was observed enum-spraying — tagging jobs with dozens of skills the
- * posting never mentions — so no tag is ever emitted without evidence.
- */
-export function combineSkills(text: string, llmSkills: string[] = []): TagResult {
-  const base = tagHeuristic(text).skills;
-  const hay = text.toLowerCase();
-  const extra = llmSkills
-    .map(canonical)
-    .filter((s): s is string => s !== undefined)
-    .filter((s) => MATCHER_OF_SKILL.get(s.toLowerCase())?.test(hay) ?? false);
-  return finalize([...base, ...extra]);
-}
-
-function canonical(name: string): string | undefined {
-  const lower = name.toLowerCase();
-  if (!SKILL_SET.has(lower)) return undefined;
-  return ALL_SKILLS.find((s) => s.toLowerCase() === lower);
 }
 
 function finalize(skills: string[]): TagResult {

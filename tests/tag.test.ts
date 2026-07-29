@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { combineSkills, tagHeuristic } from "../engine/src/pipeline/tag.ts";
+import { tagHeuristic } from "../engine/src/pipeline/tag.ts";
 
 describe("tagHeuristic", () => {
   it("matches taxonomy terms on word boundaries only", () => {
@@ -28,26 +28,26 @@ describe("tagHeuristic", () => {
   });
 });
 
-describe("combineSkills", () => {
+describe("tagHeuristic evidence gate", () => {
   const text =
     "Backend services in Python on AWS. You will integrate machine learning models built by data science.";
 
-  it("drops LLM-proposed skills with no textual evidence (enum-spraying guard)", () => {
-    const { skills } = combineSkills(text, ["GPU", "Latency", "vLLM", "Pinecone", "Python"]);
+  it("emits only skills literally present in the text", () => {
+    const { skills } = tagHeuristic(text);
     expect(skills).toEqual(expect.arrayContaining(["Python", "AWS"]));
     expect(skills).not.toContain("GPU");
     expect(skills).not.toContain("vLLM");
     expect(skills).not.toContain("Pinecone");
   });
 
-  it("keeps LLM skills that do appear in the text", () => {
-    const { skills } = combineSkills("We serve models with vLLM on GPU clusters.", ["vLLM", "GPU"]);
+  it("picks up serving-stack terms when they are mentioned", () => {
+    const { skills } = tagHeuristic("We serve models with vLLM on GPU clusters.");
     expect(skills).toContain("vLLM");
     expect(skills).toContain("GPU");
   });
 
   it("rolls up clusters only from evidenced skills", () => {
-    const { clusters } = combineSkills(text, ["Weaviate", "Qdrant", "Milvus"]);
+    const { clusters } = tagHeuristic(text);
     expect(clusters).not.toContain("rag");
   });
 });
