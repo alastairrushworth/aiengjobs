@@ -3,8 +3,11 @@
   --surface: #14161d;
   --surface-2: #1b1e27;
   --border: #272b36;
-  /* Perceivable boundary for form fields (≥3:1 vs --surface, WCAG 1.4.11). */
-  --border-strong: #545c6e;
+  /* Perceivable boundary for form fields (WCAG 1.4.11 wants ≥3:1 against the
+     adjacent surface). #545c6e measured only 2.70:1 against --surface; this
+     is 3.2:1. Check against --surface, not --bg — the filter panel and the
+     buttons that use it sit on --surface. */
+  --border-strong: #5f6779;
   --text: #e7e9ee;
   --muted: #9aa1b1;
   --accent: #7c5cff;
@@ -96,7 +99,8 @@ a { color: inherit; text-decoration: none; }
 .site-nav a {
   color: var(--muted);
   border-bottom: 1px solid transparent;
-  padding: 8px 4px;
+  /* Roomy enough to hit with a thumb (WCAG 2.5.5 asks 44px). */
+  padding: 11px 8px;
 }
 .site-nav a:hover,
 .site-nav a:focus-visible { color: var(--accent-text); border-color: var(--accent-text); }
@@ -113,7 +117,7 @@ a { color: inherit; text-decoration: none; }
 .site-footer a:hover,
 .site-footer a:focus-visible { text-decoration: underline; }
 .footer-nav { display: flex; flex-wrap: wrap; gap: 6px 16px; }
-.footer-nav a { color: var(--muted); padding: 4px 0; }
+.footer-nav a { color: var(--muted); padding: 10px 0; }
 .footer-nav a:hover,
 .footer-nav a:focus-visible { color: var(--accent-text); }
 
@@ -243,7 +247,7 @@ a { color: inherit; text-decoration: none; }
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px 14px;
+  gap: 2px 14px; /* links carry their own vertical padding now */
   margin: 22px 0 4px;
 }
 .browse-label { color: var(--muted); font-size: 0.85rem; }
@@ -251,7 +255,9 @@ a { color: inherit; text-decoration: none; }
   font-size: 0.88rem;
   color: var(--text);
   border-bottom: 1px solid var(--border);
-  padding: 6px 2px 3px;
+  /* These wrap into dense rows on a phone, so give each one a thumb-sized
+     target (WCAG 2.5.5) rather than the ~30px the text alone occupied. */
+  padding: 11px 2px 8px;
 }
 .browse a:hover,
 .browse a:focus-visible { border-color: var(--accent-text); color: var(--accent-text); }
