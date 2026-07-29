@@ -44,6 +44,40 @@ export const OUT_TITLE_PATTERNS: RegExp[] = [
   /\btalent (pool|community|network)\b/i,
 ];
 
+// Job families that are never AI engineering. Unlike OUT_TITLE_PATTERNS these are
+// checked *after* IN_TITLE_PATTERNS (see classify.ts), so a title carrying a real
+// AI signal always wins: "Technical Program Manager, Cloud Inference" and
+// "Customer Support Engineer (Inference)" stay IN despite matching here.
+//
+// Every pattern below was mined from titles the LLM had already rejected and kept
+// only where it was 100% OUT-pure against that labelled set — the whole point is
+// to skip the LLM call, so a false positive here is a role silently lost. Prefer
+// leaving a family out over guessing: `solutions architect/engineer` was dropped
+// for exactly this reason (95.7% pure — it was killing infra-flavoured roles).
+export const OFF_TOPIC_TITLE_PATTERNS: RegExp[] = [
+  /\b(recruiting|recruitment|talent acquisition|people operations|hr business partner|onboarding specialist)\b/i,
+  /\b(accountant|accounting|bookkeep|payroll|accounts payable|accounts receivable|controller|auditor|tax manager|fp&a|treasury)\b/i,
+  /\b(counsel|paralegal|attorney|lawyer|compliance officer|legal (operations|manager|director))\b/i,
+  /\b(nurse|nursing|physician|therapist|psychiatr|pharmac|dentist|caregiver|medical assistant|phlebotom|radiolog)\b/i,
+  /\b(tutor|teacher|instructor|curriculum|professor|lecturer|trainer)\b/i,
+  /\b(executive assistant|administrative assistant|office manager|receptionist|workplace experience|facilities)\b/i,
+  /\b(customer success|customer support|support (agent|specialist|representative)|technical support|help desk|service desk)\b/i,
+  /\b(technician|electrician|plumb|welder|machinist|crane operator|foreman|driver|warehouse|forklift|janitor|custodian)\b/i,
+  /\b(supply chain|procurement|logistics|buyer|sourcing manager|inventory|fulfillment)\b/i,
+  /\b(communications|public relations|copywriter|content (writer|manager|strategist)|social media|editor|journalist)\b/i,
+  /\b(program manager|project manager|scrum master|delivery manager|chief of staff)\b/i,
+  /\b(mechanical|electrical|civil|structural|chemical|manufacturing|industrial|aerospace) engineer\b/i,
+  // Sales-adjacent titles the bare /sales/ above misses.
+  /\bbusiness development\b/i,
+  /\baccount manager\b/i,
+  /\b(partnerships?|channel) (manager|lead|director)\b/i,
+  // Non-English commercial/admin postings (fr/it/es/de/pt). These boards carry
+  // whole localised sales and back-office ladders that never contain an AI role.
+  // Note this also suppresses a genuinely French-language AI posting — revisit if
+  // we ever want to list non-English roles.
+  /\b(ingénieur|développeur|responsable|chargé|chargée|spécialiste|comptabilit|commercial(e|es)?|vendeur|stagiaire|alternance|conseiller|agente|commercio|venditore|contabil|ventas|comercial|desarrollador|vertrieb|kaufmann|kauffrau|mitarbeiter|buchhalt)\b/i,
+];
+
 // --- Published site ---------------------------------------------------------
 // Must match site/astro.config.mjs (`site` + `base`). Used to turn job slugs
 // into the absolute URLs we hand to search engines.
