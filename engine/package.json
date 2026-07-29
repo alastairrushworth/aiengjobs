@@ -12,6 +12,7 @@
     "reclassify": "tsx src/cli.ts reclassify",
     "refresh": "tsx src/cli.ts refresh",
     "notify": "tsx src/cli.ts notify",
+    "logos": "tsx src/cli.ts logos",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

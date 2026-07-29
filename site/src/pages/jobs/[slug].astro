@@ -15,6 +15,8 @@ import {
 import { url } from "../../lib/url.ts";
 import { jsonLdScript } from "../../lib/jsonld.ts";
 import { buildJobTitles } from "../../lib/jobTitle.ts";
+import CompanyLogo from "../../components/CompanyLogo.astro";
+import { logoFile } from "../../lib/logos.ts";
 import {
   openJobs,
   closedJobs,
@@ -160,6 +162,8 @@ const descriptionHtml = blocks
   .join("");
 
 const company = companies.find((c) => c.slug === job.companySlug);
+const logo = logoFile(job.companySlug);
+const logoUrl = logo ? new URL(url(`/logos/${logo}`), Astro.site).href : null;
 const pageUrl = new URL(url(`/jobs/${job.slug}/`), Astro.site).href;
 
 // One of several identical requisitions for the same role at the same site?
@@ -197,7 +201,10 @@ const jsonLd: Record<string, unknown> | null = closed || dupCanonicalSlug || !ha
         "@type": "Organization",
         name: job.companyName,
         ...(company?.domain ? { sameAs: `https://${company.domain}/` } : {}),
-        ...(company?.logoUrl ? { logo: company.logoUrl } : {}),
+        // Only claimed when we hold the bytes and render them on this page —
+        // Google expects markup to reflect visible content, and a logo URL we
+        // haven't verified would be a 404 in the index.
+        ...(logoUrl ? { logo: logoUrl } : {}),
       },
       employmentType,
       // datePosted is required for the rich result; first-seen is the honest
@@ -271,13 +278,16 @@ const metaDescription = `${descBits.join(" — ")}.`.slice(0, 300);
       </p>
     )}
     <h1>{job.title}</h1>
-    <p class="company">
-      {companyPageExists ? (
-        <a href={url(`/companies/${job.companySlug}/`)}>{job.companyName}</a>
-      ) : (
-        job.companyName
-      )}
-    </p>
+    <div class="company-row">
+      <CompanyLogo name={job.companyName} slug={job.companySlug} size={40} />
+      <p class="company">
+        {companyPageExists ? (
+          <a href={url(`/companies/${job.companySlug}/`)}>{job.companyName}</a>
+        ) : (
+          job.companyName
+        )}
+      </p>
+    </div>
     {facts.length > 0 && (
       <dl class="facts">
         {facts.map((f) => (
@@ -366,7 +376,8 @@ const metaDescription = `${descBits.join(" — ")}.`.slice(0, 300);
     margin: 12px 0 6px;
     overflow-wrap: anywhere;
   }
-  .job-detail .company { margin: 0 0 16px; }
+  .company-row { display: flex; align-items: center; gap: 12px; margin: 0 0 16px; }
+  .job-detail .company { margin: 0; overflow-wrap: anywhere; }
   .job-detail .company a { color: var(--accent-text); }
   .job-detail .company a:hover { text-decoration: underline; }
   .closed-banner {
