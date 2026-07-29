@@ -1,9 +1,13 @@
 ---
 name: audit-ui
-description: Drive the running aiengjobs site in a real Chrome browser and review it as a designer would — visual hierarchy, layout, typography, spacing, colour, interaction quality, affordance clarity, journey friction, empty/loading/error states, and how it actually feels to use on a phone and a laptop. Walks representative journeys (browse → filter → evaluate a role → apply, plus landing pages, pagination, salaries and dead ends), clicking through real pages rather than reading source. Use when the user asks for a UI review, UX audit, design critique, "how does the site feel", "what could look better", or wants improvements to layout and usability. Correctness, SEO and a11y compliance belong to audit-site; source quality belongs to audit-code. Produces a prioritized, screenshot-backed improvement report; read-only (does not edit files unless asked).
+description: Drive the running aiengjobs site in a real Chrome browser and review it as a designer would — visual hierarchy, layout, typography, spacing, colour, interaction quality, affordance clarity, journey friction, empty/loading/error states, and how it actually feels to use on a phone and a laptop. Walks representative journeys (browse → filter → evaluate a role → apply, plus landing pages, pagination, salaries and dead ends), clicking through real pages rather than reading source. Use when the user asks for a UI review, UX audit, design critique, "how does the site feel", "what could look better", or wants improvements to layout and usability. Correctness, SEO and a11y compliance belong to audit-site; source quality belongs to audit-code. For a full sweep across source, rendered output and UI together, use audit-all instead. Produces a prioritized, screenshot-backed improvement report; read-only (does not edit files unless asked).
 ---
 
 # UI/UX Audit — aiengjobs
+
+**Read `.claude/audit-conventions.md` first.** It carries the rules shared by
+all three audit skills — the scope split, operating rules, severity tiers and
+report rules. This file adds only what's specific to a hands-on design review.
 
 A **hands-on design review**: open the site in a real browser, use it the way a
 job seeker would, and judge how it looks and feels. This is the skill that
@@ -17,16 +21,8 @@ type, and look.**
 
 ## Scope boundary
 
-Three sibling skills, one site:
-
-| Question | Skill |
-|---|---|
-| How does it **look and feel** to use? Where's the friction? | **audit-ui** (this one) |
-| Is the output **correct, discoverable, unbroken**? | **audit-site** |
-| Is the **source** simple, readable, typed, secure? | **audit-code** |
-
-The seam with `audit-site` is worth being precise about, because both look at
-rendered pages:
+See the split table in the shared conventions. The seam with `audit-site` is
+worth being precise about here, because both look at rendered pages:
 
 - **audit-site asks "does it break?"** — horizontal overflow at 360px, tap
   targets under 44px, contrast below WCAG AA, a missing label, a 404.
@@ -44,8 +40,10 @@ name it; don't go reading the codebase.
 
 ## Operating rules
 
-- **Read-only.** Produce findings and recommendations; do not edit files unless
-  the user explicitly asks.
+The shared rules in `.claude/audit-conventions.md` apply — read-only, evidence
+for every finding, smallest change that fixes it, taste labelled as taste.
+Specific to a design review:
+
 - **Judge as a job seeker, not as a developer.** The user is someone scanning
   for a role on their phone during a commute, or comparing three postings on a
   laptop. Their goals: *is there anything good here, is it recent and real, does
@@ -56,12 +54,9 @@ name it; don't go reading the codebase.
   library, an illustration set, or a brand refresh. Recommend the *smallest*
   change that fixes the problem within the current aesthetic. You may propose at
   most **one** bigger bet, clearly labelled as such, at the end.
-- **Evidence is a screenshot.** Every visual finding needs one, saved to disk
-  (`save_to_disk: true`) and attached in the report. "The spacing feels off" with
-  no image is not a finding.
-- **Separate observation from preference.** "The apply button sits below the
-  fold on a phone, so it takes two scrolls to reach" is an observation. "I'd
-  make it teal" is a preference — allowed, but labelled, and in the lowest tier.
+- **Evidence is a screenshot.** The shared "cite evidence" rule cashes out here
+  as an image, saved to disk (`save_to_disk: true`) and attached in the report.
+  "The spacing feels off" with no image is not a finding.
 - **Count the cost.** Where you can, quantify friction: clicks to complete a
   journey, scroll depth to the first useful thing, seconds to interactive.
 - **Don't trigger dialogs.** No `alert`/`confirm` paths, nothing that opens a
@@ -69,12 +64,12 @@ name it; don't go reading the codebase.
 
 ## Setup
 
+Start the site (see Prerequisites in the shared conventions for the snapshot):
+
 ```bash
 npm run dev -w @aiengjobs/site      # → http://localhost:4321/aiengjobs/
 ```
 
-The dev server needs `site/src/data/snapshot.json`. If it's missing, run
-`npm run snapshot:fetch` first (it's gitignored — see the audit-site skill).
 `npm run preview` against `dist/` also works and is closer to production; dev is
 fine for UI work and rebuilds as you go.
 
@@ -305,18 +300,17 @@ redesign.>
 and against.>
 ```
 
-Rules for the report:
+The shared report rules apply (one finding per issue, a pattern reported once
+with every page it appears on, `→ also audit-site` / `→ audit-code` one-liners,
+offer to fix or save — never write files unasked). Specific to this audit:
+
 - Attach screenshots for visual findings; a finding without evidence is an
   opinion.
 - Tag every finding with the **page type and viewport** where you saw it, so
   it's reproducible.
-- Report a recurring pattern **once**, listing every page it appears on.
-- Hard defects get `→ also audit-site`; source-level observations get
-  `→ audit-code`. One line each, no digression.
 - Be honest about subjectivity. Design has taste in it — say when a call is
   taste, and give the reasoning rather than asserting.
-- End by offering to (a) implement a chosen subset, or (b) save the report with
-  its screenshots (e.g. `audits/audit-ui-<date>.md`). Do not write files unasked.
+- Save target: `audits/audit-ui-<date>.md`, with its screenshots.
 
 ## Wrap-up
 

@@ -1,9 +1,14 @@
 ---
 name: audit-site
-description: Run a thorough, deep-thinking review of the aiengjobs Astro site for bugs, correctness issues, SEO concerns (including Google for Jobs / JobPosting structured data), the paginated landing-page system and RSS feeds, accessibility, performance, responsive rendering across mobile and desktop, and big-picture/architecture problems. Use when the user asks to audit, review, or sanity-check the whole site (or a major area of it) rather than a single diff. Covers the rendered site and front-end (site/ — Astro pages, layouts, components, CSS, inline browser JS) as OUTPUT: what a user, a crawler, or a feed reader receives. Source-level code quality, security-guard implementation, the ingestion engine, deploy tooling and CI belong to the audit-code skill. Produces a prioritized findings report; read-only by default (does not edit files unless asked).
+description: Run a thorough, deep-thinking review of the aiengjobs Astro site for bugs, correctness issues, SEO concerns (including Google for Jobs / JobPosting structured data), the paginated landing-page system and RSS feeds, accessibility, performance, responsive rendering across mobile and desktop, and big-picture/architecture problems. Use when the user asks to audit, review, or sanity-check the whole site (or a major area of it) rather than a single diff. Covers the rendered site and front-end (site/ — Astro pages, layouts, components, CSS, inline browser JS) as OUTPUT: what a user, a crawler, or a feed reader receives. Source-level code quality, security-guard implementation, the ingestion engine, deploy tooling and CI belong to the audit-code skill. For a full sweep across source, rendered output and UI together, use audit-all instead. Produces a prioritized findings report; read-only by default (does not edit files unless asked).
 ---
 
 # Site Audit — aiengjobs
+
+**Read `.claude/audit-conventions.md` first.** It carries the rules shared by
+all three audit skills — the scope split, operating rules, the data boundary,
+known non-issues, severity tiers and report rules. This file adds only what's
+specific to auditing the rendered site.
 
 A deep, systematic review of the whole static site: not just "does it build" but
 "is it correct, discoverable, accessible, fast, and maintainable." Think hard.
@@ -24,77 +29,31 @@ robots, the RSS feeds, responsive layout, and on-page UX.
 
 **Companion skills.** `audit-code` owns source quality across the whole repo
 (including `site/src/` as source); `audit-ui` owns hands-on design critique in a
-real browser. The split:
-
-| Question | Skill |
-|---|---|
-| Is the *output* correct, discoverable, accessible, fast? | **audit-site** (this one) |
-| Is the *source* simple, readable, typed, secure, tested? | **audit-code** |
-| How does it *look and feel* to use? Where's the friction? | **audit-ui** |
-| Is `safeUrl()` / `jsonLdScript()` / `url()` **used** everywhere it must be? | **audit-site** |
-| Is `safeUrl()` / `jsonLdScript()` correctly **implemented**? | **audit-code** |
+real browser. See the split table in the shared conventions.
 
 Against `audit-ui` specifically: **this skill asks "does it break?"** (overflow,
 tap targets under 44px, contrast below AA, a dead link); audit-ui asks "does it
 work *well*?" (hierarchy, density, affordance, journey friction). Design-taste
 observations → "→ audit-ui" in one line.
 
-Don't re-litigate a sibling's territory. Duplication across pages, type casts,
-dead helpers, test coverage, the engine, `scripts/`, `deploy/` and
-`.github/workflows/` → note in one line as "→ audit-code" and move on.
-
-**Exception:** when a site-visible defect originates in the data (see the data
-boundary below), trace it to the engine file responsible and say so — that's in
-scope as diagnosis, not as an engine review.
+**Exception to the no-trespassing rule:** when a site-visible defect originates
+in the data, trace it to the engine file responsible and say so — that's in
+scope as diagnosis, not as an engine review. (See the data boundary in the
+shared conventions for where to point.)
 
 ## Operating rules
 
-- **Read-only by default.** Produce findings; do not edit files unless the user
-  explicitly asks you to fix things. If asked to fix, do it as a follow-up pass,
-  one logical change at a time, and re-verify the build.
-- **Respect the data boundary.** `site/src/data/snapshot.json` is
-  **engine-generated** — exported nightly from the droplet's SQLite DB and
-  published on the detached `snapshot` branch. Never propose hand-edits to it.
-  If a problem originates in the data (bad salary parse, wrong country, mangled
-  title, missing `postedAt`, stale closed flag, a city name that didn't
-  canonicalize), trace it to the engine stage responsible
-  (`engine/src/pipeline/normalize.ts`, `classify.ts`, `tag.ts`, `comp.ts`,
-  `location.ts`, `shared/city.ts`, or `engine/src/export/exportSnapshot.ts`) and
-  recommend fixing it there + waiting for (or triggering) a refresh.
-- **Treat feed data as untrusted.** Job titles, company names, descriptions,
-  locations, and apply URLs come from third-party ATS feeds. Anywhere the site
-  interpolates them — especially `set:html`, JSON-LD, RSS/XML, and `href`s — is
-  a first-class review surface, not an afterthought (see §9).
-- **Read the comments before flagging.** This codebase documents its deliberate
-  choices inline and they are usually right. Before calling something wrong,
-  check whether a comment already explains why — then judge whether the
-  reasoning still holds.
-- **Cite evidence.** Every finding gets a `file:line` reference (or a rendered
-  `site/dist/` excerpt for build-output issues) so it's actionable and clickable.
-- **Don't invent severity.** Rank by real user/SEO/maintenance impact, not by
-  how easy it is to spot.
-- **Verify before asserting.** If you claim something is broken, confirm it in
-  the source or the built output rather than guessing.
+The shared rules in `.claude/audit-conventions.md` apply in full — read-only by
+default, cite evidence, verify before asserting, read the comments before
+flagging, the known non-issues list, real-impact severity. Specific to a site
+audit:
 
-### Known non-issues — do not report these as findings
-
-Verify they're still true, but don't cry wolf. Each is deliberate and documented:
-
-- **`trailingSlash: "ignore"` in `astro.config.mjs` alongside always-trailing-
-  slash canonicals** (`Base.astro:39-43`). GitHub Pages 301s the slash-less
-  form; canonicalizing to a redirect would be the bug. The config value and the
-  canonical policy are *supposed* to differ.
-- **The sitemap's belt-and-braces slash guard** (`sitemap.xml.ts:11-12`) — it
-  looks redundant but handles `url("/")` dropping the base's trailing slash.
-- **The gitignored snapshot.** `site/src/data/snapshot.json` is absent from a
-  fresh clone by design; it lives on the detached `snapshot` branch (~22MB).
-- **`MIN_CITY_JOBS = 12`** (`lib/landings.ts:32`) — a deliberate thin-content
-  gate, not an arbitrary cutoff. Its *consequences* are fair game (§2), the
-  threshold itself is a considered call.
-- **One shared `og-default.png`** across all pages — a known tradeoff, already
-  noted below. Flag the cost, don't report it as an oversight.
-- **`reasoning_effort: "none"` / GPT-5.4-nano** in the engine — deliberate cost
-  choice, and out of scope anyway.
+- **Evidence can be rendered output.** A `site/dist/` excerpt is as good as a
+  `file:line`, and for build-output issues it's better. Inspect what the build
+  actually emitted, not just the template that produced it.
+- **The untrusted-input surface is §9.** Anywhere the site interpolates feed
+  data — `set:html`, JSON-LD, RSS/XML, `href`s — is first-class, not an
+  afterthought.
 
 ## Step 0 — Build and capture the real output
 
@@ -107,14 +66,10 @@ npm run build -w @aiengjobs/site     # full build → site/dist/
 npm test                             # vitest — display-format helpers have tests
 ```
 
-- **Fetch the snapshot first.** Without it the build fails immediately and the
-  audit stalls. If the fetch fails (no network, no `snapshot` branch), say so in
-  the report and fall back to source-only review — don't silently skip pages.
+- **Fetch the snapshot first** and check its freshness — see Prerequisites in
+  the shared conventions. Without it the build fails immediately and the audit
+  stalls.
 - Treat build **warnings and errors** as first-class findings.
-- **Check freshness.** Read `generatedAt` in the snapshot and compare to today.
-  The site advertises "refreshed nightly" — a snapshot more than ~2 days old
-  means the droplet refresh loop is broken, which is a Critical finding in its
-  own right (stale jobs + decaying `validThrough` dates poison Google for Jobs).
 - Record the numbers you'll reason about later: build time, page count in
   `dist/`, `dist/index.html` size, `dist/jobs-data.json` size, `dist/sitemap.xml`
   size and URL count.
@@ -569,26 +524,19 @@ For each finding:
 <the three highest-leverage fixes, in order.>
 ```
 
-Rules for the report:
-- One finding per issue; don't merge unrelated problems.
-- If a problem shows up on five page types, report it **once** as a pattern with
-  all five locations — not five times.
+The shared report rules apply (one finding per issue, a pattern reported once
+with all its locations, honest uncertainty, `→ audit-code` / `→ audit-ui`
+one-liners, offer to fix or save — never write files unasked). Specific to this
+audit:
+
 - For layout/responsive findings, name the affected viewport(s) (e.g. `≤480px`)
   and whether it's mobile, desktop, or both, so they're reproducible.
 - If a problem is data/engine-generated, say so and point at `engine/src/…`,
   not at `snapshot.json`.
-- Source-quality observations get one "→ audit-code" line each, not a section.
-- Be honest about uncertainty — mark "needs verification" rather than
-  overstating (especially for Google for Jobs guideline calls you can't test
-  live), and state plainly anything you couldn't run (no snapshot, no browser).
-- End by offering to (a) fix a chosen subset, or (b) save the report to a file
-  (e.g. `audits/audit-site-<date>.md`). Do not write files unasked.
+- Google for Jobs guideline calls you can't test live get "needs verification".
+  State plainly anything you couldn't run — no snapshot, no browser.
+- Save target: `audits/audit-site-<date>.md`.
 
-## Optional: parallel exploration
-
-For broad fan-out reads (e.g. "every `set:html` usage", "every internal link
-that bypasses `url()`", "every page's title/description", "every landing's
-rendered h1") you may dispatch `Explore` agents to gather locations quickly,
-then do the actual judgement yourself. Keep the analysis and severity calls in
-the main thread — exploration finds, you review. Never report a finding you
-haven't personally confirmed in the source or the built output.
+Parallel `Explore` fan-out is available for broad location-gathering ("every
+`set:html` usage", "every internal link that bypasses `url()`", "every page's
+title/description", "every landing's rendered h1") — see the shared conventions.
