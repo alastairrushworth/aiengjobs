@@ -255,6 +255,8 @@ a { color: inherit; text-decoration: none; }
 }
 .browse a:hover,
 .browse a:focus-visible { border-color: var(--accent-text); color: var(--accent-text); }
+/* Role count beside a location link — present but subordinate to the place name. */
+.browse a .loc-n { color: var(--muted); font-size: 0.78rem; }
 
 .back { color: var(--muted); }
 .back:hover { color: var(--accent-text); }

@@ -1,7 +1,8 @@
 import type { APIRoute } from "astro";
-import { CLUSTER_PAGES, CLUSTER_PAGE_SIZE } from "../lib/clusters.ts";
+import { CLUSTER_PAGES } from "../lib/clusters.ts";
+import { LANDINGS, pageCount } from "../lib/landings.ts";
 import { url } from "../lib/url.ts";
-import { openJobs, generatedAt } from "../lib/data.ts";
+import { openJobs, generatedAt, duplicateOf } from "../lib/data.ts";
 
 export const GET: APIRoute = ({ site }) => {
   // Trailing slashes throughout — GitHub Pages 301s the slash-less form, and a
@@ -17,22 +18,25 @@ export const GET: APIRoute = ({ site }) => {
     { loc: abs("/stats"), lastmod: day(generatedAt) },
     { loc: abs("/salaries"), lastmod: day(generatedAt) },
   ];
-  for (const p of CLUSTER_PAGES) {
-    // Cluster pages are paginated; list every slice so the roles past page 1
-    // stay discoverable (see pages/[topic]/[...page].astro).
-    const count = openJobs.filter((j) => j.clusters.includes(p.id)).length;
-    const lastPage = Math.max(1, Math.ceil(count / CLUSTER_PAGE_SIZE));
-    entries.push({ loc: abs(`/${p.slug}`), lastmod: day(generatedAt) });
-    for (let n = 2; n <= lastPage; n++) {
-      entries.push({ loc: abs(`/${p.slug}/${n}`), lastmod: day(generatedAt) });
+  // Every listing page — clusters and locations alike — is paginated; list each
+  // slice so the roles past page 1 stay discoverable (pages/[topic]/[...page]).
+  for (const landing of LANDINGS) {
+    entries.push({ loc: abs(`/${landing.slug}`), lastmod: day(generatedAt) });
+    for (let n = 2; n <= pageCount(landing); n++) {
+      entries.push({ loc: abs(`/${landing.slug}/${n}`), lastmod: day(generatedAt) });
     }
+  }
+  for (const p of CLUSTER_PAGES) {
     entries.push({ loc: abs(`/salaries/${p.id}`), lastmod: day(generatedAt) });
   }
   for (const slug of new Set(openJobs.map((j) => j.companySlug))) {
     entries.push({ loc: abs(`/companies/${slug}`), lastmod: day(generatedAt) });
   }
-  // Closed-job tombstones are noindexed and deliberately absent here.
+  // Closed-job tombstones are noindexed and deliberately absent here, as are
+  // duplicate requisitions — they canonicalize onto the newest of their set, and
+  // submitting a URL we've told Google to ignore is a contradictory signal.
   for (const j of openJobs) {
+    if (duplicateOf(j)) continue;
     entries.push({
       loc: abs(`/jobs/${j.slug}`),
       lastmod: day(j.updatedAt ?? j.postedAt) ?? day(generatedAt),

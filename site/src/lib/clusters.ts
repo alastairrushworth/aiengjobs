@@ -1,8 +1,7 @@
 import type { ClusterId } from "@aiengjobs/shared/taxonomy";
 
-/** Roles per cluster-page slice. Shared by [topic]/[...page].astro and the
- *  sitemap so the two can't disagree about how many pages exist. */
-export const CLUSTER_PAGE_SIZE = 100;
+// Slice size moved to lib/landings.ts as PAGE_SIZE — location pages paginate
+// through the same route, so the constant can't live in the cluster module.
 
 export interface ClusterPage {
   id: ClusterId;
