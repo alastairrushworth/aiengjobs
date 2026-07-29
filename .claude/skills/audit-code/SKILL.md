@@ -1,9 +1,14 @@
 ---
 name: audit-code
-description: Run a thorough, deep-thinking code-quality audit of the whole aiengjobs codebase — correctness, security, type safety, simplicity, duplication, readability, modernness/idiom, error handling, testing, dependencies, performance, architecture, and tooling/CI hygiene. Use when the user asks to audit, review, or sanity-check the code (as opposed to the rendered site) — "review the code", "code quality audit", "is this codebase well written", "security review of the engine", or a deep pass over a subsystem. Covers all source in the repo: engine/ (connectors, pipeline, db, export, notify), shared/, site/src/ as source, tests/, scripts/, deploy/, and .github/workflows/. Rendered-output concerns (SEO, structured data, a11y, responsive layout, on-page UX copy) belong to the audit-site skill, not this one. Produces a prioritized findings report; read-only by default (does not edit files unless asked).
+description: Run a thorough, deep-thinking code-quality audit of the whole aiengjobs codebase — correctness, security, type safety, simplicity, duplication, readability, modernness/idiom, error handling, testing, dependencies, performance, architecture, and tooling/CI hygiene. Use when the user asks to audit, review, or sanity-check the code (as opposed to the rendered site) — "review the code", "code quality audit", "is this codebase well written", "security review of the engine", or a deep pass over a subsystem. Covers all source in the repo: engine/ (connectors, pipeline, db, export, notify), shared/, site/src/ as source, tests/, scripts/, deploy/, and .github/workflows/. Rendered-output concerns (SEO, structured data, a11y, responsive layout, on-page UX copy) belong to the audit-site skill, not this one. For a full sweep across source, rendered output and UI together, use audit-all instead. Produces a prioritized findings report; read-only by default (does not edit files unless asked).
 ---
 
 # Code Audit — aiengjobs
+
+**Read `.claude/audit-conventions.md` first.** It carries the rules shared by
+all three audit skills — the scope split, operating rules, the data boundary,
+known non-issues, severity tiers and report rules. This file adds only what's
+specific to auditing source.
 
 A deep, systematic review of the codebase **as code**: is it correct, secure,
 honest about its types, simple, readable, modern, tested, and maintainable by
@@ -37,18 +42,8 @@ This skill owns **every line of source in the repo**, judged as code:
 It does **not** cover, because `audit-site` owns them: SEO and JSON-LD
 correctness, Google for Jobs eligibility, sitemap/robots/canonical strategy,
 accessibility, responsive rendering across viewports, on-page copy and UX, and
-rendered-output inspection of `site/dist/`. If you spot something there, note it
-in one line as "→ audit-site" and move on.
-
-The overlap is deliberate and narrow:
-
-| Question | Skill |
-|---|---|
-| Is the *source* simple, readable, typed, secure, tested? | **audit-code** (this one) |
-| Is the *output* correct, discoverable, accessible, fast? | **audit-site** |
-| How does it *look and feel* to use? | **audit-ui** (browser-driven design critique) |
-| Is `safeUrl()` / `jsonLdScript()` / `xmlEscape()` correctly **implemented**? | **audit-code** |
-| Is it **used** everywhere it must be? | **audit-site** |
+rendered-output inspection of `site/dist/`. See the split table in the shared
+conventions.
 
 So: a duplicated helper across pages, a swallowed error in an inline script, an
 unsound cast, an unescaped interpolation in `lib/feed.ts` — yours. Whether the
@@ -56,40 +51,19 @@ resulting page ranks, renders, or reads well — audit-site's.
 
 ## Operating rules
 
-- **Read-only by default.** Produce findings; do not edit files unless the user
-  explicitly asks you to fix things. If asked to fix, do it as a follow-up pass,
-  one logical change at a time, re-running typecheck + tests after each.
-- **Read the comments before flagging.** This codebase documents its deliberate
-  choices inline and they are usually right. Before calling something wrong,
-  check whether a comment already explains why it is that way — then judge
-  whether the reasoning still holds. A finding that contradicts a documented
-  decision must engage with that decision, not ignore it.
-- **Known non-issues — do not report these as findings** (verify they're still
-  true, but don't cry wolf):
-  - `INDEXNOW_KEY` in `engine/src/config.ts` is **public by design** — it only
-    proves host control and its twin is served from `site/public/<key>.txt`.
-  - `site/src/data/snapshot.json` is engine-generated and gitignored; it's
-    published on the detached `snapshot` branch, not in main's history.
-  - `.ts` extension imports (`allowImportingTsExtensions`) are intentional —
-    `tsx` for the engine, Astro's bundler for the site, no build step for
-    `shared/`.
-  - `engine/data/*.db*` are local dev artefacts and gitignored.
-- **Respect the data boundary.** Never propose hand-edits to `snapshot.json`.
-  Data defects trace to the pipeline stage that produced them.
-- **Treat feed data as untrusted.** Everything from the 12 ATS connectors —
-  titles, company names, descriptions, locations, salaries, URLs — is
-  third-party input that flows into SQL, into LLM prompts, into the snapshot,
-  and into rendered HTML. That path is the single most important review surface
-  in the repo (§2).
-- **Cite evidence.** Every finding gets a `file:line`. If you claim something is
-  broken, confirm it in the source (or by running it) rather than guessing.
-- **Don't invent severity.** Rank by real impact — data corruption, security,
-  silent failure, maintenance cost — not by how easy the issue was to spot.
-- **No drive-by rewrites.** Recommend the smallest change that fixes the
-  problem. "Rewrite this in X" is not a finding. If a subsystem genuinely needs
-  restructuring, say so once, in §12, with the concrete pain it would remove.
-- **Distinguish taste from defect.** Style preferences go in Low/Nits and are
-  labelled as preferences. Don't inflate them.
+The shared rules in `.claude/audit-conventions.md` apply in full — read-only by
+default, cite `file:line`, read the comments before flagging, the known
+non-issues list, no drive-by rewrites, taste vs defect. On top of those, three
+that bite hardest in a source audit:
+
+- **The untrusted-input path is the main event.** Feed data reaching SQL, LLM
+  prompts, the snapshot and rendered HTML is the single most important review
+  surface in this repo — §2 is where the audit earns its keep.
+- **Data defects are pipeline defects.** Never propose hand-edits to
+  `snapshot.json`; trace to the stage that produced the value.
+- **Restructuring goes in §12, once.** If a subsystem genuinely needs
+  reshaping, say so there with the concrete pain it removes — not sprinkled
+  through the findings.
 
 ## Step 0 — Establish the baseline
 
@@ -102,19 +76,14 @@ npm run build -w @aiengjobs/site     # catches template + import errors
 ```
 
 Notes:
-- The site build needs a snapshot. If `site/src/data/snapshot.json` is absent,
-  fetch it with `npm run snapshot:fetch` (it pulls from the detached `snapshot`
-  branch). Say so in the report if you couldn't build.
+- The site build needs the snapshot — see Prerequisites in the shared
+  conventions. Say so in the report if you couldn't build.
 - Treat **every** warning as a candidate finding, not noise.
 - Record the numbers you'll reason about later: build time, test count, source
   line counts per area, largest files.
 - Check the working tree: `git status`, and `git log --oneline -20` for recent
   direction. Uncommitted work in progress changes what's fair to flag — mention
   it rather than reviewing half-finished code as if it shipped.
-- **There is no linter or formatter configured** (no ESLint/Biome/Prettier/
-  editorconfig). Judge for yourself whether that's costing this codebase
-  anything concrete, and only recommend adding one if you can point at real
-  defects it would have caught. Don't recommend tooling for its own sake.
 
 ## Review dimensions
 
@@ -480,23 +449,16 @@ For each finding:
 <the three highest-leverage changes, in order.>
 ```
 
-Rules for the report:
-- One finding per issue; don't merge unrelated problems into a bullet.
-- Tag each finding with its dimension so themes are visible.
-- If a problem shows up in five places, report it **once** as a pattern with all
-  five locations listed — not five times.
-- Be honest about uncertainty. Mark "needs verification" rather than
-  overstating, especially for runtime behaviour you couldn't exercise (droplet
-  ops, live feeds, LLM responses).
-- Anything that's really a rendered-site concern: one line, "→ audit-site".
-- End by offering to (a) fix a chosen subset, or (b) save the report to a file
-  (e.g. `audits/audit-code-<date>.md`). Do not write files unasked.
+The shared report rules apply (one finding per issue, a pattern reported once
+with all its locations, honest uncertainty, `→ audit-site` / `→ audit-ui`
+one-liners, offer to fix or save — never write files unasked). Specific to this
+audit:
 
-## Optional: parallel exploration
+- Tag each finding with its dimension number so themes are visible.
+- Runtime behaviour you couldn't exercise — droplet ops, live feeds, LLM
+  responses — gets "needs verification" rather than a confident claim.
+- Save target: `audits/audit-code-<date>.md`.
 
-For broad fan-out reads — "every `catch` block in `engine/src/`", "every `as`
-cast", "every `console.*` call", "every place a constant is duplicated across
-workspaces" — you may dispatch `Explore` agents to gather locations quickly.
-Keep the judgement and severity calls in the main thread: exploration finds,
-you review. Never report a finding you haven't personally confirmed in the
-source.
+Parallel `Explore` fan-out is available for broad location-gathering ("every
+`catch` block in `engine/src/`", "every `as` cast", "every `console.*` call",
+"every constant duplicated across workspaces") — see the shared conventions.
