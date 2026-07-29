@@ -1,0 +1,23 @@
+{
+ "poolSize": {
+  "ambiguous/lo": 829,
+  "ambiguous/sub_floor": 1378,
+  "ambiguous/boundary": 8605,
+  "ambiguous/confident": 15980,
+  "heur_in": 1985,
+  "heur_out": 6916,
+  "offtopic_out": 6556,
+  "random": 42249
+ },
+ "drawn": {
+  "ambiguous/lo": 30,
+  "ambiguous/sub_floor": 55,
+  "ambiguous/boundary": 65,
+  "ambiguous/confident": 70,
+  "heur_in": 90,
+  "heur_out": 80,
+  "offtopic_out": 70,
+  "random": 40
+ },
+ "note": "weight = poolSize/drawn; use to reweight to population"
+}
