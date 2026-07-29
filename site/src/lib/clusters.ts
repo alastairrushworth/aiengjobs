@@ -3,6 +3,10 @@ import type { ClusterId } from "@aiengjobs/shared/taxonomy";
 // Slice size moved to lib/landings.ts as PAGE_SIZE — location pages paginate
 // through the same route, so the constant can't live in the cluster module.
 
+/** URL segment for a cluster's salary page. Taxonomy ids may carry underscores
+ *  ("core_ml"); URLs on this site are hyphenated throughout. */
+export const salarySlug = (id: ClusterId): string => id.replace(/_/g, "-");
+
 export interface ClusterPage {
   id: ClusterId;
   /** URL slug for the programmatic page, e.g. "rag-engineer-jobs" → /rag-engineer-jobs */
@@ -61,4 +65,26 @@ export const CLUSTER_PAGES: ClusterPage[] = [
     h1: "Fine-tuning engineer jobs",
     intro: "Model-adaptation roles — LoRA/PEFT, RLHF/DPO, distillation.",
   },
+  {
+    id: "mlops",
+    slug: "mlops-engineer-jobs",
+    label: "MLOps / Infra",
+    h1: "MLOps & ML infrastructure jobs",
+    intro:
+      "Roles running models in production — Kubernetes, Ray, Kubeflow, SageMaker/Vertex, CI/CD for ML.",
+  },
+  {
+    id: "core_ml",
+    slug: "machine-learning-engineer-jobs",
+    label: "Core ML",
+    h1: "Machine learning engineer jobs",
+    intro:
+      "Classical and deep-learning roles — PyTorch, TensorFlow, NLP, computer vision.",
+  },
 ];
+
+// `cloud` and `language` from shared/taxonomy.ts deliberately get no page.
+// They tag by ambient tooling (AWS/GCP, Python/Go) rather than by what the job
+// is about: `language` alone covers ~75% of the board, so its page would be a
+// near-duplicate of the homepage, and both would compete with the pages above
+// for the same roles without describing a distinct kind of work.
