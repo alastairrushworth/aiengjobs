@@ -9,6 +9,12 @@ dist/
 *.db-wal
 *.sqlite
 
+# The ~22MB snapshot is published on the detached `snapshot` branch, not in
+# main's history (see scripts/droplet-refresh.sh). Fetch it with:
+#   npm run snapshot:fetch
+# Its small companion, snapshot.meta.json, IS committed.
+site/src/data/snapshot.json
+
 # secrets
 .env
 .env.*

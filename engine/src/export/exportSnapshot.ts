@@ -2,6 +2,7 @@ import { writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { openDb } from "../db/index.ts";
+import { canonicalCity } from "@aiengjobs/shared/city";
 import { stripHtml } from "../util/html.ts";
 import { fetchFxRates } from "../util/fx.ts";
 import type {
@@ -29,6 +30,13 @@ function displayText(row: JobRow): string | undefined {
 export const SNAPSHOT_OUT =
   process.env.SNAPSHOT_OUT ??
   join(here, "..", "..", "..", "site", "src", "data", "snapshot.json");
+
+// A few hundred bytes of run summary that IS committed to main, alongside the
+// ~22MB snapshot that isn't (see scripts/droplet-refresh.sh). It gives the Pages
+// build something to trigger on and leaves a readable history of nightly runs.
+export const SNAPSHOT_META_OUT =
+  process.env.SNAPSHOT_META_OUT ??
+  join(here, "..", "..", "..", "site", "src", "data", "snapshot.meta.json");
 
 // Roles that vanished from their feed stay in the snapshot for this long so the
 // site can render a "role closed" tombstone instead of 404ing shared links.
@@ -140,7 +148,10 @@ export async function exportSnapshot(): Promise<void> {
       locationRaw: r.location_raw ?? undefined,
       country: r.country ?? undefined,
       region: r.region ?? undefined,
-      city: r.city ?? undefined,
+      // Canonicalized here as well as at ingest, so rows written before the
+      // rules existed (or by an older engine) are cleaned without a migration.
+      // canonicalCity is idempotent, so double-applying is free.
+      city: canonicalCity(r.city) ?? undefined,
       remoteType: (r.remote_type as RemoteType) ?? undefined,
       seniority: (r.seniority as Seniority) ?? undefined,
       salaryMin: r.salary_min ?? undefined,
@@ -169,10 +180,25 @@ export async function exportSnapshot(): Promise<void> {
   };
 
   db.close();
-  // Compact JSON — this file is committed to git nightly; whitespace is pure
-  // repo-history bloat.
+  // Compact JSON — no whitespace, since this file moves over the wire on every
+  // build and gets republished nightly.
   writeFileSync(SNAPSHOT_OUT, JSON.stringify(snapshot) + "\n", "utf8");
+
   const openCount = jobs.filter((j) => !j.isClosed).length;
+  writeFileSync(
+    SNAPSHOT_META_OUT,
+    JSON.stringify(
+      {
+        generatedAt: snapshot.generatedAt,
+        openJobs: openCount,
+        closedJobs: jobs.length - openCount,
+        companies: companies.length,
+      },
+      null,
+      2,
+    ) + "\n",
+    "utf8",
+  );
   console.log(
     `Wrote ${openCount} open + ${jobs.length - openCount} closed jobs, ${companies.length} companies -> ${SNAPSHOT_OUT}`,
   );
