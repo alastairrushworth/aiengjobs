@@ -1,6 +1,6 @@
 import { openDb } from "./db/index.ts";
 import { setJobSkills } from "./db/repo.ts";
-import { ALL_SKILLS, combineSkills } from "./pipeline/tag.ts";
+import { ALL_SKILLS, tagHeuristic } from "./pipeline/tag.ts";
 import { classifyHeuristic } from "./pipeline/classify.ts";
 import { extractListing } from "./pipeline/extract.ts";
 import { llmEnabled } from "./pipeline/llm.ts";
@@ -59,7 +59,7 @@ export function retag(): void {
       demoted++;
       continue;
     }
-    setJobSkills(db, j.id, combineSkills(j.text ?? "").skills);
+    setJobSkills(db, j.id, tagHeuristic(j.text ?? "").skills);
     retagged++;
   }
   db.close();
@@ -122,7 +122,7 @@ export async function reclassify(): Promise<void> {
     const stillIn = ex.inScope && ex.confidence >= LLM_IN_CONFIDENCE_FLOOR;
     update.run(stillIn ? "in" : "out", ex.confidence, j.id);
     if (stillIn) {
-      setJobSkills(db, j.id, combineSkills(j.text ?? "", ex.skills).skills);
+      setJobSkills(db, j.id, tagHeuristic(j.text ?? "").skills);
       keptIn++;
     } else {
       setJobSkills(db, j.id, []);

@@ -10,7 +10,7 @@ import {
 import { getConnector } from "./connectors/index.ts";
 import { normalize } from "./pipeline/normalize.ts";
 import { classifyHeuristic, type ClassifyResult } from "./pipeline/classify.ts";
-import { combineSkills } from "./pipeline/tag.ts";
+import { tagHeuristic } from "./pipeline/tag.ts";
 import { inferSeniority } from "./pipeline/seniority.ts";
 import { parseLocation } from "./pipeline/location.ts";
 import { extractListing, type ExtractResult } from "./pipeline/extract.ts";
@@ -133,7 +133,7 @@ export async function ingest(): Promise<void> {
         const loc = parseLocation(raw.locationRaw, raw.remoteType, raw.remoteHint);
         const heuristicClass = classifyHeuristic(raw.title);
 
-        // One LLM call does classification + skills + salary + location + seniority.
+        // One LLM call does classification + salary + location + seniority.
         // Skip it for titles the heuristic already rules OUT — they're discarded,
         // so there's nothing worth extracting (and it keeps the LLM bill down).
         let cls: ClassifyResult;
@@ -171,7 +171,7 @@ export async function ingest(): Promise<void> {
         }
 
         const skills =
-          cls.classification === "in" ? combineSkills(text, ex?.skills).skills : [];
+          cls.classification === "in" ? tagHeuristic(text).skills : [];
 
         // Prefer the ATS/role payload (and the heuristics derived from it); fall
         // back to the LLM extraction only where the payload is silent.
