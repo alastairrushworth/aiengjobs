@@ -105,6 +105,21 @@ function buildCityLandings(): Landing[] {
   return landings.sort((a, b) => b.jobs.length - a.jobs.length);
 }
 
+/**
+ * Roles per listing-page slice. /ai-agent-jobs used to render all 1,110 cards
+ * into one 652KB document with ~15k DOM nodes; slicing keeps every page light on
+ * the phones most of this traffic arrives on, while still giving each role a
+ * crawlable in-site link (previously the sitemap was doing that alone).
+ *
+ * Shared by [topic]/[...page].astro and the sitemap so the two can't disagree
+ * about how many pages exist.
+ */
+export const PAGE_SIZE = 50;
+
+/** Number of slices a landing paginates into (always at least 1). */
+export const pageCount = (l: Landing): number =>
+  Math.max(1, Math.ceil(l.jobs.length / PAGE_SIZE));
+
 export const CITY_LANDINGS: Landing[] = buildCityLandings();
 export const LOCATION_LANDINGS: Landing[] = [...remoteLanding, ...CITY_LANDINGS];
 export const LANDINGS: Landing[] = [...clusterLandings, ...LOCATION_LANDINGS];
