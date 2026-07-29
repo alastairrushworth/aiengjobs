@@ -1,4 +1,8 @@
-import { IN_TITLE_PATTERNS, OUT_TITLE_PATTERNS } from "../config.ts";
+import {
+  IN_TITLE_PATTERNS,
+  OFF_TOPIC_TITLE_PATTERNS,
+  OUT_TITLE_PATTERNS,
+} from "../config.ts";
 import type { Classification } from "@aiengjobs/shared";
 
 export interface ClassifyResult {
@@ -23,6 +27,13 @@ export function classifyHeuristic(title: string): ClassifyResult | null {
   }
   if (IN_TITLE_PATTERNS.some((re) => re.test(title))) {
     return { classification: "in", confidence: 0.85, via: "heuristic" };
+  }
+  // Reached only when the title carries no AI signal at all, so an off-topic job
+  // family here is safe to rule out without paying for an LLM call. Ordering is
+  // the whole guard: run this before the IN check and titles like "Technical
+  // Program Manager, Cloud Inference" get discarded.
+  if (OFF_TOPIC_TITLE_PATTERNS.some((re) => re.test(title))) {
+    return { classification: "out", confidence: 0.85, via: "heuristic" };
   }
   return null;
 }
