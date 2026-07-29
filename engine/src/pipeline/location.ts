@@ -1,5 +1,5 @@
 import type { RemoteType } from "@aiengjobs/shared";
-import { canonicalCity, NON_CITY } from "@aiengjobs/shared/city";
+import { canonicalCity, MULTI_COUNTRY_REGION, NON_CITY } from "@aiengjobs/shared/city";
 
 export interface LocationInfo {
   remoteType?: RemoteType;
@@ -107,6 +107,9 @@ export function parseLocation(
   if (!remoteType) {
     if (/\bhybrid\b/.test(lower)) remoteType = "hybrid";
     else if (remoteHint === true || /\bremote\b/.test(lower)) remoteType = "remote";
+    // "Europe", "AMER", "EMEA" name a hiring territory, not a workplace — a
+    // role listed only there isn't on-site anywhere, so don't badge it as such.
+    else if (MULTI_COUNTRY_REGION.has(lower)) remoteType = "remote";
     else if (loc) remoteType = "onsite";
   }
 

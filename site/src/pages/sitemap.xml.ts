@@ -1,5 +1,5 @@
 import type { APIRoute } from "astro";
-import { CLUSTER_PAGES } from "../lib/clusters.ts";
+import { CLUSTER_PAGES, salarySlug } from "../lib/clusters.ts";
 import { LANDINGS, pageCount } from "../lib/landings.ts";
 import { url } from "../lib/url.ts";
 import { openJobs, generatedAt, duplicateOf } from "../lib/data.ts";
@@ -27,7 +27,7 @@ export const GET: APIRoute = ({ site }) => {
     }
   }
   for (const p of CLUSTER_PAGES) {
-    entries.push({ loc: abs(`/salaries/${p.id}`), lastmod: day(generatedAt) });
+    entries.push({ loc: abs(`/salaries/${salarySlug(p.id)}`), lastmod: day(generatedAt) });
   }
   for (const slug of new Set(openJobs.map((j) => j.companySlug))) {
     entries.push({ loc: abs(`/companies/${slug}`), lastmod: day(generatedAt) });

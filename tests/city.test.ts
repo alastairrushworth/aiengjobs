@@ -99,3 +99,21 @@ describe("citySlug", () => {
     expect(citySlug("Zurich")).toBe("zurich");
   });
 });
+
+describe("multi-country regions", () => {
+  it("never yields a city name", () => {
+    // "AMER" title-cased to "Amer" and shipped as addressLocality in the
+    // JobPosting markup — a country that does not exist.
+    for (const raw of ["AMER", "NAMER", "EMEA", "APAC", "EU", "ANZ", "LATAM", "Americas"]) {
+      expect(canonicalCity(raw)).toBeUndefined();
+    }
+  });
+
+  it("does not swallow real cities", () => {
+    // Countries were already excluded (they're not cities); the new region
+    // entries must not have widened that to genuine place names.
+    expect(canonicalCity("San Francisco")).toBe("San Francisco");
+    expect(canonicalCity("Amersfoort")).toBe("Amersfoort");
+    expect(canonicalCity("Seattle")).toBe("Seattle");
+  });
+});
