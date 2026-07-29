@@ -6,6 +6,7 @@
     ".": "./types.ts",
     "./taxonomy": "./taxonomy.ts",
     "./text": "./text.ts",
+    "./city": "./city.ts",
     "./fx": "./fx.ts"
   }
 }

@@ -1,0 +1,29 @@
+---
+import type { GetStaticPaths, InferGetStaticPropsType } from "astro";
+import LandingPage from "../../components/LandingPage.astro";
+import { LANDINGS, PAGE_SIZE } from "../../lib/landings.ts";
+
+// Every top-level listing page: the stack clusters (/ai-agent-jobs) and the
+// location pages (/remote-ai-jobs, /ai-jobs-london). They differ only in which
+// roles they select and what the copy says, so one route and one template serve
+// both — pagination, the stats block and the feed link are written once.
+//
+// A busy landing carries 1,000+ open roles. Rendering them all produced a 650KB
+// page with 15k DOM nodes — punishing on the phones most job seekers browse on.
+// Paginate rather than truncate: these pages are the programmatic-SEO surface,
+// so every role has to keep a crawlable link.
+export const getStaticPaths = (({ paginate }) =>
+  LANDINGS.flatMap((landing) =>
+    paginate(landing.jobs, {
+      params: { topic: landing.slug },
+      props: { landing },
+      pageSize: PAGE_SIZE,
+    }),
+  )) satisfies GetStaticPaths;
+
+type Props = InferGetStaticPropsType<typeof getStaticPaths>;
+// `page` is Astro's pagination object; `landing` is our own page definition.
+const { landing, page } = Astro.props as Props;
+---
+
+<LandingPage landing={landing} page={page} />

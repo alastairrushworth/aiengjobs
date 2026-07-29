@@ -9,6 +9,7 @@ import {
   salaryMidpointUsd,
   salaryRank,
   roleType,
+  type SalaryFields,
 } from "../site/src/lib/format.ts";
 import { jsonLdScript } from "../site/src/lib/jsonld.ts";
 
@@ -52,6 +53,51 @@ describe("formatSalary", () => {
     expect(formatSalary({ salaryMin: 45, salaryMax: 55, salaryPeriod: "hour" })).toBe(
       "$45–55/hour",
     );
+  });
+
+  it("hides pay in a currency we have no rate for", () => {
+    // Assuming 1:1 would render this ~$1.7M role-of-the-year; it's really ~$78k.
+    expect(
+      formatSalary({
+        salaryMin: 94_633,
+        salaryMax: 141_941,
+        salaryCurrency: "XYZ",
+        salaryPeriod: "month",
+      }),
+    ).toBeNull();
+  });
+
+  it("converts a currency that does have a rate", () => {
+    expect(
+      formatSalary({
+        salaryMin: 94_633,
+        salaryMax: 141_941,
+        salaryCurrency: "CZK",
+        salaryPeriod: "month",
+      }),
+    ).toBe("CZK 95k–142k/month");
+  });
+});
+
+describe("salary gate consistency", () => {
+  // Regression: formatSalary/salaryRank used to gate on salaryMax while
+  // salaryMidpointUsd gated on the midpoint, so a role could be listed (and
+  // top-ranked) on "Roles with published pay" while rendering no pay at all.
+  const cases: SalaryFields[] = [
+    { salaryMin: 131_975, salaryMax: 197_966, salaryCurrency: "CZK", salaryPeriod: "month" },
+    { salaryMin: 100_000, salaryMax: 3_500_000 },
+    { salaryMin: 165_000, salaryMax: 330_000 },
+    { salaryMin: 45, salaryMax: 55, salaryPeriod: "hour" },
+    { salaryMin: 40_750, salaryMax: 46_333, salaryCurrency: "PLN", salaryPeriod: "month" },
+    { salaryCurrency: "USD" },
+  ];
+
+  it("agrees across display, rank and midpoint", () => {
+    for (const job of cases) {
+      const priced = salaryMidpointUsd(job, {}) !== null;
+      expect(formatSalary(job, {}) !== null).toBe(priced);
+      expect(salaryRank(job, {}) > 0).toBe(priced);
+    }
   });
 });
 

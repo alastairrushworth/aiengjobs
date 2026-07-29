@@ -6,6 +6,11 @@ import { countryName, roleType, SENIORITY_OPTIONS } from "../lib/format.ts";
 import { openJobs, generatedAt } from "../lib/data.ts";
 import { jsonLdScript } from "../lib/jsonld.ts";
 import { CLUSTER_PAGES } from "../lib/clusters.ts";
+import { LOCATION_LANDINGS } from "../lib/landings.ts";
+
+// The location pages need real internal links, not just sitemap entries — the
+// biggest dozen, which is also the set a visitor is most likely to want.
+const topLocations = LOCATION_LANDINGS.slice(0, 12);
 
 const jobs = openJobs; // newest first (see lib/data)
 
@@ -88,6 +93,13 @@ const updated = new Date(generatedAt).toLocaleDateString("en-US", {
   <nav class="browse" aria-label="Browse by stack">
     <span class="browse-label">Browse by stack:</span>
     {CLUSTER_PAGES.map((p) => <a href={url(`/${p.slug}/`)}>{p.label}</a>)}
+  </nav>
+
+  <nav class="browse" aria-label="Browse by location">
+    <span class="browse-label">Browse by location:</span>
+    {topLocations.map((l) => (
+      <a href={url(`/${l.slug}/`)}>{l.label} <span class="loc-n">{l.jobs.length}</span></a>
+    ))}
   </nav>
 
   <div class="filters">

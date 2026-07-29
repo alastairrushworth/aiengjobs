@@ -3,6 +3,7 @@ import { seed } from "./seed.ts";
 import { ingest } from "./ingest.ts";
 import { retag, reclassify } from "./retag.ts";
 import { exportSnapshot } from "./export/exportSnapshot.ts";
+import { notify } from "./notify.ts";
 
 async function main(): Promise<void> {
   const cmd = process.argv[2];
@@ -36,9 +37,20 @@ async function main(): Promise<void> {
       await ingest();
       await exportSnapshot();
       break;
+    case "notify": {
+      // Announce new/closed job URLs to IndexNow. Takes the pre-refresh
+      // snapshot and the freshly-written one; the nightly script keeps a copy.
+      const [prev, next] = process.argv.slice(3);
+      if (!prev || !next) {
+        console.error("Usage: tsx src/cli.ts notify <prev-snapshot> <new-snapshot>");
+        process.exit(1);
+      }
+      await notify(prev, next);
+      break;
+    }
     default:
       console.log(
-        "Usage: tsx src/cli.ts <db:init | seed | ingest | export | retag | reclassify | refresh>",
+        "Usage: tsx src/cli.ts <db:init | seed | ingest | export | retag | reclassify | refresh | notify>",
       );
       process.exit(1);
   }

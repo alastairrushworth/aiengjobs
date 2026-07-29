@@ -1,5 +1,8 @@
 import type { ClusterId } from "@aiengjobs/shared/taxonomy";
 
+// Slice size moved to lib/landings.ts as PAGE_SIZE — location pages paginate
+// through the same route, so the constant can't live in the cluster module.
+
 export interface ClusterPage {
   id: ClusterId;
   /** URL slug for the programmatic page, e.g. "rag-engineer-jobs" → /rag-engineer-jobs */
