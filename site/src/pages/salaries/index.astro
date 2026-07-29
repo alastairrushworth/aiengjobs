@@ -4,7 +4,7 @@ import BrowseNav from "../../components/BrowseNav.astro";
 import { url } from "../../lib/url.ts";
 import { kUsd, median, salaryMidpointUsd } from "../../lib/format.ts";
 import { openJobs, fxRates } from "../../lib/data.ts";
-import { CLUSTER_PAGES } from "../../lib/clusters.ts";
+import { CLUSTER_PAGES, salarySlug } from "../../lib/clusters.ts";
 
 // Median annualized USD midpoint per cluster (same comparator as the cluster
 // pages and stats — see lib/format.ts).
@@ -36,7 +36,7 @@ const allMids = openJobs
   <ul class="jobs" style="margin-top:24px">
     {clusters.map(({ page, count, median: med }) => (
       <li>
-        <a class="job-card" href={url(`/salaries/${page.id}/`)}>
+        <a class="job-card" href={url(`/salaries/${salarySlug(page.id)}/`)}>
           <div class="top">
             <div>
               <div class="title">{page.label} salaries</div>

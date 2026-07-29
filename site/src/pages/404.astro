@@ -5,7 +5,10 @@ import { url } from "../lib/url.ts";
 import { CLUSTER_PAGES } from "../lib/clusters.ts";
 ---
 
-<Base title="Page not found" noindex>
+{/* GitHub Pages serves this file's body at whatever URL 404'd, so the default
+    self-canonical would point at /404/ — a URL that itself doesn't exist.
+    Point it at the board root instead. It's noindexed either way. */}
+<Base title="Page not found" noindex canonicalOverride={url("/")}>
   <section class="hero">
     <h1>That page doesn't exist</h1>
     <p>

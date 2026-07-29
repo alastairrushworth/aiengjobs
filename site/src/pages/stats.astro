@@ -1,13 +1,15 @@
 ---
 import Base from "../layouts/Base.astro";
+import BrowseNav from "../components/BrowseNav.astro";
 import { url } from "../lib/url.ts";
 import {
   countryName,
   kUsd as k,
   median,
   salaryMidpointUsd,
+  SENIORITY_OPTIONS,
 } from "../lib/format.ts";
-import { SENIORITY_OPTIONS } from "../lib/format.ts";
+import { CLUSTER_PAGES } from "../lib/clusters.ts";
 import { openJobs as open, fxRates, generatedAt } from "../lib/data.ts";
 import type { Job } from "@aiengjobs/shared";
 
@@ -245,6 +247,15 @@ const maxCountry = topCountries[0]?.n ?? 1;
       </ul>
     </section>
   </div>
+
+  <BrowseNav
+    label="Browse:"
+    links={[
+      { href: url("/"), text: "All jobs" },
+      ...CLUSTER_PAGES.map((p) => ({ href: url(`/${p.slug}/`), text: p.label })),
+      { href: url("/salaries/"), text: "Salaries" },
+    ]}
+  />
 </Base>
 
 <style>
