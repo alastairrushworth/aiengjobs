@@ -14,6 +14,7 @@ import {
 } from "../../lib/format.ts";
 import { url } from "../../lib/url.ts";
 import { jsonLdScript } from "../../lib/jsonld.ts";
+import { buildJobTitles } from "../../lib/jobTitle.ts";
 import {
   openJobs,
   closedJobs,
@@ -25,16 +26,9 @@ import {
 import type { Job } from "@aiengjobs/shared";
 
 export function getStaticPaths() {
-  // Same title + company across several locations (common for multi-office
-  // postings) would otherwise emit identical <title> tags; flag them so the
-  // page can disambiguate with the location.
-  const titleCount = new Map<string, number>();
-  for (const j of [...openJobs, ...closedJobs]) {
-    const k = `${j.title}·${j.companyName}`;
-    titleCount.set(k, (titleCount.get(k) ?? 0) + 1);
-  }
-  const dupTitle = (job: Job) =>
-    (titleCount.get(`${job.title}·${job.companyName}`) ?? 0) > 1;
+  // <title> needs whole-corpus knowledge: it trims over-long feed titles, but
+  // only where the trim doesn't merge two distinct roles. See lib/jobTitle.
+  const titles = buildJobTitles([...openJobs, ...closedJobs]);
 
   const related = (job: Job) => {
     const atCompany = openJobs
@@ -55,19 +49,19 @@ export function getStaticPaths() {
     // Open roles get full, indexable pages.
     ...openJobs.map((job) => ({
       params: { slug: job.slug },
-      props: { job, closed: false, dupTitle: dupTitle(job), ...related(job) },
+      props: { job, closed: false, pageTitle: titles.get(job.slug)!, ...related(job) },
     })),
     // Recently-closed roles keep a noindexed tombstone page instead of 404ing
     // links from search results, newsletters, and shares.
     ...closedJobs.map((job) => ({
       params: { slug: job.slug },
-      props: { job, closed: true, dupTitle: dupTitle(job), ...related(job) },
+      props: { job, closed: true, pageTitle: titles.get(job.slug)!, ...related(job) },
     })),
   ];
 }
 
 type Props = InferGetStaticPropsType<typeof getStaticPaths>;
-const { job, closed, dupTitle, atCompany, similar } = Astro.props as Props;
+const { job, closed, pageTitle, atCompany, similar } = Astro.props as Props;
 
 const salary = formatSalary(job, fxRates);
 const role = roleType(job);
@@ -246,13 +240,8 @@ if (jsonLd) {
   }
 }
 
-// Disambiguate the <title> when the same title+company posts in several
-// locations; prefer the short city over the (possibly multi-office) raw string.
-const titleDisambig = job.city ?? country ?? location;
-const pageTitle =
-  dupTitle && titleDisambig
-    ? `${job.title} · ${job.companyName} · ${titleDisambig}`
-    : `${job.title} · ${job.companyName}`;
+// The <title> is computed across the whole corpus in getStaticPaths so that
+// trimming long feed titles can't silently merge two distinct roles.
 
 // Tombstones can outlive their company page (it's only built while the company
 // has open roles) — don't link into a 404.
