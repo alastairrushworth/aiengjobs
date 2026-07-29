@@ -1,0 +1,139 @@
+---
+import type { GetStaticPaths, InferGetStaticPropsType } from "astro";
+import Base from "../../layouts/Base.astro";
+import JobCard from "../../components/JobCard.astro";
+import BrowseNav from "../../components/BrowseNav.astro";
+import { url } from "../../lib/url.ts";
+import { jsonLdScript } from "../../lib/jsonld.ts";
+import { openJobs } from "../../lib/data.ts";
+import { CLUSTER_PAGES, CLUSTER_PAGE_SIZE } from "../../lib/clusters.ts";
+
+// A busy cluster carries 1,000+ open roles. Rendering them all produced a
+// 650KB page with 15k DOM nodes — punishing on the phones most job seekers
+// browse on. Paginate rather than truncate: these pages are the programmatic-
+// SEO surface, so every role has to keep a crawlable link.
+export const getStaticPaths = (({ paginate }) =>
+  CLUSTER_PAGES.flatMap((cluster) =>
+    paginate(
+      openJobs.filter((j) => j.clusters.includes(cluster.id)),
+      {
+        params: { topic: cluster.slug },
+        props: { cluster },
+        pageSize: CLUSTER_PAGE_SIZE,
+      },
+    ),
+  )) satisfies GetStaticPaths;
+
+type Props = InferGetStaticPropsType<typeof getStaticPaths>;
+// `page` is Astro's pagination object; `cluster` is our own page definition.
+const { cluster, page } = Astro.props as Props;
+
+const paged = page.lastPage > 1;
+const pageSuffix = page.currentPage > 1 ? ` — page ${page.currentPage} of ${page.lastPage}` : "";
+
+// Astro emits slice URLs without a trailing slash (trailingSlash: "ignore"),
+// but GitHub Pages 301s that form — and canonicals, the sitemap and every
+// other internal link here use the slash. Normalize so pagination doesn't
+// hand crawlers a chain of redirects.
+const slash = (u?: string) => (u && !u.endsWith("/") ? `${u}/` : u);
+const prevUrl = slash(page.url.prev);
+const nextUrl = slash(page.url.next);
+
+// Each slice gets its own ItemList covering exactly what it renders — a
+// numberOfItems that disagrees with the list is a structured-data error.
+const itemList = {
+  "@context": "https://schema.org",
+  "@type": "ItemList",
+  name: `${cluster.h1}${pageSuffix}`,
+  numberOfItems: page.data.length,
+  itemListElement: page.data.map((j, i) => ({
+    "@type": "ListItem",
+    position: page.start + i + 1,
+    url: new URL(url(`/jobs/${j.slug}/`), Astro.site).href,
+    name: `${j.title} — ${j.companyName}`,
+  })),
+};
+
+const others = CLUSTER_PAGES.filter((p) => p.id !== cluster.id);
+---
+
+<Base
+  title={`${cluster.h1}${pageSuffix}`}
+  description={`${cluster.intro} ${page.total} open role${page.total === 1 ? "" : "s"} right now.${
+    page.currentPage > 1 ? ` Page ${page.currentPage} of ${page.lastPage}.` : ""
+  }`}
+  prev={prevUrl}
+  next={nextUrl}
+>
+  <section class="hero" style="padding-bottom:8px">
+    <h1>{cluster.h1}</h1>
+    <p>{cluster.intro}</p>
+    <p class="count">
+      {page.total} open role{page.total === 1 ? "" : "s"}
+      {paged && ` · showing ${page.start + 1}–${page.end + 1}`}
+    </p>
+  </section>
+
+  <p style="margin:8px 0"><a class="back" href={url("/")}>← All jobs</a></p>
+
+  <ul class="jobs">
+    {page.data.map((job) => <JobCard job={job} href={url(`/jobs/${job.slug}/`)} />)}
+  </ul>
+  {page.data.length === 0 && (
+    <p style="text-align:center;color:var(--muted);padding:32px 0">
+      No open roles in this category right now.
+    </p>
+  )}
+
+  {paged && (
+    <nav class="pager" aria-label="Pagination">
+      {prevUrl ? (
+        <a rel="prev" href={prevUrl}>← Newer</a>
+      ) : (
+        <span class="disabled">← Newer</span>
+      )}
+      <span class="pager-pos">Page {page.currentPage} of {page.lastPage}</span>
+      {nextUrl ? (
+        <a rel="next" href={nextUrl}>Older →</a>
+      ) : (
+        <span class="disabled">Older →</span>
+      )}
+    </nav>
+  )}
+
+  <BrowseNav
+    label="Browse:"
+    links={[
+      ...others.map((p) => ({ href: url(`/${p.slug}/`), text: p.label })),
+      { href: url(`/salaries/${cluster.id}/`), text: `${cluster.label} salaries →` },
+    ]}
+  />
+
+  <script type="application/ld+json" set:html={jsonLdScript(itemList)} is:inline />
+</Base>
+
+<style>
+  .pager {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    margin: 28px 0 4px;
+    font-size: 0.9rem;
+  }
+  .pager a {
+    color: var(--accent-text);
+    border: 1px solid var(--border-strong);
+    border-radius: 10px;
+    /* ≥44px tall so it's a comfortable touch target on a phone. */
+    padding: 12px 18px;
+  }
+  .pager a:hover,
+  .pager a:focus-visible { border-color: var(--accent); }
+  .pager .disabled { color: var(--muted); padding: 12px 18px; }
+  .pager-pos { color: var(--muted); }
+  @media (max-width: 420px) {
+    .pager { gap: 8px; }
+    .pager a, .pager .disabled { padding: 12px 10px; }
+  }
+</style>

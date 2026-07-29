@@ -9,6 +9,9 @@ interface Props {
   noBrandSuffix?: boolean;
   /** Tombstone/error pages that search engines shouldn't index. */
   noindex?: boolean;
+  /** Paginated sequences: adjacent slice URLs (already base-prefixed). */
+  prev?: string;
+  next?: string;
 }
 
 const {
@@ -16,6 +19,8 @@ const {
   description = "The job board for AI engineers — RAG, agents, evals, inference. Salary-transparent, no ghost jobs.",
   noBrandSuffix = false,
   noindex = false,
+  prev,
+  next,
 } = Astro.props;
 
 const fullTitle = noBrandSuffix ? title : `${title} — aiengjobs`;
@@ -37,6 +42,8 @@ const ogImage = new URL(url("/og-default.png"), Astro.site).href;
     <meta name="description" content={description} />
     {noindex && <meta name="robots" content="noindex" />}
     <link rel="canonical" href={canonical} />
+    {prev && <link rel="prev" href={new URL(prev, Astro.site).href} />}
+    {next && <link rel="next" href={new URL(next, Astro.site).href} />}
     <link rel="icon" type="image/svg+xml" href={url("/favicon.svg")} />
     <link rel="icon" type="image/png" sizes="32x32" href={url("/favicon-32.png")} />
     <link rel="apple-touch-icon" href={url("/apple-touch-icon.png")} />
