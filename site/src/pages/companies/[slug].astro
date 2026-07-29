@@ -4,7 +4,7 @@ import Base from "../../layouts/Base.astro";
 import JobCard from "../../components/JobCard.astro";
 import BrowseNav from "../../components/BrowseNav.astro";
 import CompanyLogo from "../../components/CompanyLogo.astro";
-import { logoFile } from "../../lib/logos.ts";
+import { markupLogo } from "../../lib/logos.ts";
 import { CLUSTER_PAGES } from "../../lib/clusters.ts";
 import { url } from "../../lib/url.ts";
 import { jsonLdScript } from "../../lib/jsonld.ts";
@@ -40,10 +40,10 @@ const domainHref =
 const stack = [...new Set(jobs.flatMap((j) => j.skills))].slice(0, 14);
 const withSalary = jobs.filter((j) => j.salaryMin || j.salaryMax).length;
 
-// Absolute, as schema.org requires — and only when the file really exists, so
-// we never point Google at a 404.
-const logo = logoFile(company.slug);
-const logoUrl = logo ? new URL(url(`/logos/${logo}`), Astro.site).href : null;
+// Absolute, as schema.org requires — and only for a logo big enough to be
+// worth indexing, so we never point Google at a 404 or a blurry favicon.
+const markLogo = markupLogo(company.slug);
+const logoUrl = markLogo ? new URL(url(`/logos/${markLogo.file}`), Astro.site).href : null;
 
 const jsonLd = {
   "@context": "https://schema.org",

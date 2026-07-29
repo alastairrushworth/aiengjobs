@@ -16,7 +16,7 @@ import { url } from "../../lib/url.ts";
 import { jsonLdScript } from "../../lib/jsonld.ts";
 import { buildJobTitles } from "../../lib/jobTitle.ts";
 import CompanyLogo from "../../components/CompanyLogo.astro";
-import { logoFile } from "../../lib/logos.ts";
+import { markupLogo } from "../../lib/logos.ts";
 import {
   openJobs,
   closedJobs,
@@ -162,8 +162,8 @@ const descriptionHtml = blocks
   .join("");
 
 const company = companies.find((c) => c.slug === job.companySlug);
-const logo = logoFile(job.companySlug);
-const logoUrl = logo ? new URL(url(`/logos/${logo}`), Astro.site).href : null;
+const markLogo = markupLogo(job.companySlug);
+const logoUrl = markLogo ? new URL(url(`/logos/${markLogo.file}`), Astro.site).href : null;
 const pageUrl = new URL(url(`/jobs/${job.slug}/`), Astro.site).href;
 
 // One of several identical requisitions for the same role at the same site?

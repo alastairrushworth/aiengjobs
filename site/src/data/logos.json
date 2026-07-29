@@ -1,0 +1,1462 @@
+{
+ "abridge": {
+  "file": "abridge.png",
+  "w": 256,
+  "h": 256
+ },
+ "acorns": {
+  "file": "acorns.png",
+  "w": 228,
+  "h": 228
+ },
+ "adobe-wd5-external-experienced": {
+  "file": "adobe-wd5-external-experienced.png",
+  "w": 152,
+  "h": 152
+ },
+ "adyen": {
+  "file": "adyen.svg",
+  "w": 512,
+  "h": 512
+ },
+ "aeva": {
+  "file": "aeva.png",
+  "w": 180,
+  "h": 180
+ },
+ "affirm": {
+  "file": "affirm.png",
+  "w": 64,
+  "h": 64
+ },
+ "airbnb": {
+  "file": "airbnb.png",
+  "w": 180,
+  "h": 180
+ },
+ "airbyte": {
+  "file": "airbyte.png",
+  "w": 180,
+  "h": 180
+ },
+ "airwallex": {
+  "file": "airwallex.png",
+  "w": 48,
+  "h": 48
+ },
+ "akunacapital": {
+  "file": "akunacapital.png",
+  "w": 180,
+  "h": 180
+ },
+ "alan": {
+  "file": "alan.png",
+  "w": 180,
+  "h": 180
+ },
+ "alephalpha": {
+  "file": "alephalpha.png",
+  "w": 180,
+  "h": 180
+ },
+ "alloy": {
+  "file": "alloy.png",
+  "w": 180,
+  "h": 180
+ },
+ "alpaca": {
+  "file": "alpaca.png",
+  "w": 180,
+  "h": 180
+ },
+ "ambiencehealthcare": {
+  "file": "ambiencehealthcare.png",
+  "w": 180,
+  "h": 180
+ },
+ "amplitude": {
+  "file": "amplitude.png",
+  "w": 180,
+  "h": 180
+ },
+ "anaplan": {
+  "file": "anaplan.png",
+  "w": 192,
+  "h": 192
+ },
+ "andurilindustries": {
+  "file": "andurilindustries.png",
+  "w": 180,
+  "h": 180
+ },
+ "annamoney": {
+  "file": "annamoney.png",
+  "w": 180,
+  "h": 180
+ },
+ "anthropic": {
+  "file": "anthropic.png",
+  "w": 256,
+  "h": 256
+ },
+ "anyscale": {
+  "file": "anyscale.png",
+  "w": 56,
+  "h": 56
+ },
+ "appian": {
+  "file": "appian.png",
+  "w": 180,
+  "h": 180
+ },
+ "applied": {
+  "file": "applied.png",
+  "w": 180,
+  "h": 180
+ },
+ "arizeai": {
+  "file": "arizeai.png",
+  "w": 48,
+  "h": 48
+ },
+ "artefact": {
+  "file": "artefact.png",
+  "w": 180,
+  "h": 180
+ },
+ "arthur-ai": {
+  "file": "arthur-ai.svg",
+  "w": 512,
+  "h": 512
+ },
+ "arxroboticsgmbh": {
+  "file": "arxroboticsgmbh.png",
+  "w": 180,
+  "h": 180
+ },
+ "asana": {
+  "file": "asana.png",
+  "w": 48,
+  "h": 48
+ },
+ "assemblyai": {
+  "file": "assemblyai.png",
+  "w": 64,
+  "h": 64
+ },
+ "att-wd1-attgeneral": {
+  "file": "att-wd1-attgeneral.png",
+  "w": 48,
+  "h": 48
+ },
+ "aurorainnovation": {
+  "file": "aurorainnovation.png",
+  "w": 180,
+  "h": 180
+ },
+ "aveva-wd3-aveva-careers": {
+  "file": "aveva-wd3-aveva-careers.png",
+  "w": 48,
+  "h": 48
+ },
+ "barclays-wd3-external-career-site-barclays": {
+  "file": "barclays-wd3-external-career-site-barclays.png",
+  "w": 180,
+  "h": 180
+ },
+ "baringa": {
+  "file": "baringa.png",
+  "w": 180,
+  "h": 180
+ },
+ "baseten": {
+  "file": "baseten.png",
+  "w": 48,
+  "h": 48
+ },
+ "benchling": {
+  "file": "benchling.png",
+  "w": 180,
+  "h": 180
+ },
+ "betterment": {
+  "file": "betterment.png",
+  "w": 400,
+  "h": 400
+ },
+ "blackforestlabs": {
+  "file": "blackforestlabs.png",
+  "w": 180,
+  "h": 180
+ },
+ "block": {
+  "file": "block.png",
+  "w": 159,
+  "h": 160
+ },
+ "boxinc": {
+  "file": "boxinc.png",
+  "w": 180,
+  "h": 180
+ },
+ "braze": {
+  "file": "braze.png",
+  "w": 48,
+  "h": 48
+ },
+ "brex": {
+  "file": "brex.png",
+  "w": 48,
+  "h": 48
+ },
+ "brinc": {
+  "file": "brinc.png",
+  "w": 76,
+  "h": 76
+ },
+ "broadridge-wd5-careers": {
+  "file": "broadridge-wd5-careers.png",
+  "w": 48,
+  "h": 48
+ },
+ "calendly": {
+  "file": "calendly.png",
+  "w": 48,
+  "h": 48
+ },
+ "capitalone-wd12-capital-one": {
+  "file": "capitalone-wd12-capital-one.png",
+  "w": 180,
+  "h": 180
+ },
+ "careers-ice": {
+  "file": "careers-ice.png",
+  "w": 48,
+  "h": 48
+ },
+ "carta": {
+  "file": "carta.png",
+  "w": 180,
+  "h": 180
+ },
+ "causaly": {
+  "file": "causaly.png",
+  "w": 256,
+  "h": 256
+ },
+ "celonis": {
+  "file": "celonis.png",
+  "w": 48,
+  "h": 48
+ },
+ "cerebras": {
+  "file": "cerebras.png",
+  "w": 256,
+  "h": 256
+ },
+ "cesiumastro": {
+  "file": "cesiumastro.png",
+  "w": 256,
+  "h": 256
+ },
+ "character": {
+  "file": "character.png",
+  "w": 512,
+  "h": 512
+ },
+ "checkr": {
+  "file": "checkr.png",
+  "w": 180,
+  "h": 180
+ },
+ "citi-wd5-2": {
+  "file": "citi-wd5-2.png",
+  "w": 367,
+  "h": 367
+ },
+ "cleerlyhealth": {
+  "file": "cleerlyhealth.png",
+  "w": 48,
+  "h": 48
+ },
+ "clickup": {
+  "file": "clickup.png",
+  "w": 192,
+  "h": 192
+ },
+ "clipboard": {
+  "file": "clipboard.png",
+  "w": 256,
+  "h": 256
+ },
+ "cloudflare": {
+  "file": "cloudflare.png",
+  "w": 99,
+  "h": 96
+ },
+ "cognition": {
+  "file": "cognition.png",
+  "w": 180,
+  "h": 180
+ },
+ "cohere": {
+  "file": "cohere.png",
+  "w": 180,
+  "h": 180
+ },
+ "coherehealth": {
+  "file": "coherehealth.png",
+  "w": 256,
+  "h": 256
+ },
+ "coinbase": {
+  "file": "coinbase.png",
+  "w": 512,
+  "h": 512
+ },
+ "colabsoftware": {
+  "file": "colabsoftware.png",
+  "w": 256,
+  "h": 256
+ },
+ "confluent": {
+  "file": "confluent.png",
+  "w": 180,
+  "h": 180
+ },
+ "contentful": {
+  "file": "contentful.png",
+  "w": 180,
+  "h": 180
+ },
+ "coreweave": {
+  "file": "coreweave.png",
+  "w": 256,
+  "h": 256
+ },
+ "coupa": {
+  "file": "coupa.png",
+  "w": 180,
+  "h": 180
+ },
+ "cresta": {
+  "file": "cresta.png",
+  "w": 256,
+  "h": 256
+ },
+ "crowdstrike-wd5-crowdstrikecareers": {
+  "file": "crowdstrike-wd5-crowdstrikecareers.png",
+  "w": 117,
+  "h": 121
+ },
+ "crusoe": {
+  "file": "crusoe.png",
+  "w": 256,
+  "h": 256
+ },
+ "cursor": {
+  "file": "cursor.png",
+  "w": 180,
+  "h": 180
+ },
+ "d-matrix": {
+  "file": "d-matrix.png",
+  "w": 180,
+  "h": 180
+ },
+ "dashlane": {
+  "file": "dashlane.png",
+  "w": 109,
+  "h": 108
+ },
+ "databricks": {
+  "file": "databricks.png",
+  "w": 256,
+  "h": 256
+ },
+ "datadog": {
+  "file": "datadog.png",
+  "w": 256,
+  "h": 256
+ },
+ "decagon": {
+  "file": "decagon.png",
+  "w": 256,
+  "h": 256
+ },
+ "deepgram": {
+  "file": "deepgram.png",
+  "w": 64,
+  "h": 64
+ },
+ "deepl": {
+  "file": "deepl.png",
+  "w": 180,
+  "h": 180
+ },
+ "deliveroo": {
+  "file": "deliveroo.png",
+  "w": 180,
+  "h": 180
+ },
+ "discord": {
+  "file": "discord.png",
+  "w": 256,
+  "h": 256
+ },
+ "docker": {
+  "file": "docker.png",
+  "w": 180,
+  "h": 180
+ },
+ "doctolib": {
+  "file": "doctolib.png",
+  "w": 180,
+  "h": 180
+ },
+ "edel-fa-us2-oraclecloud-com-cx-2001": {
+  "file": "edel-fa-us2-oraclecloud-com-cx-2001.png",
+  "w": 180,
+  "h": 180
+ },
+ "ekimetrics": {
+  "file": "ekimetrics.png",
+  "w": 256,
+  "h": 256
+ },
+ "elastic": {
+  "file": "elastic.png",
+  "w": 180,
+  "h": 180
+ },
+ "elevenlabs": {
+  "file": "elevenlabs.png",
+  "w": 180,
+  "h": 180
+ },
+ "elixirr": {
+  "file": "elixirr.png",
+  "w": 200,
+  "h": 200
+ },
+ "encord": {
+  "file": "encord.png",
+  "w": 144,
+  "h": 144
+ },
+ "endava": {
+  "file": "endava.png",
+  "w": 64,
+  "h": 64
+ },
+ "equifax-wd5-external": {
+  "file": "equifax-wd5-external.png",
+  "w": 57,
+  "h": 57
+ },
+ "etched": {
+  "file": "etched.png",
+  "w": 256,
+  "h": 256
+ },
+ "etsy-wd5-etsy-careers": {
+  "file": "etsy-wd5-etsy-careers.png",
+  "w": 57,
+  "h": 57
+ },
+ "experian": {
+  "file": "experian.png",
+  "w": 512,
+  "h": 512
+ },
+ "faculty": {
+  "file": "faculty.png",
+  "w": 256,
+  "h": 256
+ },
+ "faire": {
+  "file": "faire.png",
+  "w": 192,
+  "h": 192
+ },
+ "fiddler-ai": {
+  "file": "fiddler-ai.png",
+  "w": 256,
+  "h": 256
+ },
+ "figma": {
+  "file": "figma.png",
+  "w": 180,
+  "h": 180
+ },
+ "figureai": {
+  "file": "figureai.png",
+  "w": 320,
+  "h": 320
+ },
+ "fireworksai": {
+  "file": "fireworksai.png",
+  "w": 180,
+  "h": 180
+ },
+ "fis-wd5-searchjobs": {
+  "file": "fis-wd5-searchjobs.png",
+  "w": 180,
+  "h": 180
+ },
+ "fivetran": {
+  "file": "fivetran.png",
+  "w": 180,
+  "h": 180
+ },
+ "flexport": {
+  "file": "flexport.png",
+  "w": 256,
+  "h": 256
+ },
+ "flower": {
+  "file": "flower.png",
+  "w": 180,
+  "h": 180
+ },
+ "fractile": {
+  "file": "fractile.png",
+  "w": 48,
+  "h": 48
+ },
+ "freenome": {
+  "file": "freenome.png",
+  "w": 180,
+  "h": 180
+ },
+ "freshworks": {
+  "file": "freshworks.png",
+  "w": 180,
+  "h": 180
+ },
+ "gecko-robotics": {
+  "file": "gecko-robotics.png",
+  "w": 256,
+  "h": 256
+ },
+ "gensyn": {
+  "file": "gensyn.png",
+  "w": 48,
+  "h": 48
+ },
+ "gitlab": {
+  "file": "gitlab.png",
+  "w": 192,
+  "h": 192
+ },
+ "gleanwork": {
+  "file": "gleanwork.png",
+  "w": 256,
+  "h": 256
+ },
+ "goatgroup": {
+  "file": "goatgroup.png",
+  "w": 105,
+  "h": 105
+ },
+ "gongio": {
+  "file": "gongio.png",
+  "w": 180,
+  "h": 180
+ },
+ "graphcore": {
+  "file": "graphcore.svg",
+  "w": 512,
+  "h": 512
+ },
+ "gsk-wd5-gskcareers": {
+  "file": "gsk-wd5-gskcareers.png",
+  "w": 152,
+  "h": 152
+ },
+ "h1": {
+  "file": "h1.png",
+  "w": 180,
+  "h": 181
+ },
+ "hackerrank": {
+  "file": "hackerrank.png",
+  "w": 256,
+  "h": 256
+ },
+ "hadean": {
+  "file": "hadean.png",
+  "w": 180,
+  "h": 180
+ },
+ "harvey": {
+  "file": "harvey.png",
+  "w": 256,
+  "h": 256
+ },
+ "hcompany": {
+  "file": "hcompany.png",
+  "w": 256,
+  "h": 256
+ },
+ "healx": {
+  "file": "healx.png",
+  "w": 180,
+  "h": 180
+ },
+ "hextechnologies": {
+  "file": "hextechnologies.svg",
+  "w": 512,
+  "h": 512
+ },
+ "hightouch": {
+  "file": "hightouch.png",
+  "w": 48,
+  "h": 48
+ },
+ "hiscox-wd3-hiscox-external-site": {
+  "file": "hiscox-wd3-hiscox-external-site.png",
+  "w": 180,
+  "h": 180
+ },
+ "hsbc-eightfold-ai-hsbc-com": {
+  "file": "hsbc-eightfold-ai-hsbc-com.png",
+  "w": 180,
+  "h": 180
+ },
+ "hubspotjobs": {
+  "file": "hubspotjobs.png",
+  "w": 288,
+  "h": 288
+ },
+ "hyperexponential": {
+  "file": "hyperexponential.png",
+  "w": 64,
+  "h": 64
+ },
+ "instacart": {
+  "file": "instacart.png",
+  "w": 180,
+  "h": 180
+ },
+ "instawork": {
+  "file": "instawork.png",
+  "w": 256,
+  "h": 256
+ },
+ "intercom": {
+  "file": "intercom.png",
+  "w": 48,
+  "h": 48
+ },
+ "invisibletech": {
+  "file": "invisibletech.png",
+  "w": 256,
+  "h": 256
+ },
+ "isomorphiclabs": {
+  "file": "isomorphiclabs.png",
+  "w": 256,
+  "h": 256
+ },
+ "iterable": {
+  "file": "iterable.png",
+  "w": 48,
+  "h": 48
+ },
+ "janestreet": {
+  "file": "janestreet.svg",
+  "w": 512,
+  "h": 512
+ },
+ "jfrog": {
+  "file": "jfrog.png",
+  "w": 86,
+  "h": 83
+ },
+ "jumptrading": {
+  "file": "jumptrading.png",
+  "w": 256,
+  "h": 256
+ },
+ "justworks": {
+  "file": "justworks.png",
+  "w": 256,
+  "h": 256
+ },
+ "kainos-wd3-kainos": {
+  "file": "kainos-wd3-kainos.png",
+  "w": 160,
+  "h": 160
+ },
+ "klaviyo": {
+  "file": "klaviyo.png",
+  "w": 256,
+  "h": 256
+ },
+ "kodiak": {
+  "file": "kodiak.png",
+  "w": 180,
+  "h": 180
+ },
+ "komodohealth": {
+  "file": "komodohealth.png",
+  "w": 180,
+  "h": 201
+ },
+ "labelbox": {
+  "file": "labelbox.png",
+  "w": 480,
+  "h": 480
+ },
+ "lakera-ai": {
+  "file": "lakera-ai.png",
+  "w": 256,
+  "h": 256
+ },
+ "langchain": {
+  "file": "langchain.png",
+  "w": 256,
+  "h": 256
+ },
+ "langfuse": {
+  "file": "langfuse.png",
+  "w": 180,
+  "h": 180
+ },
+ "launchdarkly": {
+  "file": "launchdarkly.png",
+  "w": 96,
+  "h": 96
+ },
+ "legora": {
+  "file": "legora.png",
+  "w": 360,
+  "h": 360
+ },
+ "lemonade": {
+  "file": "lemonade.png",
+  "w": 144,
+  "h": 144
+ },
+ "lightmatter": {
+  "file": "lightmatter.png",
+  "w": 180,
+  "h": 180
+ },
+ "llamaindex": {
+  "file": "llamaindex.png",
+  "w": 180,
+  "h": 180
+ },
+ "lovable": {
+  "file": "lovable.png",
+  "w": 180,
+  "h": 180
+ },
+ "lseg-wd3-careers": {
+  "file": "lseg-wd3-careers.png",
+  "w": 48,
+  "h": 48
+ },
+ "lyft": {
+  "file": "lyft.png",
+  "w": 150,
+  "h": 150
+ },
+ "mangroup": {
+  "file": "mangroup.png",
+  "w": 48,
+  "h": 48
+ },
+ "mashgin": {
+  "file": "mashgin.png",
+  "w": 256,
+  "h": 256
+ },
+ "matx": {
+  "file": "matx.png",
+  "w": 180,
+  "h": 180
+ },
+ "maymobility": {
+  "file": "maymobility.png",
+  "w": 180,
+  "h": 180
+ },
+ "mercor": {
+  "file": "mercor.png",
+  "w": 256,
+  "h": 256
+ },
+ "mercury": {
+  "file": "mercury.png",
+  "w": 180,
+  "h": 180
+ },
+ "merge": {
+  "file": "merge.png",
+  "w": 256,
+  "h": 256
+ },
+ "mindfoundry": {
+  "file": "mindfoundry.png",
+  "w": 256,
+  "h": 256
+ },
+ "mixpanel": {
+  "file": "mixpanel.png",
+  "w": 180,
+  "h": 180
+ },
+ "modal": {
+  "file": "modal.svg",
+  "w": 512,
+  "h": 512
+ },
+ "mollie": {
+  "file": "mollie.png",
+  "w": 270,
+  "h": 270
+ },
+ "mongodb": {
+  "file": "mongodb.png",
+  "w": 64,
+  "h": 64
+ },
+ "monzo": {
+  "file": "monzo.svg",
+  "w": 512,
+  "h": 512
+ },
+ "n26": {
+  "file": "n26.png",
+  "w": 256,
+  "h": 256
+ },
+ "n8n": {
+  "file": "n8n.png",
+  "w": 180,
+  "h": 180
+ },
+ "nagarro1": {
+  "file": "nagarro1.png",
+  "w": 48,
+  "h": 48
+ },
+ "netcompany1": {
+  "file": "netcompany1.png",
+  "w": 180,
+  "h": 180
+ },
+ "notion": {
+  "file": "notion.png",
+  "w": 512,
+  "h": 512
+ },
+ "nscaleoperationsukltd": {
+  "file": "nscaleoperationsukltd.png",
+  "w": 256,
+  "h": 256
+ },
+ "nuro": {
+  "file": "nuro.png",
+  "w": 256,
+  "h": 256
+ },
+ "octoenergy": {
+  "file": "octoenergy.png",
+  "w": 48,
+  "h": 48
+ },
+ "okta": {
+  "file": "okta.png",
+  "w": 57,
+  "h": 57
+ },
+ "onebrief": {
+  "file": "onebrief.png",
+  "w": 256,
+  "h": 256
+ },
+ "optiverus": {
+  "file": "optiverus.png",
+  "w": 192,
+  "h": 192
+ },
+ "outreach": {
+  "file": "outreach.png",
+  "w": 256,
+  "h": 256
+ },
+ "owkin": {
+  "file": "owkin.png",
+  "w": 180,
+  "h": 180
+ },
+ "paconsulting": {
+  "file": "paconsulting.png",
+  "w": 256,
+  "h": 256
+ },
+ "parloa": {
+  "file": "parloa.png",
+  "w": 180,
+  "h": 180
+ },
+ "pathai": {
+  "file": "pathai.png",
+  "w": 300,
+  "h": 300
+ },
+ "payoneer": {
+  "file": "payoneer.png",
+  "w": 180,
+  "h": 180
+ },
+ "paypal-wd1-jobs": {
+  "file": "paypal-wd1-jobs.png",
+  "w": 258,
+  "h": 258
+ },
+ "pelago": {
+  "file": "pelago.png",
+  "w": 180,
+  "h": 180
+ },
+ "pennylane": {
+  "file": "pennylane.png",
+  "w": 48,
+  "h": 48
+ },
+ "people-ai": {
+  "file": "people-ai.png",
+  "w": 256,
+  "h": 256
+ },
+ "permutive": {
+  "file": "permutive.png",
+  "w": 180,
+  "h": 180
+ },
+ "perplexity": {
+  "file": "perplexity.png",
+  "w": 180,
+  "h": 180
+ },
+ "physicalintelligence": {
+  "file": "physicalintelligence.png",
+  "w": 48,
+  "h": 48
+ },
+ "physicsx": {
+  "file": "physicsx.png",
+  "w": 256,
+  "h": 256
+ },
+ "pika": {
+  "file": "pika.png",
+  "w": 48,
+  "h": 48
+ },
+ "pinecone": {
+  "file": "pinecone.png",
+  "w": 48,
+  "h": 48
+ },
+ "pinterest": {
+  "file": "pinterest.png",
+  "w": 144,
+  "h": 144
+ },
+ "plaid": {
+  "file": "plaid.png",
+  "w": 180,
+  "h": 180
+ },
+ "point72": {
+  "file": "point72.png",
+  "w": 180,
+  "h": 180
+ },
+ "polyai": {
+  "file": "polyai.png",
+  "w": 100,
+  "h": 100
+ },
+ "poolside": {
+  "file": "poolside.png",
+  "w": 180,
+  "h": 180
+ },
+ "posthog": {
+  "file": "posthog.png",
+  "w": 256,
+  "h": 256
+ },
+ "postman": {
+  "file": "postman.png",
+  "w": 256,
+  "h": 256
+ },
+ "prolific": {
+  "file": "prolific.png",
+  "w": 48,
+  "h": 48
+ },
+ "qualtrics": {
+  "file": "qualtrics.png",
+  "w": 192,
+  "h": 105
+ },
+ "quilter-wd3-external-career-site": {
+  "file": "quilter-wd3-external-career-site.png",
+  "w": 180,
+  "h": 180
+ },
+ "qventus": {
+  "file": "qventus.png",
+  "w": 180,
+  "h": 180
+ },
+ "ramp": {
+  "file": "ramp.png",
+  "w": 180,
+  "h": 180
+ },
+ "reddit": {
+  "file": "reddit.png",
+  "w": 64,
+  "h": 64
+ },
+ "reka": {
+  "file": "reka.png",
+  "w": 128,
+  "h": 128
+ },
+ "remotecom": {
+  "file": "remotecom.svg",
+  "w": 512,
+  "h": 512
+ },
+ "replit": {
+  "file": "replit.png",
+  "w": 192,
+  "h": 192
+ },
+ "rescale": {
+  "file": "rescale.png",
+  "w": 64,
+  "h": 64
+ },
+ "revenuecat": {
+  "file": "revenuecat.png",
+  "w": 512,
+  "h": 512
+ },
+ "robin-ai": {
+  "file": "robin-ai.png",
+  "w": 180,
+  "h": 180
+ },
+ "robinhood": {
+  "file": "robinhood.png",
+  "w": 152,
+  "h": 152
+ },
+ "roblox": {
+  "file": "roblox.png",
+  "w": 180,
+  "h": 180
+ },
+ "rolandberger": {
+  "file": "rolandberger.png",
+  "w": 180,
+  "h": 180
+ },
+ "runway": {
+  "file": "runway.png",
+  "w": 320,
+  "h": 320
+ },
+ "sambanovasystems": {
+  "file": "sambanovasystems.png",
+  "w": 579,
+  "h": 523
+ },
+ "samsara": {
+  "file": "samsara.png",
+  "w": 48,
+  "h": 48
+ },
+ "sana-roles": {
+  "file": "sana-roles.svg",
+  "w": 512,
+  "h": 512
+ },
+ "saronic": {
+  "file": "saronic.png",
+  "w": 64,
+  "h": 64
+ },
+ "scaleai": {
+  "file": "scaleai.png",
+  "w": 180,
+  "h": 180
+ },
+ "sendbird": {
+  "file": "sendbird.png",
+  "w": 256,
+  "h": 256
+ },
+ "sentry": {
+  "file": "sentry.png",
+  "w": 48,
+  "h": 48
+ },
+ "sereact": {
+  "file": "sereact.png",
+  "w": 48,
+  "h": 48
+ },
+ "shieldai": {
+  "file": "shieldai.png",
+  "w": 512,
+  "h": 512
+ },
+ "sierra": {
+  "file": "sierra.png",
+  "w": 180,
+  "h": 180
+ },
+ "sigmacomputing": {
+  "file": "sigmacomputing.png",
+  "w": 256,
+  "h": 256
+ },
+ "skydio": {
+  "file": "skydio.png",
+  "w": 180,
+  "h": 180
+ },
+ "smartrecruiters": {
+  "file": "smartrecruiters.png",
+  "w": 256,
+  "h": 256
+ },
+ "smartsheet": {
+  "file": "smartsheet.png",
+  "w": 180,
+  "h": 180
+ },
+ "smithsgroup2": {
+  "file": "smithsgroup2.png",
+  "w": 64,
+  "h": 64
+ },
+ "snorkelai": {
+  "file": "snorkelai.png",
+  "w": 192,
+  "h": 192
+ },
+ "snowflake": {
+  "file": "snowflake.png",
+  "w": 180,
+  "h": 180
+ },
+ "sofi": {
+  "file": "sofi.png",
+  "w": 152,
+  "h": 152
+ },
+ "solarisbank": {
+  "file": "solarisbank.png",
+  "w": 256,
+  "h": 256
+ },
+ "soprasteria1": {
+  "file": "soprasteria1.png",
+  "w": 64,
+  "h": 64
+ },
+ "speechmatics": {
+  "file": "speechmatics.png",
+  "w": 180,
+  "h": 180
+ },
+ "squarespace": {
+  "file": "squarespace.png",
+  "w": 256,
+  "h": 256
+ },
+ "stabilityai": {
+  "file": "stabilityai.png",
+  "w": 100,
+  "h": 100
+ },
+ "stripe": {
+  "file": "stripe.svg",
+  "w": 512,
+  "h": 512
+ },
+ "suki": {
+  "file": "suki.png",
+  "w": 180,
+  "h": 180
+ },
+ "sumologic": {
+  "file": "sumologic.png",
+  "w": 300,
+  "h": 300
+ },
+ "sumup": {
+  "file": "sumup.png",
+  "w": 180,
+  "h": 180
+ },
+ "suno": {
+  "file": "suno.png",
+  "w": 256,
+  "h": 256
+ },
+ "supercell": {
+  "file": "supercell.png",
+  "w": 48,
+  "h": 48
+ },
+ "synthesia": {
+  "file": "synthesia.png",
+  "w": 256,
+  "h": 256
+ },
+ "taktile": {
+  "file": "taktile.png",
+  "w": 180,
+  "h": 180
+ },
+ "tavus": {
+  "file": "tavus.png",
+  "w": 256,
+  "h": 256
+ },
+ "temporaltechnologies": {
+  "file": "temporaltechnologies.png",
+  "w": 180,
+  "h": 180
+ },
+ "tesslcareers": {
+  "file": "tesslcareers.png",
+  "w": 48,
+  "h": 48
+ },
+ "thetradedesk": {
+  "file": "thetradedesk.png",
+  "w": 256,
+  "h": 256
+ },
+ "tide": {
+  "file": "tide.png",
+  "w": 180,
+  "h": 180
+ },
+ "toast": {
+  "file": "toast.png",
+  "w": 64,
+  "h": 64
+ },
+ "togetherai": {
+  "file": "togetherai.png",
+  "w": 256,
+  "h": 256
+ },
+ "toku": {
+  "file": "toku.png",
+  "w": 256,
+  "h": 256
+ },
+ "tomorrow": {
+  "file": "tomorrow.png",
+  "w": 180,
+  "h": 180
+ },
+ "tractian": {
+  "file": "tractian.png",
+  "w": 256,
+  "h": 256
+ },
+ "trainline": {
+  "file": "trainline.png",
+  "w": 48,
+  "h": 48
+ },
+ "trm-labs": {
+  "file": "trm-labs.png",
+  "w": 256,
+  "h": 256
+ },
+ "trueanomalyinc": {
+  "file": "trueanomalyinc.png",
+  "w": 256,
+  "h": 256
+ },
+ "truelayer": {
+  "file": "truelayer.png",
+  "w": 256,
+  "h": 256
+ },
+ "trustpilot": {
+  "file": "trustpilot.png",
+  "w": 180,
+  "h": 180
+ },
+ "truveta": {
+  "file": "truveta.png",
+  "w": 180,
+  "h": 180
+ },
+ "trychroma": {
+  "file": "trychroma.png",
+  "w": 256,
+  "h": 256
+ },
+ "twilio": {
+  "file": "twilio.png",
+  "w": 180,
+  "h": 180
+ },
+ "twitch": {
+  "file": "twitch.png",
+  "w": 180,
+  "h": 180
+ },
+ "vannevarlabs": {
+  "file": "vannevarlabs.svg",
+  "w": 512,
+  "h": 512
+ },
+ "vanta": {
+  "file": "vanta.png",
+  "w": 256,
+  "h": 256
+ },
+ "vapi": {
+  "file": "vapi.png",
+  "w": 180,
+  "h": 180
+ },
+ "vercel": {
+  "file": "vercel.png",
+  "w": 256,
+  "h": 256
+ },
+ "version1": {
+  "file": "version1.png",
+  "w": 180,
+  "h": 180
+ },
+ "virtu": {
+  "file": "virtu.png",
+  "w": 180,
+  "h": 180
+ },
+ "viz-ai": {
+  "file": "viz-ai.png",
+  "w": 180,
+  "h": 180
+ },
+ "warnerbros-wd5-global": {
+  "file": "warnerbros-wd5-global.png",
+  "w": 64,
+  "h": 64
+ },
+ "wayve": {
+  "file": "wayve.png",
+  "w": 180,
+  "h": 180
+ },
+ "weaviate": {
+  "file": "weaviate.png",
+  "w": 48,
+  "h": 48
+ },
+ "webflow": {
+  "file": "webflow.png",
+  "w": 256,
+  "h": 256
+ },
+ "westmonroe4": {
+  "file": "westmonroe4.png",
+  "w": 64,
+  "h": 64
+ },
+ "wise": {
+  "file": "wise.png",
+  "w": 180,
+  "h": 180
+ },
+ "wolt": {
+  "file": "wolt.png",
+  "w": 180,
+  "h": 180
+ },
+ "workos": {
+  "file": "workos.png",
+  "w": 256,
+  "h": 256
+ },
+ "wrike": {
+  "file": "wrike.png",
+  "w": 48,
+  "h": 48
+ },
+ "writer": {
+  "file": "writer.png",
+  "w": 180,
+  "h": 180
+ },
+ "xai": {
+  "file": "xai.png",
+  "w": 48,
+  "h": 48
+ },
+ "xebiacee": {
+  "file": "xebiacee.png",
+  "w": 180,
+  "h": 180
+ },
+ "xtxmarketstechnologies": {
+  "file": "xtxmarketstechnologies.png",
+  "w": 180,
+  "h": 180
+ },
+ "zapier": {
+  "file": "zapier.png",
+  "w": 192,
+  "h": 192
+ },
+ "zilliz": {
+  "file": "zilliz.svg",
+  "w": 512,
+  "h": 512
+ },
+ "zillow-wd5-zillow-group-external": {
+  "file": "zillow-wd5-zillow-group-external.png",
+  "w": 360,
+  "h": 360
+ },
+ "zip": {
+  "file": "zip.png",
+  "w": 256,
+  "h": 256
+ },
+ "zoox": {
+  "file": "zoox.png",
+  "w": 180,
+  "h": 180
+ },
+ "zscaler": {
+  "file": "zscaler.png",
+  "w": 180,
+  "h": 180
+ }
+}
