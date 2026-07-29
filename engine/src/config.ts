@@ -44,6 +44,24 @@ export const OUT_TITLE_PATTERNS: RegExp[] = [
   /\btalent (pool|community|network)\b/i,
 ];
 
+// --- Published site ---------------------------------------------------------
+// Must match site/astro.config.mjs (`site` + `base`). Used to turn job slugs
+// into the absolute URLs we hand to search engines.
+export const SITE_ORIGIN = process.env.SITE_ORIGIN ?? "https://alastairrushworth.com";
+export const SITE_BASE = process.env.SITE_BASE ?? "/aiengjobs";
+
+// --- IndexNow ---------------------------------------------------------------
+// Push notification of new/removed job URLs to Bing, Yandex, Naver and Seznam
+// (Google does not participate — see the Indexing API for that side).
+//
+// The key is public by design: it only proves control of the host, and the
+// matching file is served from site/public/<key>.txt. URLs we submit all sit
+// under SITE_BASE, which is what lets the key live in a subdirectory.
+export const INDEXNOW_KEY =
+  process.env.INDEXNOW_KEY ?? "baa66d54cf113d3258c04600e858975b";
+export const INDEXNOW_ENDPOINT =
+  process.env.INDEXNOW_ENDPOINT ?? "https://api.indexnow.org/indexnow";
+
 // --- LLM configuration ------------------------------------------------------
 // On-the-fly classification/tagging uses OpenAI GPT-5.4-nano (cheapest).
 export const LLM_MODEL = process.env.OPENAI_MODEL ?? "gpt-5.4-nano";

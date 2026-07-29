@@ -12,7 +12,8 @@
     "build": "npm run build -w @aiengjobs/site",
     "dev": "npm run dev -w @aiengjobs/site",
     "typecheck": "npm run typecheck -w @aiengjobs/engine && npm run check -w @aiengjobs/site",
-    "test": "vitest run"
+    "test": "vitest run",
+    "snapshot:fetch": "git fetch --depth=1 origin snapshot && git cat-file blob FETCH_HEAD:snapshot.json > site/src/data/snapshot.json && echo 'Fetched site/src/data/snapshot.json'"
   },
   "devDependencies": {
     "vitest": "^3.0.0"

@@ -21,13 +21,21 @@ content-hash cached so the model only runs on new/changed postings.
 ```
 ATS feeds ─▶ engine (droplet): normalize▸classify▸tag▸dedupe▸expiry ─▶ SQLite
                                               │
-                              export snapshot.json ─▶ git push ─▶ GitHub Actions ─▶ Pages
+                     export ─┬─ snapshot.json ────▶ `snapshot` branch (force-pushed, no history)
+                             ├─ snapshot.meta.json ▶ main ─▶ GitHub Actions ─▶ Pages
+                             └─ diff vs. previous ──▶ IndexNow (Bing/Yandex/Naver/Seznam)
 ```
+
+The ~22MB snapshot is **not** in main's history — committing it nightly grew the
+repo by GBs a year and made refreshing more often expensive. It's published on a
+detached, single-commit `snapshot` branch; main only carries the few-hundred-byte
+`snapshot.meta.json`, which is what triggers the Pages build.
 
 ## Develop
 
 ```bash
 npm install                       # install all workspaces
+npm run snapshot:fetch            # pull site/src/data/snapshot.json (gitignored)
 
 npm run dev   -w @aiengjobs/site  # run the site locally (http://localhost:4321/aiengjobs)
 npm run build -w @aiengjobs/site  # build static site to site/dist
@@ -40,9 +48,18 @@ npm run typecheck -w @aiengjobs/engine
 
 ## Deploy
 
-- **Site:** pushing to `main` (changes under `site/`, `shared/`, or lockfile) runs
-  `.github/workflows/deploy.yml`, which builds Astro and publishes to GitHub Pages.
-- **Engine:** runs on the droplet via cron; see the build plan for provisioning details.
+- **Site:** pushing to `main` runs `.github/workflows/deploy.yml`, which fetches the
+  snapshot from the `snapshot` branch, builds Astro and publishes to GitHub Pages.
+- **Engine:** runs on the droplet via a systemd timer (`deploy/`), which invokes
+  `scripts/droplet-refresh.sh`.
+
+> The `snapshot` branch must exist before CI can build. To seed it by hand:
+>
+> ```bash
+> blob=$(git hash-object -w site/src/data/snapshot.json)
+> tree=$(printf '100644 blob %s\tsnapshot.json\n' "$blob" | git mktree)
+> git push --force origin "$(git commit-tree "$tree" -m snapshot):refs/heads/snapshot"
+> ```
 
 ## Status
 
