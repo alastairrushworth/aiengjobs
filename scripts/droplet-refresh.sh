@@ -4,7 +4,25 @@
 # Runs on the droplet as the `deploy` user via systemd (see deploy/).
 set -euo pipefail
 
-cd "$(dirname "$0")/.."
+SELF="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")"
+cd "$(dirname "$SELF")/.."
+
+# Stay in sync with the repo (deploy may have happened from elsewhere), then hand
+# the run over to the copy of this script we just pulled.
+#
+# The re-exec is the point. That pull can rewrite this very file, and bash reads a
+# script lazily from disk as it executes — so a run that pulls a change to itself
+# can execute half the old script and half the new one. That is not hypothetical:
+# on 2026-07-30 the pull landed the commit that untracked snapshot.json while the
+# *previous* version of this script was still running, and its check —
+# `git diff --quiet -- site/src/data/snapshot.json`, now asking about a path git no
+# longer tracks — dutifully reported no change. A clean sweep of 3703 open roles
+# published nothing and the site sat a day stale. Re-exec so that whatever runs
+# past this point is entirely the new code, reading the repo it was written for.
+if [ "${AIENGJOBS_REEXECED:-}" != 1 ]; then
+  git pull --ff-only origin main || true
+  AIENGJOBS_REEXECED=1 exec "$SELF" "$@"
+fi
 
 # Load secrets (OPENAI_API_KEY etc.) for both manual and systemd runs.
 if [ -f /etc/aiengjobs.env ]; then
@@ -17,9 +35,6 @@ export AIENGJOBS_DB="${AIENGJOBS_DB:-/var/lib/aiengjobs/aiengjobs.db}"
 
 SNAPSHOT=site/src/data/snapshot.json
 META=site/src/data/snapshot.meta.json
-
-# Stay in sync with the repo (deploy may have happened from elsewhere).
-git pull --ff-only origin main || true
 
 # Hold on to the pre-refresh snapshot: it's what we diff to work out which job
 # URLs to announce, and what we compare against to decide whether to publish.
