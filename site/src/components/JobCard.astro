@@ -1,12 +1,6 @@
 ---
 import type { Job } from "@aiengjobs/shared";
-import {
-  formatSalary,
-  isNewJob,
-  postedAgo,
-  remoteLabel,
-  seniorityLabel,
-} from "../lib/format.ts";
+import { formatSalary, isNewJob, remoteLabel, seniorityLabel } from "../lib/format.ts";
 import { generatedAt, fxRates } from "../lib/data.ts";
 
 interface Props {
@@ -18,7 +12,10 @@ const { job, href } = Astro.props;
 const salary = formatSalary(job, fxRates);
 const remote = remoteLabel(job.remoteType);
 const sen = seniorityLabel(job.seniority);
-const posted = postedAgo(job.postedAt, generatedAt);
+// No "posted Xd ago" stamp on cards: nothing older than MAX_JOB_AGE_DAYS is
+// listed at all now, so the only freshness distinction worth drawing is
+// "just posted" — and the New badge already draws it. Showing both put "New"
+// and "Posted today" side by side on every card of a newest-first list.
 const isNew = isNewJob(job.postedAt, generatedAt);
 ---
 
@@ -38,7 +35,6 @@ const isNew = isNewJob(job.postedAt, generatedAt);
       {remote && <span class="badge">{remote}</span>}
       {sen && <span class="badge">{sen}</span>}
       {job.skills.slice(0, 4).map((s) => <span class="badge skill">{s}</span>)}
-      {posted && <span class="posted">Posted {posted}</span>}
     </div>
   </a>
 </li>

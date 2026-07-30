@@ -44,8 +44,13 @@ body {
 
 a { color: inherit; text-decoration: none; }
 
+/* Two accent families, one rule: indigo marks anything you can act on, green
+   marks data (salaries, counts, chart magnitude). The focus ring is an
+   interaction affordance, so it's indigo — it used to be green, which was the
+   one place the two families crossed over. --accent-text clears 7:1 on the
+   page background, comfortably past the 3:1 WCAG 1.4.11 asks of it. */
 :focus-visible {
-  outline: 2px solid var(--accent-2);
+  outline: 2px solid var(--accent-text);
   outline-offset: 2px;
   border-radius: 4px;
 }
@@ -81,7 +86,10 @@ a { color: inherit; text-decoration: none; }
 /* Header / footer */
 .site-header {
   border-bottom: 1px solid var(--border);
-  background: rgba(11, 12, 16, 0.7);
+  /* Opaque enough to actually occlude. At 0.7 the blur wasn't enough to stop
+     headings and badges scrolling underneath from staying legible through the
+     bar, which read as a rendering fault rather than a frosted-glass effect. */
+  background: rgba(11, 12, 16, 0.94);
   backdrop-filter: blur(8px);
   position: sticky;
   top: 0;
@@ -190,6 +198,14 @@ a { color: inherit; text-decoration: none; }
 }
 .jobs > li { display: block; }
 
+/* First filter interaction has to fetch the full list; dim the stale results so
+   the wait is visibly a wait. Opacity only — reflowing or emptying the list
+   would make the page jump before the new results even arrive. */
+.jobs.is-loading { opacity: 0.45; }
+@media (prefers-reduced-motion: no-preference) {
+  .jobs { transition: opacity 0.15s ease; }
+}
+
 .job-card {
   display: block;
   padding: 16px 18px;
@@ -211,7 +227,6 @@ a { color: inherit; text-decoration: none; }
 .job-card .company { color: var(--muted); font-size: 0.92rem; overflow-wrap: anywhere; }
 .job-card .salary { color: var(--accent-2); font-weight: 600; white-space: nowrap; font-size: 0.9rem; }
 .job-card .meta { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
-.job-card .posted { color: var(--muted); font-size: 0.78rem; align-self: center; }
 
 .badge {
   font-size: 0.74rem;
@@ -219,10 +234,15 @@ a { color: inherit; text-decoration: none; }
   border-radius: 6px;
   background: var(--surface-2);
   border: 1px solid var(--border);
-  color: var(--muted);
+  /* Work type and seniority — what people actually filter a list on, so they
+     carry the stronger of the two badge tones. */
+  color: var(--text);
   white-space: nowrap;
 }
-.badge.skill { color: var(--text); }
+/* Skills confirm a role rather than select it, and there are up to four per
+   card against one seniority badge — the quieter tone keeps them from being the
+   loudest thing in the row. (These two used to be the other way round.) */
+.badge.skill { color: var(--muted); }
 .badge.new { border-color: var(--accent-2); color: var(--accent-2); }
 
 .show-more-wrap { text-align: center; margin: 18px 0; }
@@ -240,7 +260,11 @@ a { color: inherit; text-decoration: none; }
 }
 .btn-secondary:hover { border-color: var(--accent); }
 
-.empty { text-align: center; color: var(--muted); padding: 40px 0; display: none; }
+/* Visibility is driven by the `hidden` attribute (see the global [hidden] rule)
+   rather than display:none here — this class is shared with the listing pages,
+   whose own empty message would otherwise never be able to show itself. */
+.empty { text-align: center; color: var(--muted); padding: 40px 0; }
+.empty p { margin: 0 0 16px; }
 
 /* Browse-by-stack nav (cross-links to programmatic pages) */
 .browse {

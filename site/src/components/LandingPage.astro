@@ -54,22 +54,45 @@ const itemList = {
 };
 
 // Cross-links: the other clusters, plus the biggest location pages. Capped so
-// the foot of every listing page isn't a link farm.
+// the foot of every listing page isn't a link farm. Kept in two labelled rows
+// rather than one — the homepage already teaches "Browse by stack" vs "Browse
+// by location", and flattening them here made 16 links read as an undifferen-
+// tiated dump where a stack and a city looked like the same kind of thing.
 const otherClusters = CLUSTER_PAGES.filter((p) => p.slug !== landing.slug);
 const otherLocations = LOCATION_LANDINGS.filter((l) => l.slug !== landing.slug).slice(0, 8);
-const crossLinks = [
-  ...otherClusters.map((p) => ({ href: url(`/${p.slug}/`), text: p.label })),
-  ...otherLocations.map((l) => ({ href: url(`/${l.slug}/`), text: l.label })),
-];
+const stackLinks = otherClusters.map((p) => ({ href: url(`/${p.slug}/`), text: p.label }));
+const locationLinks = otherLocations.map((l) => ({ href: url(`/${l.slug}/`), text: l.label }));
 if (landing.kind === "cluster") {
   const cluster = CLUSTER_PAGES.find((p) => p.slug === landing.slug);
   if (cluster) {
-    crossLinks.push({
+    stackLinks.push({
       href: url(`/salaries/${salarySlug(cluster.id)}/`),
       text: `${cluster.label} salaries →`,
     });
   }
 }
+
+// Newer/Older alone costs 21 clicks to reach the last page of a 22-page
+// landing. A windowed run of numbers puts any page one or two hops away while
+// keeping the row short enough to fit a phone.
+const pageHref = (n: number) =>
+  n === 1 ? url(`/${landing.slug}/`) : url(`/${landing.slug}/${n}/`);
+
+function pageWindow(current: number, last: number): (number | "gap")[] {
+  const wanted = new Set<number>([1, last, current]);
+  for (const n of [current - 1, current + 1]) {
+    if (n > 1 && n < last) wanted.add(n);
+  }
+  const out: (number | "gap")[] = [];
+  let prev = 0;
+  for (const n of [...wanted].sort((a, b) => a - b)) {
+    if (prev && n - prev > 1) out.push("gap");
+    out.push(n);
+    prev = n;
+  }
+  return out;
+}
+const pageNumbers = paged ? pageWindow(page.currentPage, page.lastPage) : [];
 
 const feedHref = url(`/${landing.slug}/rss.xml`);
 const description = `${landing.intro} ${page.total} open role${page.total === 1 ? "" : "s"} right now.${
@@ -108,7 +131,20 @@ const description = `${landing.intro} ${page.total} open role${page.total === 1 
       ) : (
         <span class="disabled">← Newer</span>
       )}
-      <span class="pager-pos">Page {page.currentPage} of {page.lastPage}</span>
+      <span class="pager-nums">
+        <span class="sr-only">Page {page.currentPage} of {page.lastPage}.</span>
+        {pageNumbers.map((n) =>
+          n === "gap" ? (
+            <span class="pager-gap" aria-hidden="true">…</span>
+          ) : n === page.currentPage ? (
+            <span class="pager-num current" aria-current="page">{n}</span>
+          ) : (
+            <a class="pager-num" href={pageHref(n)}>
+              <span class="sr-only">Page </span>{n}
+            </a>
+          ),
+        )}
+      </span>
       {nextUrl ? (
         <a rel="next" href={nextUrl}>Older →</a>
       ) : (
@@ -117,7 +153,10 @@ const description = `${landing.intro} ${page.total} open role${page.total === 1 
     </nav>
   )}
 
-  <BrowseNav label="Browse:" links={crossLinks} />
+  <BrowseNav label="Browse by stack:" links={stackLinks} />
+  {locationLinks.length > 0 && (
+    <BrowseNav label="Browse by location:" links={locationLinks} compact ariaLabel="Browse by location" />
+  )}
 
   <script type="application/ld+json" set:html={jsonLdScript(itemList)} is:inline />
 </Base>
@@ -136,6 +175,7 @@ const description = `${landing.intro} ${page.total} open role${page.total === 1 
     display: flex;
     align-items: center;
     justify-content: center;
+    flex-wrap: wrap;
     gap: 20px;
     margin: 28px 0 4px;
     font-size: 0.9rem;
@@ -150,9 +190,34 @@ const description = `${landing.intro} ${page.total} open role${page.total === 1 
   .pager a:hover,
   .pager a:focus-visible { border-color: var(--accent); }
   .pager .disabled { color: var(--muted); padding: 12px 18px; }
-  .pager-pos { color: var(--muted); }
+  .pager-nums {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 2px;
+  }
+  /* Numbers are plain targets, not the bordered buttons Newer/Older use — the
+     border treatment on nine elements turns the pager into a wall of boxes. */
+  .pager .pager-num {
+    border: none;
+    padding: 12px 4px;
+    /* ≥44px wide so each digit is still a comfortable touch target. */
+    min-width: 44px;
+    text-align: center;
+  }
+  .pager .pager-num.current {
+    color: var(--text);
+    font-weight: 700;
+    background: var(--surface-2);
+    border: 1px solid var(--border-strong);
+  }
+  .pager .pager-num:hover,
+  .pager .pager-num:focus-visible { color: var(--text); background: var(--surface-2); }
+  .pager-gap { color: var(--muted); }
   @media (max-width: 420px) {
     .pager { gap: 8px; }
     .pager a, .pager .disabled { padding: 12px 10px; }
+    .pager .pager-num { min-width: 40px; padding: 12px 2px; }
   }
 </style>

@@ -79,9 +79,13 @@ const tiles: { label: string; value: string; note?: string }[] = [
 
 <style>
   .landing-stats { margin: 20px 0 8px; }
+  /* Flex rather than an auto-fit grid: the tile count varies (1–4, depending on
+     what the landing can actually fill) so a grid leaves a dead panel whenever
+     the last row is short — four tiles across three columns left "Top skill"
+     beside a large empty box. Growing flex items fill the row instead. */
   .tiles {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    display: flex;
+    flex-wrap: wrap;
     gap: 1px;
     margin: 0 0 16px;
     background: var(--border);
@@ -89,7 +93,7 @@ const tiles: { label: string; value: string; note?: string }[] = [
     border-radius: var(--radius);
     overflow: hidden;
   }
-  .tile { background: var(--surface); padding: 12px 14px; }
+  .tile { flex: 1 1 150px; background: var(--surface); padding: 12px 14px; }
   .tile dt {
     color: var(--muted);
     font-size: 0.72rem;

@@ -46,9 +46,34 @@ const withCanonicalCity = (j: Job): Job => {
   return city === j.city ? j : { ...j, city };
 };
 
+/**
+ * Roles stop being listed once they pass this age, even though the ATS still
+ * carries them and the nightly run still re-verifies them.
+ *
+ * "No ghost jobs" doesn't survive a board where a third of the inventory is a
+ * quarter old: a requisition nobody has refreshed in three months is rarely a
+ * live opportunity, and applying to one is the exact experience the board
+ * exists to avoid. Every feed supplies postedAt, so this is measured, not
+ * guessed. Aged-out roles fall out of the listings, the sitemap and the feeds
+ * together, and their pages 404 into the copy that already explains it.
+ */
+export const MAX_JOB_AGE_DAYS = 90;
+
+const ageDays = (j: Job): number | null => {
+  const posted = j.postedAt ? Date.parse(j.postedAt) : NaN;
+  if (!Number.isFinite(posted)) return null;
+  return (Date.parse(data.generatedAt) - posted) / 86_400_000;
+};
+
 /** Open roles, newest first (roles without a posted date sink to the bottom). */
 export const openJobs: Job[] = data.jobs
   .filter((j) => !j.isClosed)
+  // An unknown posting date can't be shown as fresh on a board that sells
+  // freshness. No feed currently omits it, so this excludes nothing today.
+  .filter((j) => {
+    const age = ageDays(j);
+    return age !== null && age <= MAX_JOB_AGE_DAYS;
+  })
   .map(withCanonicalCity)
   .sort((a, b) => postedTs(b) - postedTs(a));
 
