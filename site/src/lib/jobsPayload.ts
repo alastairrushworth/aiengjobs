@@ -6,6 +6,7 @@ import {
   salaryRank,
   seniorityLabel,
 } from "./format.ts";
+import { logo } from "./logos.ts";
 import { openJobs, fxRates, generatedAt } from "./data.ts";
 
 /** Compact per-job record for the homepage's client-side filter/sort/render.
@@ -25,6 +26,11 @@ export interface JobPayloadEntry {
   ro: string; // role-type family (filter value)
   co: string; // country code (filter value)
   sk: string[]; // skills
+  // Logo filename ("" when we have none — the card falls back to a monogram).
+  // Repeated per job rather than shipped as a company→file map: ~300 distinct
+  // values across the payload compress to almost nothing, and it keeps the
+  // client renderer a straight field read.
+  lg: string;
 }
 
 export function buildJobsPayload(): JobPayloadEntry[] {
@@ -42,5 +48,6 @@ export function buildJobsPayload(): JobPayloadEntry[] {
     ro: roleType(j),
     co: j.country ?? "",
     sk: j.skills,
+    lg: logo(j.companySlug)?.file ?? "",
   }));
 }

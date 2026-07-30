@@ -175,6 +175,7 @@ const updated = new Date(generatedAt).toLocaleDateString("en-US", {
     id="jobs"
     data-src={url("/jobs-data.json")}
     data-job-base={url("/jobs/")}
+    data-logo-base={url("/logos/")}
   >
     {initialJobs.map((job) => (
       <JobCard job={job} href={url(`/jobs/${job.slug}/`)} />
@@ -217,7 +218,7 @@ const updated = new Date(generatedAt).toLocaleDateString("en-US", {
   interface JobEntry {
     slug: string; t: string; c: string; l: string; s: string; sr: number;
     n: number; r: string; sl: string; sn: string; ro: string;
-    co: string; sk: string[];
+    co: string; sk: string[]; lg: string;
     q?: string; // lazily-built lowercase search blob
   }
 
@@ -277,6 +278,37 @@ const updated = new Date(generatedAt).toLocaleDateString("en-US", {
     return [...matched, ...j.sk.filter((s) => !hit(s))].slice(0, 4);
   }
 
+  /**
+   * Company mark, mirroring components/CompanyLogo.astro. Kept in step with it
+   * by hand: the server renders the first 50 cards through the component and
+   * this renders every card after a filter, so any drift shows up as a visible
+   * jump the moment someone types. LOGO_PX matches JobCard.astro.
+   */
+  const LOGO_PX = 32;
+  const logoBase = jobsEl.dataset.logoBase!;
+  function makeLogo(j: JobEntry): HTMLElement {
+    if (j.lg) {
+      const img = document.createElement("img");
+      img.className = "company-logo";
+      img.src = `${logoBase}${j.lg}`;
+      img.alt = ""; // decorative — the company name sits right beside it
+      img.width = LOGO_PX;
+      img.height = LOGO_PX;
+      img.loading = "lazy";
+      img.decoding = "async";
+      img.style.setProperty("--logo-size", `${LOGO_PX}px`);
+      return img;
+    }
+    const span = document.createElement("span");
+    span.className = "company-logo monogram";
+    span.setAttribute("aria-hidden", "true");
+    span.style.setProperty("--logo-size", `${LOGO_PX}px`);
+    // Derived here rather than shipped per job — it's one character off a name
+    // the payload already carries. Matches CompanyLogo.astro's fallback.
+    span.textContent = j.c.trim().slice(0, 1).toUpperCase() || "?";
+    return span;
+  }
+
   // Client-rendered card, identical markup to JobCard.astro. Built with
   // createElement/textContent only — job data is untrusted feed content.
   const cardCache = new Map<JobEntry, HTMLLIElement>();
@@ -292,6 +324,10 @@ const updated = new Date(generatedAt).toLocaleDateString("en-US", {
     const a = document.createElement("a");
     a.className = "job-card";
     a.href = `${jobBase}${j.slug}/`;
+    a.append(makeLogo(j));
+
+    const body = document.createElement("div");
+    body.className = "card-body";
 
     const top = document.createElement("div");
     top.className = "top";
@@ -324,7 +360,8 @@ const updated = new Date(generatedAt).toLocaleDateString("en-US", {
     if (j.sl) badge(j.sl);
     for (const s of visibleSkills(j, text)) badge(s, "badge skill");
 
-    a.append(top, meta);
+    body.append(top, meta);
+    a.append(body);
     li.append(a);
     if (!text) cardCache.set(j, li);
     return li;
