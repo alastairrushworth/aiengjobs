@@ -76,17 +76,29 @@ function buildCityLandings(): Landing[] {
     const slug = citySlug(city);
     if (!slug) continue;
 
-    // Some city names are genuinely shared across countries (Cambridge,
-    // Birmingham). Name the countries in the copy rather than silently merging
-    // them or inventing a country-qualified URL nobody searches for.
-    const countries = [...new Set(jobs.map((j) => j.country).filter(Boolean))] as string[];
-    const named = countries.map((c) => countryName(c) ?? c);
-    const where =
-      named.length === 1 ? `${city}, ${named[0]}` : city;
-    const scope =
-      named.length > 1
-        ? ` Covers ${city} in ${named.slice(0, 3).join(", ")}.`
-        : "";
+    // Name the country that owns the page and stop there.
+    //
+    // This used to list every country present, to disambiguate genuinely shared
+    // city names (Cambridge, Birmingham). That intent is sound but no such city
+    // clears MIN_CITY_JOBS, so in practice the clause only ever surfaced
+    // upstream mislabels: "Covers San Francisco in United States, Netherlands"
+    // off one stray role in 600, London picking up the United States off 5 in
+    // 223, and Berlin and Sydney both acquiring the United Kingdom. A share
+    // threshold cut the worst of it but couldn't separate a real split from a
+    // bad country code, because the difference isn't in the numbers.
+    //
+    // The dominant country is accurate for the overwhelming majority of roles
+    // on every one of these pages and is what a reader actually needs. If a
+    // genuine 60/40 city ever grows large enough to earn a landing, this is
+    // where the disambiguation goes back — and the real fix for the strays is
+    // in the location pipeline, not in this copy.
+    const countryCounts = new Map<string, number>();
+    for (const j of jobs) {
+      if (j.country) countryCounts.set(j.country, (countryCounts.get(j.country) ?? 0) + 1);
+    }
+    const dominant = [...countryCounts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0];
+    const named = dominant ? (countryName(dominant) ?? dominant) : null;
+    const where = named ? `${city}, ${named}` : city;
 
     landings.push({
       slug: `ai-jobs-${slug}`,
@@ -95,7 +107,7 @@ function buildCityLandings(): Landing[] {
       h1: `AI engineer jobs in ${city}`,
       intro:
         `AI engineering roles in ${where} — LLM apps, RAG, agents, evals and inference. ` +
-        `Pulled from company career sites, never scraped aggregators.${scope}`,
+        `Pulled from company career sites, never scraped aggregators.`,
       where,
       jobs,
     });

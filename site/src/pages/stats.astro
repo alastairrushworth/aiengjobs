@@ -142,7 +142,7 @@ const maxCountry = topCountries[0]?.n ?? 1;
   <!-- Top companies -->
   <div class="cols">
     <section class="panel">
-      <h2><span aria-hidden="true">💰</span> Top-paying companies</h2>
+      <h2>Top-paying companies</h2>
       <p class="sub">By median salary midpoint · {MIN_PAY_ROLES}+ priced roles</p>
       <ol class="board">
         {topPayCompanies.map((c, i) => (
@@ -157,7 +157,7 @@ const maxCountry = topCountries[0]?.n ?? 1;
     </section>
 
     <section class="panel">
-      <h2><span aria-hidden="true">📋</span> Most open positions</h2>
+      <h2>Most open positions</h2>
       <p class="sub">Companies hiring the most right now</p>
       <ol class="board">
         {topHiringCompanies.map((c, i) => (
@@ -174,7 +174,7 @@ const maxCountry = topCountries[0]?.n ?? 1;
 
   <!-- Remote split -->
   <section class="panel">
-    <h2><span aria-hidden="true">🌍</span> Where the work happens</h2>
+    <h2>Where the work happens</h2>
     {/* Decorative — the legend below is the accessible representation. */}
     <div class="split" aria-hidden="true">
       <span class="seg remote" style={`width:${pct(remoteCount, totalRoles)}%`}></span>
@@ -191,7 +191,7 @@ const maxCountry = topCountries[0]?.n ?? 1;
   <!-- Skills -->
   <div class="cols">
     <section class="panel">
-      <h2><span aria-hidden="true">🔧</span> Most-wanted skills</h2>
+      <h2>Most-wanted skills</h2>
       <p class="sub">Open roles naming each skill</p>
       <ul class="bars">
         {topSkills.map((s) => (
@@ -205,7 +205,7 @@ const maxCountry = topCountries[0]?.n ?? 1;
     </section>
 
     <section class="panel">
-      <h2><span aria-hidden="true">📈</span> Best-paid skills</h2>
+      <h2>Best-paid skills</h2>
       <p class="sub">Median salary of roles asking for it · {MIN_SKILL_PAY_ROLES}+ priced roles</p>
       <ul class="bars">
         {topPaidSkills.map((s) => (
@@ -222,7 +222,7 @@ const maxCountry = topCountries[0]?.n ?? 1;
   <!-- Seniority + countries -->
   <div class="cols">
     <section class="panel">
-      <h2><span aria-hidden="true">🪜</span> Seniority mix</h2>
+      <h2>Seniority mix</h2>
       <ul class="bars">
         {seniorityMix.map((s) => (
           <li>
@@ -235,7 +235,7 @@ const maxCountry = topCountries[0]?.n ?? 1;
     </section>
 
     <section class="panel">
-      <h2><span aria-hidden="true">📍</span> Top locations</h2>
+      <h2>Top locations</h2>
       <ul class="bars">
         {topCountries.map((c) => (
           <li>
@@ -335,14 +335,18 @@ const maxCountry = topCountries[0]?.n ?? 1;
     border-radius: 999px;
     overflow: hidden;
   }
+  /* One colour for magnitude, site-wide: green reads as data here exactly as it
+     does on salaries and counts, and indigo stays reserved for things you can
+     click. These bars used to alternate indigo and green panel by panel, which
+     implied a distinction between the charts that doesn't exist — each panel
+     measures its own thing and none of them are compared across. */
   .fill {
     display: block;
     height: 100%;
     border-radius: 999px;
-    background: linear-gradient(90deg, var(--accent), #9b7dff);
+    background: linear-gradient(90deg, #2bbf8c, var(--accent-2));
     min-width: 3px;
   }
-  .fill.alt { background: linear-gradient(90deg, #2bbf8c, var(--accent-2)); }
   .bv {
     flex: 0 0 auto;
     min-width: 42px;
@@ -363,6 +367,9 @@ const maxCountry = topCountries[0]?.n ?? 1;
     background: var(--surface-2);
   }
   .split .seg { height: 100%; }
+  /* The one place hue carries meaning rather than role: three shares of a
+     single bar have to be told apart from each other, so this is a categorical
+     scale, not the accent system. Seams and the legend back it up. */
   .seg.remote, .dot.remote { background: var(--accent-2); }
   .seg.hybrid, .dot.hybrid { background: var(--accent); }
   /* ≥3:1 against the --surface-2 track (WCAG 1.4.11). */

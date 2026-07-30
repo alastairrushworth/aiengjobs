@@ -29,6 +29,13 @@ const PERIOD_TO_YEAR: Record<string, number> = {
 // (e.g. an equity/valuation number), so we neither rank nor display it.
 const SALARY_FLOOR_USD = 10_000;
 const SALARY_CEILING_USD = 2_000_000;
+// Sub-annual periods get a tighter ceiling than annual ones. A mislabelled
+// period is the common failure — an annual "€68k–86k" tagged as monthly
+// annualizes to €1.05M and takes the top slot on "highest salary", above every
+// genuine top-of-market range. Real monthly/hourly/daily pay doesn't reach
+// $750k/yr, so gating those separately lets the annual ceiling stay loose
+// enough for the $850k US research roles that are legitimately in the data.
+const SUBANNUAL_CEILING_USD = 750_000;
 
 /**
  * Currency → USD multiplier, preferring the snapshot's live rates and falling
@@ -96,9 +103,11 @@ export function salaryMidpointUsd(
   if (fx === null) return null; // unknown currency — unpriced, not 1:1 with USD
   const lo = salaryMin ?? salaryMax!;
   const hi = salaryMax ?? salaryMin!;
-  const perYear = PERIOD_TO_YEAR[job.salaryPeriod ?? "year"] ?? 1;
+  const period = job.salaryPeriod ?? "year";
+  const perYear = PERIOD_TO_YEAR[period] ?? 1;
   const annual = ((lo + hi) / 2) * perYear * fx;
   if (annual < SALARY_FLOOR_USD || annual > SALARY_CEILING_USD) return null;
+  if (period !== "year" && annual > SUBANNUAL_CEILING_USD) return null;
   return annual;
 }
 

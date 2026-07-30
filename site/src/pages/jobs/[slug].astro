@@ -388,9 +388,13 @@ const metaDescription = `${descBits.join(" — ")}.`.slice(0, 300);
     color: var(--text);
     margin: 16px 0 0;
   }
+  /* Flex rather than an auto-fit grid: the grid left a dead panel whenever the
+     fact count didn't fill its last row (six facts across five columns at 720px
+     left most of a row empty). Flex items grow, so a short last row stretches
+     to fill instead of showing the container through the gap. */
   .facts {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    display: flex;
+    flex-wrap: wrap;
     gap: 1px;
     margin: 0 0 8px;
     background: var(--border);
@@ -398,7 +402,12 @@ const metaDescription = `${descBits.join(" — ")}.`.slice(0, 300);
     border-radius: var(--radius);
     overflow: hidden;
   }
-  .facts .fact { background: var(--surface); padding: 12px 14px; }
+  .facts .fact { flex: 1 1 140px; background: var(--surface); padding: 12px 14px; }
+  /* Wider basis once there's room, so the usual six facts land as two rows of
+     three instead of five-plus-a-stretched-one. */
+  @media (min-width: 700px) {
+    .facts .fact { flex: 1 1 200px; }
+  }
   .facts dt {
     color: var(--muted);
     font-size: 0.72rem;

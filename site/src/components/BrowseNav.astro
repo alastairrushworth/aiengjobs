@@ -10,17 +10,26 @@ interface Props {
   label?: string;
   ariaLabel?: string;
   center?: boolean;
+  /** Tightens the top margin so a second row reads as part of the same block. */
+  compact?: boolean;
 }
-const { links, label, ariaLabel = "Related pages", center = false } = Astro.props;
+const {
+  links,
+  label,
+  ariaLabel = "Related pages",
+  center = false,
+  compact = false,
+} = Astro.props;
 ---
 
-<nav class:list={["browse", "related-nav", { center }]} aria-label={ariaLabel}>
+<nav class:list={["browse", "related-nav", { center, compact }]} aria-label={ariaLabel}>
   {label && <span class="note">{label}</span>}
   {links.map((l) => <a href={l.href}>{l.text}</a>)}
 </nav>
 
 <style>
   .related-nav { margin-top: 40px; }
+  .related-nav.compact { margin-top: 4px; }
   .center { justify-content: center; }
   .note { color: var(--muted); font-size: 0.85rem; }
 </style>
