@@ -13,6 +13,7 @@ import { classifyHeuristic, type ClassifyResult } from "./pipeline/classify.ts";
 import { tagHeuristic } from "./pipeline/tag.ts";
 import { inferSeniority } from "./pipeline/seniority.ts";
 import { parseLocation } from "./pipeline/location.ts";
+import { parseSalaryFromDescription } from "./pipeline/comp.ts";
 import { extractListing, type ExtractResult } from "./pipeline/extract.ts";
 import { contentHash } from "./pipeline/hash.ts";
 import { llmEnabled } from "./pipeline/llm.ts";
@@ -45,13 +46,14 @@ interface PayFields {
 function pay(
   raw: PayFields,
   ex?: PayFields | null,
+  fromDescription?: PayFields | null,
 ): {
   salaryMin?: number;
   salaryMax?: number;
   salaryCurrency?: string;
   salaryPeriod?: string;
 } {
-  for (const src of [raw, ex]) {
+  for (const src of [raw, ex, fromDescription]) {
     if (!src) continue;
     const min = src.salaryMin;
     const max = src.salaryMax;
@@ -198,7 +200,11 @@ export async function ingest(): Promise<void> {
           // USD, and feeds that omit the currency are usually the non-USD ones
           // (a Graphcore posting shipped a bare 260400-352200, which is PLN —
           // ~$70k shown as $260k). Drop the pay rather than guess at it.
-          ...pay(raw, ex),
+          // …and when neither the feed nor the LLM produced pay, fall back to
+          // the description itself. US pay-transparency law puts an explicit
+          // range in the body of a lot of Workday/Greenhouse posts, and missing
+          // it renders "Not published" on a page that visibly publishes one.
+          ...pay(raw, ex, parseSalaryFromDescription(text)),
           classification: cls.classification,
           classificationConfidence: cls.confidence,
           isDirect: 0,
