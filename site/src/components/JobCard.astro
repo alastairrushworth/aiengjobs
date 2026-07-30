@@ -2,6 +2,11 @@
 import type { Job } from "@aiengjobs/shared";
 import { formatSalary, isNewJob, remoteLabel, seniorityLabel } from "../lib/format.ts";
 import { generatedAt, fxRates } from "../lib/data.ts";
+import CompanyLogo from "./CompanyLogo.astro";
+
+/** Card mark size. Small enough to stay an aid to scanning rather than the
+ *  thing you look at first — the title is still the primary element. */
+const LOGO_PX = 32;
 
 interface Props {
   job: Job;
@@ -21,20 +26,23 @@ const isNew = isNewJob(job.postedAt, generatedAt);
 
 <li>
   <a class="job-card" href={href}>
-    <div class="top">
-      <div>
-        <div class="title">{job.title}</div>
-        <div class="company">
-          {job.companyName}{job.locationRaw ? ` · ${job.locationRaw}` : ""}
+    <CompanyLogo name={job.companyName} slug={job.companySlug} size={LOGO_PX} />
+    <div class="card-body">
+      <div class="top">
+        <div>
+          <div class="title">{job.title}</div>
+          <div class="company">
+            {job.companyName}{job.locationRaw ? ` · ${job.locationRaw}` : ""}
+          </div>
         </div>
+        {salary && <div class="salary">{salary}</div>}
       </div>
-      {salary && <div class="salary">{salary}</div>}
-    </div>
-    <div class="meta">
-      {isNew && <span class="badge new">New</span>}
-      {remote && <span class="badge">{remote}</span>}
-      {sen && <span class="badge">{sen}</span>}
-      {job.skills.slice(0, 4).map((s) => <span class="badge skill">{s}</span>)}
+      <div class="meta">
+        {isNew && <span class="badge new">New</span>}
+        {remote && <span class="badge">{remote}</span>}
+        {sen && <span class="badge">{sen}</span>}
+        {job.skills.slice(0, 4).map((s) => <span class="badge skill">{s}</span>)}
+      </div>
     </div>
   </a>
 </li>

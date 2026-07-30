@@ -35,26 +35,8 @@ const initial = name.trim().slice(0, 1).toUpperCase() || "?";
   )
 }
 
-<style>
-  .company-logo {
-    width: var(--logo-size);
-    height: var(--logo-size);
-    flex: 0 0 var(--logo-size);
-    border-radius: 10px;
-    /* Logos are mostly square marks on a transparent or white ground; a light
-       plate keeps dark-on-transparent ones legible against the dark surface. */
-    background: #fff;
-    border: 1px solid var(--border);
-    object-fit: contain;
-    padding: 5px;
-  }
-  .monogram {
-    display: grid;
-    place-items: center;
-    background: var(--surface-2);
-    color: var(--accent-text);
-    font-weight: 700;
-    font-size: calc(var(--logo-size) * 0.45);
-    padding: 0;
-  }
-</style>
+{/* The .company-logo styles live in global.css rather than a scoped block here.
+    The homepage renders job cards twice — through this component on the server,
+    and again in plain JS once the filter payload loads — and a scoped rule
+    can't reach markup this component didn't create. Both paths emit exactly
+    the markup above; keep them in step. */}
