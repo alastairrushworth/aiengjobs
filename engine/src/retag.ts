@@ -3,7 +3,7 @@ import { setJobSkills } from "./db/repo.ts";
 import { ALL_SKILLS, tagHeuristic } from "./pipeline/tag.ts";
 import { classifyHeuristic } from "./pipeline/classify.ts";
 import { encoderAvailable, encoderScore } from "./pipeline/encoder.ts";
-import { ENCODER_THRESHOLD, ENCODER_VETO_CONFIDENCE } from "./config.ts";
+import { ENCODER_DIR, ENCODER_THRESHOLD, ENCODER_VETO_CONFIDENCE } from "./config.ts";
 import { mapPool } from "./util/concurrency.ts";
 
 const RECLASSIFY_CONCURRENCY = Number(process.env.INGEST_CONCURRENCY ?? 4);
@@ -83,8 +83,10 @@ export function retag(): void {
  */
 export async function reclassify(): Promise<void> {
   if (!encoderAvailable()) {
-    console.log("Reclassify skipped: encoder model files not found.");
-    return;
+    throw new Error(
+      `Classifier model not found at ${ENCODER_DIR}. Refusing to reclassify — ` +
+        `a silent skip would leave the board looking re-scored when it was not.`,
+    );
   }
   const db = openDb();
   const jobs = db
@@ -124,10 +126,6 @@ export async function reclassify(): Promise<void> {
       j.locationRaw ?? "",
       j.text ?? "",
     );
-    if (p === null) {
-      counts.failed++;
-      return;
-    }
     // A heuristic IN title keeps its prior unless the model is confidently OUT,
     // mirroring ingest.ts — the two paths must not disagree on the same posting.
     const heuristicIn = classifyHeuristic(j.title)?.classification === "in";
