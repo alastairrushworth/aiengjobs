@@ -83,16 +83,18 @@ export const OFF_TOPIC_TITLE_PATTERNS: RegExp[] = [
 // --- Published site ---------------------------------------------------------
 // Must match site/astro.config.mjs (`site` + `base`). Used to turn job slugs
 // into the absolute URLs we hand to search engines.
-export const SITE_ORIGIN = process.env.SITE_ORIGIN ?? "https://alastairrushworth.com";
-export const SITE_BASE = process.env.SITE_BASE ?? "/aiengjobs";
+export const SITE_ORIGIN = process.env.SITE_ORIGIN ?? "https://frontierroles.com";
+// Empty now the site sits at its domain apex; kept so the URL builders below
+// still compose if the board ever moves back under a path.
+export const SITE_BASE = process.env.SITE_BASE ?? "";
 
 // --- IndexNow ---------------------------------------------------------------
 // Push notification of new/removed job URLs to Bing, Yandex, Naver and Seznam
 // (Google does not participate — see the Indexing API for that side).
 //
 // The key is public by design: it only proves control of the host, and the
-// matching file is served from site/public/<key>.txt. URLs we submit all sit
-// under SITE_BASE, which is what lets the key live in a subdirectory.
+// matching file is served from site/public/<key>.txt — i.e. the domain root,
+// which covers every URL we submit.
 export const INDEXNOW_KEY =
   process.env.INDEXNOW_KEY ?? "baa66d54cf113d3258c04600e858975b";
 export const INDEXNOW_ENDPOINT =

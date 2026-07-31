@@ -1,11 +1,12 @@
 import { defineConfig } from "astro/config";
 
-// Served under alastairrushworth.com/aiengjobs/ (the account's custom domain;
-// github.io 301-redirects there). `base` is threaded through internal links via
-// src/lib/url.ts. A dedicated domain later means dropping base to "/" + new `site`.
+// Served at the apex of its own domain (GitHub Pages custom domain; the CNAME
+// file ships from site/public). `base` is still threaded through internal links
+// via src/lib/url.ts, so the indirection survives if the site ever moves under a
+// path again. The old alastairrushworth.com/aiengjobs/* URLs 301 here.
 export default defineConfig({
-  site: "https://alastairrushworth.com",
-  base: "/aiengjobs",
+  site: "https://frontierroles.com",
+  base: "/",
   output: "static",
   trailingSlash: "ignore",
 });
