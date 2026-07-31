@@ -15,6 +15,14 @@ dist/
 # Its small companion, snapshot.meta.json, IS committed.
 site/src/data/snapshot.json
 
+# Trained encoder weights (~600MB per run) and the ad corpus they train on.
+# Both are reproducible from ml/gold/labels.jsonl + ml/train_encoder.py; only
+# the small eval.json companion is worth committing.
+ml/model*/*
+!ml/model*/eval.json
+ml/ads/
+__pycache__/
+
 # secrets
 .env
 .env.*
