@@ -24,8 +24,10 @@ import { countryName } from "./format.ts";
  * requisition, which data.ts canonicalizes onto one page anyway.
  */
 
-// Base.astro appends " — aiengjobs" (12 chars), so budget for the whole thing.
-const TITLE_BUDGET = 58;
+// Base.astro appends " — frontierroles.com" (20 chars), so budget for the whole
+// thing. Keep these two in step: a longer brand eats the role's room, and the
+// pair has to stay under the ~70 chars Google renders before truncating.
+const TITLE_BUDGET = 50;
 const MIN_ROLE_CHARS = 24;
 
 function truncateRole(title: string, room: number): string {

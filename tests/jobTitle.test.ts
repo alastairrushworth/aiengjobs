@@ -31,7 +31,7 @@ describe("buildJobTitles", () => {
       companyName: "Acme",
     });
     const t = titleOf([j], "a");
-    expect(t.length).toBeLessThanOrEqual(60);
+    expect(t.length).toBeLessThanOrEqual(52);
     expect(t).toMatch(/…\s·\sAcme$/);
   });
 
