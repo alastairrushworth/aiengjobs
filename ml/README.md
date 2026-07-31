@@ -49,6 +49,29 @@ Model files are fetched from a release asset at run time and verified against
 the committed `ml/model/manifest.json` before every ingest, so a truncated or
 swapped download fails the run rather than quietly degrading it.
 
+### Verified on the target architecture
+
+Three failures reached CI because everything was validated on Apple Silicon and
+shipped to x86-64 Linux. The fix was checked on a throwaway x86 droplet
+(AVX2, no VNNI — the exact condition that triggers the saturation) before any
+further CI run:
+
+| | Precision | Recall | F1 | P@13% |
+|---|---|---|---|---|
+| fp32, ARM macOS | 97.8% | 81.8% | 89.1% | 95.9% |
+| fp32, x86 Linux (no VNNI) | 97.8% | 81.8% | 89.1% | 95.9% |
+| PyTorch reference | 97.8% | 81.8% | 89.1% | 95.9% |
+
+(246-row subsample of the held-out split, hence higher than the full-set figures
+above.) `max |x86 - PyTorch| = 1.4e-06`, zero differing decisions. The same box
+reproduced the int8 failure exactly — 0.6583 and 0.3211, the identical numbers
+the GitHub runner produced — which is what confirmed the diagnosis rather than
+merely fitting it.
+
+Latency there was **4.7s per advert** single-threaded on 2 shared vCPUs (p90
+5.9s), against 2.9s on an M-series Mac. At the workflow's concurrency of 4 that
+puts the classification stage near an hour for a typical night.
+
 The threshold was picked off the precision/recall curve rather than by
 maximising F1: the curve knees at 0.70, and pushing to 0.87 buys ~1pp of
 precision for 13 more missed roles out of 183.
