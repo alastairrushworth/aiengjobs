@@ -8,8 +8,54 @@
  *
  * Run: npx tsx scripts/verify-classifier.ts
  */
-import { ENCODER_DIR, ENCODER_THRESHOLD, ENCODER_WINDOW } from "../engine/src/config.ts";
+import { createHash } from "node:crypto";
+import { existsSync, readFileSync } from "node:fs";
+import { join } from "node:path";
+import {
+  ENCODER_DIR,
+  ENCODER_FILE,
+  ENCODER_THRESHOLD,
+  ENCODER_WINDOW,
+} from "../engine/src/config.ts";
 import { encoderAvailable, encoderScore } from "../engine/src/pipeline/encoder.ts";
+
+/**
+ * The weights are fetched from a release asset at run time, so a truncated or
+ * swapped download is a real possibility that would look exactly like a bad
+ * model. ml/model/manifest.json is committed; the files are not.
+ */
+function verifyChecksums(): boolean {
+  const manifestPath = join(ENCODER_DIR, "manifest.json");
+  if (!existsSync(manifestPath)) {
+    console.error(`FAIL: no manifest at ${manifestPath}`);
+    return false;
+  }
+  const manifest = JSON.parse(readFileSync(manifestPath, "utf8")) as Record<
+    string,
+    { sha256: string; bytes: number }
+  >;
+  let ok = true;
+  for (const [name, want] of Object.entries(manifest)) {
+    const p = join(ENCODER_DIR, name);
+    if (!existsSync(p)) {
+      console.error(`  FAIL ${name}: missing`);
+      ok = false;
+      continue;
+    }
+    const buf = readFileSync(p);
+    const got = createHash("sha256").update(buf).digest("hex");
+    if (got !== want.sha256 || buf.length !== want.bytes) {
+      console.error(
+        `  FAIL ${name}: got ${buf.length} bytes / ${got.slice(0, 16)}…, ` +
+          `expected ${want.bytes} / ${want.sha256.slice(0, 16)}…`,
+      );
+      ok = false;
+    } else {
+      console.log(`  ok   ${name} (${buf.length.toLocaleString()} bytes)`);
+    }
+  }
+  return ok;
+}
 
 // Two adverts the model must not get wrong. Not a substitute for the held-out
 // evaluation — just a tripwire for "loaded the wrong thing" or "loaded nothing".
@@ -35,6 +81,7 @@ const CASES: { name: string; title: string; body: string; expect: "in" | "out" }
 
 async function main(): Promise<void> {
   console.log(`encoder dir : ${ENCODER_DIR}`);
+  console.log(`model file  : ${ENCODER_FILE}`);
   console.log(`window      : ${ENCODER_WINDOW}`);
   console.log(`threshold   : ${ENCODER_THRESHOLD}`);
 
@@ -42,6 +89,14 @@ async function main(): Promise<void> {
     console.error(`\nFAIL: no model files at ${ENCODER_DIR}`);
     process.exit(1);
   }
+
+  console.log("\nchecksums:");
+  if (!verifyChecksums()) {
+    console.error("\nFAIL: model files do not match the committed manifest");
+    process.exit(1);
+  }
+
+  console.log("\nsanity cases:");
 
   let bad = 0;
   for (const c of CASES) {

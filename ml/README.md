@@ -7,7 +7,7 @@ How the in/out classification moved off the OpenAI API and into the engine. See
 ## Outcome
 
 **Shipped.** `train_encoder.py` fine-tunes ModernBERT-base on the 4,898 labels in
-`gold/labels.jsonl`; the result is quantised to int8 ONNX (144MB) and run
+`gold/labels.jsonl`; the result is exported to fp32 ONNX (571MB) and run
 in-process by `engine/src/pipeline/encoder.ts`. There is no API key.
 
 Held-out split — whole companies held out, so near-duplicate reposts cannot leak
@@ -16,15 +16,26 @@ across it — at the 1024-token production window and the 0.70 operating point:
 | | Precision | Recall | Precision @13% base rate |
 |---|---|---|---|
 | GPT-5.4-nano (what it replaced) | 86.0% | 70.8% | 86.0% |
-| Encoder @0.70, PyTorch reference | 94.6% | 86.9% | 92.0% |
-| **Encoder @0.70, as shipped (Node int8 ONNX)** | **93.9%** | **84.7%** | **91.0%** |
+| **Encoder @0.70, as shipped (Node fp32 ONNX)** | **94.6%** | **86.9%** | **92.0%** |
 
-Better on both axes. Quote the shipped row: `onnxruntime-node` and
-`onnxruntime-python` implement int8 kernels differently, so the deployed path
-scores marginally below the PyTorch reference — 5 of 984 held-out decisions
-differ (mean probability delta 0.008, max 0.23). The int8 quantisation itself is
-near-lossless; this is a runtime difference, and it is why the numbers are
-measured end-to-end through Node rather than taken from `train_encoder.py`.
+Better on both axes. The fp32 graph reproduces PyTorch to 1.4e-06 with zero
+differing decisions, so the shipped path and the training reference agree.
+
+### Why not int8
+
+An int8 build is 144MB against 571MB and roughly 1.6x faster (1,841ms vs
+2,858ms per advert, single-threaded). It is not what ships, because ONNX Runtime
+uses `VPMADDUBSW` for int8 matmuls on x86-64 AVX2/AVX512 without VNNI, and that
+instruction saturates. The same int8 graph scoring 0.9992 on an ARM Mac scored
+**0.6583** on a GitHub runner, collapsing every decision toward 0.5 — a silent,
+architecture-dependent accuracy collapse that no amount of local testing on
+Apple Silicon could have caught. `reduce_range=True` mitigates it; fp32 removes
+it. The 961MB droplet that made quantisation necessary no longer exists, and
+runners have 16GB, so there is nothing left to buy with the risk.
+
+Model files are fetched from a release asset at run time and verified against
+the committed `ml/model/manifest.json` before every ingest, so a truncated or
+swapped download fails the run rather than quietly degrading it.
 
 The threshold was picked off the precision/recall curve rather than by
 maximising F1: the curve knees at 0.70, and pushing to 0.87 buys ~1pp of
@@ -56,10 +67,11 @@ now runs on a GitHub Actions runner (4 vCPU / 16GB, free on public repos), so
 the memory ceiling no longer binds — but the model stays small because runner
 minutes are metered if the repo ever goes private.
 
-Measured footprint of the shipped model: **527MB peak RSS** at a 1024-token
-window, **1.8s per posting** single-threaded. A 3072-token window needs 1.6GB
-(the eager-attention mask is quadratic in sequence length) and would not have fit
-the droplet at all.
+Measured footprint at a 1024-token window: the int8 graph peaks at **527MB RSS**
+and **1.8s per posting** single-threaded; the fp32 graph that actually ships is
+larger and takes **2.9s**. A 3072-token window needs 1.6GB even at int8 (the
+eager-attention mask is quadratic in sequence length) and would not have fit the
+droplet at all.
 
 ## The gold set
 

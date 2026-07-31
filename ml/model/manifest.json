@@ -1,0 +1,18 @@
+{
+  "model.onnx": {
+    "sha256": "9768ed383aef9460ed8dd2475b1123051b95ec4c5fd6c753b2744aceacd49062",
+    "bytes": 599013905
+  },
+  "tokenizer.json": {
+    "sha256": "4da01372fe84d288f1b564d807904105499bd396192288f8cd5f96c778fd1702",
+    "bytes": 3583327
+  },
+  "tokenizer_config.json": {
+    "sha256": "fb54f027372062b2ca52282efb04d178a8b57167a00cd8f4e816515823a2c016",
+    "bytes": 380
+  },
+  "config.json": {
+    "sha256": "a7498fa979ead91295281ec6448840a14d98572ea5a89f5d24e84bc2fb829e9c",
+    "bytes": 1918
+  }
+}
