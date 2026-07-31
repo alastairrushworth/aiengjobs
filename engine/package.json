@@ -18,7 +18,7 @@
   "dependencies": {
     "@aiengjobs/shared": "*",
     "@huggingface/transformers": "^4.2.0",
-    "onnxruntime-node": "^1.27.0"
+    "onnxruntime-node": "1.24.3"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",
