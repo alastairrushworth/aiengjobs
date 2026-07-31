@@ -59,6 +59,12 @@ jobs:
           gh release download model-latest --dir ml/model --clobber
           ls -la ml/model
 
+      # Fail in seconds if the classifier is unusable, rather than after polling
+      # 744 feeds. A run once got all the way through ingest before anyone
+      # noticed it had silently classified on title regexes alone.
+      - name: Verify classifier
+        run: npx tsx scripts/verify-classifier.ts
+
       # actions/cache is the fast path only. It evicts after 7 days unused and
       # shares a 10GB repo budget, so it is never the source of truth for the DB.
       - name: Restore database cache
@@ -108,10 +114,12 @@ jobs:
           GIT_COMMITTER_NAME: github-actions[bot]
           GIT_COMMITTER_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
 
-      # Persist the database BEFORE anything that can fail, so a late failure
-      # never costs a night of ingest history.
+      # Only on success. `if: always()` here once published a half-ingested,
+      # wrongly-classified database over the last good one when a run was
+      # cancelled — losing a night of ingest is far cheaper than poisoning the
+      # state every later run restores from.
       - name: Publish database
-        if: always()
+        if: success()
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -123,8 +131,10 @@ jobs:
               --notes "Ingest database carried between nightly runs. Replaced on every refresh."
           gh release upload "$DB_TAG" "$DB_ASSET" --clobber
 
+      # Same reasoning, and more urgent: the cache is restored BEFORE the
+      # release, so a bad entry here wins over a good release asset.
       - name: Save database cache
-        if: always()
+        if: success()
         uses: actions/cache/save@v4
         with:
           path: data/aiengjobs.db

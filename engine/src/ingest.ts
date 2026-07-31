@@ -16,7 +16,7 @@ import { parseLocation } from "./pipeline/location.ts";
 import { parseSalaryFromDescription } from "./pipeline/comp.ts";
 import { contentHash } from "./pipeline/hash.ts";
 import { encoderAvailable, encoderScore } from "./pipeline/encoder.ts";
-import { ENCODER_THRESHOLD, ENCODER_VETO_CONFIDENCE } from "./config.ts";
+import { ENCODER_DIR, ENCODER_THRESHOLD, ENCODER_VETO_CONFIDENCE } from "./config.ts";
 import { jobId, jobSlug } from "./util/id.ts";
 import { mapPool } from "./util/concurrency.ts";
 
@@ -78,9 +78,17 @@ export async function ingest(): Promise<void> {
     db.close();
     return;
   }
-  console.log(
-    `Ingest: ${targets.length} sources. Classifier ${encoderAvailable() ? "encoder (local ONNX)" : "unavailable — heuristics only"}.`,
-  );
+  // Assert before touching a single feed. A missing model used to degrade to
+  // title heuristics, which quietly reclassified everything it touched on a far
+  // weaker rule; failing here costs a run, failing silently costs the board.
+  if (!encoderAvailable()) {
+    db.close();
+    throw new Error(
+      `Classifier model not found at ${ENCODER_DIR}. Ingest aborted before any ` +
+        `posting was written. Restore the model files or set AIENGJOBS_ENCODER_DIR.`,
+    );
+  }
+  console.log(`Ingest: ${targets.length} sources. Classifier: local ONNX encoder.`);
 
   const runStart = new Date().toISOString();
   const polledSourceIds: string[] = [];
@@ -138,15 +146,15 @@ export async function ingest(): Promise<void> {
         // Local encoder decides scope. Skip it for titles the heuristic already
         // rules OUT — those are discarded regardless, and skipping is a third of
         // the nightly volume.
+        //
+        // There is no heuristic fallback below. encoderScore throws if the model
+        // is missing or inference fails, which fails the run — deliberately.
         let cls: ClassifyResult;
         if (heuristicClass?.classification === "out") {
           cls = heuristicClass;
-        } else if (encoderAvailable()) {
+        } else {
           const p = await encoderScore(id, raw.title, t.name, raw.locationRaw ?? "", text);
-          if (p === null) {
-            // Inference failed for this posting; fall back rather than guess.
-            cls = heuristicClass ?? { classification: "out", confidence: 0.3, via: "default" };
-          } else if (heuristicClass?.classification === "in") {
+          if (heuristicClass?.classification === "in") {
             // Title looks IN. The model read the description, so let it veto an
             // over-broad title match (e.g. "Support Agent" caught by /agent/)
             // when it is confidently OUT; otherwise keep the heuristic prior.
@@ -161,9 +169,6 @@ export async function ingest(): Promise<void> {
             const isIn = p >= ENCODER_THRESHOLD;
             cls = { classification: isIn ? "in" : "out", confidence: isIn ? p : 1 - p, via: "model" };
           }
-        } else {
-          // No model files → heuristics only; exclude the ambiguous to stay credible.
-          cls = heuristicClass ?? { classification: "out", confidence: 0.3, via: "default" };
         }
 
         const skills =

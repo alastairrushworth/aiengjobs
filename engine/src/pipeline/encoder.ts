@@ -56,7 +56,7 @@ interface Tokenizer {
 }
 type TensorCtor = new (type: string, data: BigInt64Array, dims: number[]) => unknown;
 
-/** True when the model files are present; ingest falls back to heuristics otherwise. */
+/** True when the model files are present. Ingest asserts this before doing any work. */
 export function encoderAvailable(): boolean {
   return existsSync(join(ENCODER_DIR, "model.int8.onnx"));
 }
@@ -93,11 +93,17 @@ async function init() {
  * Score an already-serialised advert. Exported so the parity check can feed the
  * exact strings the model was trained on, isolating inference from serialisation.
  */
-export async function scoreText(text: string): Promise<number | null> {
+export async function scoreText(text: string): Promise<number> {
   ready ??= init();
   const m = await ready;
-  if (!m) return null;
-  try {
+  if (!m) {
+    throw new Error(
+      `Classifier model not found at ${ENCODER_DIR}. Refusing to classify — ` +
+        `falling back to title heuristics would silently rebuild the board on a ` +
+        `much weaker rule. Set AIENGJOBS_ENCODER_DIR or restore the model files.`,
+    );
+  }
+  {
     const enc = m.tokenizer(text, {
       truncation: true,
       max_length: ENCODER_WINDOW,
@@ -120,22 +126,25 @@ export async function scoreText(text: string): Promise<number | null> {
       attention_mask: new m.Tensor("int64", mask, dims),
     });
     const logits = Object.values(out)[0]?.data;
-    if (!logits || logits.length < 2) return null;
+    if (!logits || logits.length < 2) {
+      throw new Error(`classifier returned ${logits?.length ?? 0} logits, expected 2`);
+    }
     // Two-class softmax; index 1 is IN.
     const [a, b] = [logits[0]!, logits[1]!];
     const max = Math.max(a, b);
     const ea = Math.exp(a - max);
     const eb = Math.exp(b - max);
     return eb / (ea + eb);
-  } catch (e) {
-    console.warn(`[encoder] ${(e as Error).message}`);
-    return null;
   }
 }
 
 /**
- * Probability that the posting is in scope, or null when the model is
- * unavailable or inference fails — callers then fall back to heuristics.
+ * Probability that the posting is in scope.
+ *
+ * Throws rather than degrading. There is deliberately no heuristic fallback:
+ * title regexes alone classify far worse than the model, and a silent downgrade
+ * would rewrite the board with plausible-looking but much weaker decisions. A
+ * missing or broken model must fail the run.
  */
 export function encoderScore(
   id: string,
@@ -143,7 +152,7 @@ export function encoderScore(
   company: string,
   location: string,
   body: string,
-): Promise<number | null> {
+): Promise<number> {
   return scoreText(serialiseAdvert(id, title, company, location, body));
 }
 
