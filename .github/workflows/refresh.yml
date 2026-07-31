@@ -1,0 +1,145 @@
+name: Nightly refresh
+
+# Replaces the DigitalOcean droplet's systemd timer. Standard GitHub-hosted
+# runners are free and unlimited on public repositories and give 4 vCPU / 16GB —
+# more than the droplet had. Never switch to a larger runner label: those are
+# billed even on public repos.
+on:
+  schedule:
+    - cron: "30 3 * * *"
+  workflow_dispatch:
+    inputs:
+      reclassify:
+        description: "Re-score the whole live backlog with the encoder"
+        type: boolean
+        default: false
+
+# The database is mutable state carried between runs. Two concurrent refreshes
+# would race on it and one would silently lose its work, so queue instead of
+# cancelling — a cancelled run could drop the DB it had already mutated.
+concurrency:
+  group: refresh
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+env:
+  AIENGJOBS_DB: ${{ github.workspace }}/data/aiengjobs.db
+  DB_TAG: db-latest
+  DB_ASSET: aiengjobs.db.gz
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # The classifier weights are ~144MB and reproducible from ml/, so they are
+      # not in git. Cache first, fall back to the release asset.
+      - name: Restore encoder cache
+        id: encoder-cache
+        uses: actions/cache@v4
+        with:
+          path: ml/model
+          key: encoder-${{ hashFiles('ml/model/eval.json') }}
+
+      - name: Download encoder
+        if: steps.encoder-cache.outputs.cache-hit != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p ml/model
+          gh release download model-latest --dir ml/model --clobber
+          ls -la ml/model
+
+      # actions/cache is the fast path only. It evicts after 7 days unused and
+      # shares a 10GB repo budget, so it is never the source of truth for the DB.
+      - name: Restore database cache
+        id: db-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: data/aiengjobs.db
+          key: aiengjobs-db-${{ github.run_id }}
+          restore-keys: aiengjobs-db-
+
+      - name: Download database from release
+        if: steps.db-cache.outputs.cache-matched-key == ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p data
+          if gh release download "$DB_TAG" --pattern "$DB_ASSET" --output - 2>/dev/null | gunzip > data/aiengjobs.db; then
+            echo "restored database from release $DB_TAG"
+          else
+            echo "::warning::no database found — initialising a fresh one. Every job will look new."
+            rm -f data/aiengjobs.db
+            npm run -s db:init -w @aiengjobs/engine
+            npm run -s seed -w @aiengjobs/engine
+          fi
+
+      - name: Verify database is usable
+        run: |
+          node -e '
+            const {DatabaseSync} = require("node:sqlite");
+            const db = new DatabaseSync(process.env.AIENGJOBS_DB, {readOnly: true});
+            const {n} = db.prepare("SELECT COUNT(*) n FROM jobs").get();
+            const {open} = db.prepare("SELECT COUNT(*) open FROM jobs WHERE is_closed=0").get();
+            console.log(`database: ${n} jobs, ${open} open`);
+            db.close();
+          '
+
+      - name: Re-score backlog
+        if: inputs.reclassify
+        run: npm run -s reclassify -w @aiengjobs/engine
+
+      - name: Refresh
+        run: scripts/refresh.sh
+        env:
+          GIT_AUTHOR_NAME: github-actions[bot]
+          GIT_AUTHOR_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
+          GIT_COMMITTER_NAME: github-actions[bot]
+          GIT_COMMITTER_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
+
+      # Persist the database BEFORE anything that can fail, so a late failure
+      # never costs a night of ingest history.
+      - name: Publish database
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          test -f "$AIENGJOBS_DB" || { echo "no database to publish"; exit 0; }
+          gzip -c "$AIENGJOBS_DB" > "$DB_ASSET"
+          ls -lh "$DB_ASSET"
+          gh release view "$DB_TAG" >/dev/null 2>&1 || \
+            gh release create "$DB_TAG" --title "Database snapshot" \
+              --notes "Ingest database carried between nightly runs. Replaced on every refresh."
+          gh release upload "$DB_TAG" "$DB_ASSET" --clobber
+
+      - name: Save database cache
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: data/aiengjobs.db
+          key: aiengjobs-db-${{ github.run_id }}
+
+  # Rebuild and publish the site. Invoked directly rather than left to the push
+  # event: commits made with GITHUB_TOKEN deliberately do not trigger workflows.
+  deploy:
+    needs: refresh
+    uses: ./.github/workflows/deploy.yml
+    permissions:
+      contents: read
+      pages: write
+      id-token: write

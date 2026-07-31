@@ -1,7 +1,6 @@
 // Title signals that strongly indicate an in-scope AI-engineering role.
-// A match raises the prior to IN, but the LLM (which reads the description) can
-// still veto it when confidently OUT — see the "heuristic+llm-veto" path in
-// ingest.ts. That veto is what lets us keep broad signals like `agent` and the
+// A match raises the prior to IN, but the encoder (which reads the description)
+// can still veto it when confidently OUT — see the veto path in ingest.ts. That veto is what lets us keep broad signals like `agent` and the
 // role/convention titles below without force-listing the odd non-eng posting
 // (e.g. "Support Agent", a non-engineering MoTS).
 export const IN_TITLE_PATTERNS: RegExp[] = [
@@ -18,8 +17,8 @@ export const IN_TITLE_PATTERNS: RegExp[] = [
   /\beval(s|uation)?\b/i,
   /\bmodel serving\b/i,
   // Frontier-lab IC / research roles the bare keywords above miss. Safe to add
-  // now that the LLM can veto a mis-match (above). Research scientists are IN
-  // scope (AI/ML research); the LLM still filters non-IC "Research *Manager*".
+  // now that the model can veto a mis-match (above). Research scientists are IN
+  // scope (AI/ML research); the model still filters non-IC "Research *Manager*".
   /\bresearch engineer\b/i,
   /\bresearch scientist\b/i,
   /\bmember of technical staff\b/i,
@@ -51,7 +50,7 @@ export const OUT_TITLE_PATTERNS: RegExp[] = [
 //
 // Every pattern below was mined from titles the LLM had already rejected and kept
 // only where it was 100% OUT-pure against that labelled set — the whole point is
-// to skip the LLM call, so a false positive here is a role silently lost. Prefer
+// to skip inference entirely, so a false positive here is a role silently lost. Prefer
 // leaving a family out over guessing: `solutions architect/engineer` was dropped
 // for exactly this reason (95.7% pure — it was killing infra-flavoured roles).
 export const OFF_TOPIC_TITLE_PATTERNS: RegExp[] = [
@@ -96,18 +95,26 @@ export const INDEXNOW_KEY =
 export const INDEXNOW_ENDPOINT =
   process.env.INDEXNOW_ENDPOINT ?? "https://api.indexnow.org/indexnow";
 
-// --- LLM configuration ------------------------------------------------------
-// On-the-fly classification/tagging uses OpenAI GPT-5.4-nano (cheapest).
-export const LLM_MODEL = process.env.OPENAI_MODEL ?? "gpt-5.4-nano";
-export const OPENAI_API_KEY = process.env.OPENAI_API_KEY ?? "";
+// --- Classifier configuration -----------------------------------------------
+// Classification runs locally: a fine-tuned ModernBERT encoder under ONNX
+// Runtime (see pipeline/encoder.ts). No API key, no per-posting network call.
+export const ENCODER_DIR = process.env.AIENGJOBS_ENCODER_DIR ?? "ml/model";
 
-// An ambiguous-title job is decided solely by the LLM; an "in" below this floor
-// is classified OUT rather than listed. Low-confidence INs were letting junk
-// through ("Open Application", rotation programs, generic SWE at 0.55–0.65).
-export const LLM_IN_CONFIDENCE_FLOOR = 0.7;
+// Measured on the labelled corpus: 3072 tokens covers 99.2% of adverts whole,
+// but 1024 scores identically on the held-out split (92.4% vs 91.9% F1) at a
+// quarter the attention memory. The gain from a longer window is not worth
+// quadrupling the footprint on a shared runner.
+export const ENCODER_WINDOW = Number(process.env.AIENGJOBS_ENCODER_WINDOW ?? 1024);
 
-// A heuristic IN title is only overturned when the LLM is at least this sure the
-// role is OUT. Set conservatively so a stray LLM "out" can't suppress a clear
+// Chosen from the held-out precision/recall curve, which knees here. Measured
+// through the Node runtime at 0.70: 93.9% precision / 84.7% recall (91.0%
+// precision reweighted to the 13% production base rate). Pushing to 0.87 buys
+// ~1pp more precision for 13 more missed roles out of 183 — a bad exchange.
+// Raise it if the board should be stricter still.
+export const ENCODER_THRESHOLD = Number(process.env.AIENGJOBS_ENCODER_THRESHOLD ?? 0.7);
+
+// A heuristic IN title is only overturned when the model is at least this sure
+// the role is OUT. Set conservatively so a stray "out" can't suppress a clear
 // in-scope role; it exists to kill broad-keyword false-positives ("Support
 // Agent" via /agent/), not to second-guess every title. See ingest.ts.
-export const LLM_VETO_CONFIDENCE = 0.7;
+export const ENCODER_VETO_CONFIDENCE = 0.7;

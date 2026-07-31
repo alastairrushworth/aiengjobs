@@ -6,6 +6,10 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+  # Called by refresh.yml. A push made with GITHUB_TOKEN does not trigger other
+  # workflows, so the nightly snapshot commit would otherwise never rebuild the
+  # site — the refresh job invokes this directly instead.
+  workflow_call:
 
 # Allow the workflow to publish to Pages
 permissions:
