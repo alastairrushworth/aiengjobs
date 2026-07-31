@@ -1,4 +1,9 @@
 {
+ "1x": {
+  "file": "1x.png",
+  "w": 180,
+  "h": 180
+ },
  "abridge": {
   "file": "abridge.png",
   "w": 256,
@@ -414,6 +419,11 @@
   "w": 180,
   "h": 180
  },
+ "drata": {
+  "file": "drata.png",
+  "w": 180,
+  "h": 180
+ },
  "edel-fa-us2-oraclecloud-com-cx-2001": {
   "file": "edel-fa-us2-oraclecloud-com-cx-2001.png",
   "w": 180,
@@ -633,6 +643,11 @@
   "file": "hyperexponential.png",
   "w": 64,
   "h": 64
+ },
+ "imc": {
+  "file": "imc.png",
+  "w": 256,
+  "h": 256
  },
  "instacart": {
   "file": "instacart.png",
@@ -898,6 +913,11 @@
   "file": "paconsulting.png",
   "w": 256,
   "h": 256
+ },
+ "palantir": {
+  "file": "palantir.svg",
+  "w": 218,
+  "h": 218
  },
  "parloa": {
   "file": "parloa.png",
@@ -1218,6 +1238,11 @@
   "file": "suno.png",
   "w": 256,
   "h": 256
+ },
+ "supabase": {
+  "file": "supabase.svg",
+  "w": 109,
+  "h": 113
  },
  "supercell": {
   "file": "supercell.png",
