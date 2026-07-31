@@ -3,12 +3,16 @@ import type { Job } from "@aiengjobs/shared";
 import { formatSalary, isNewJob, remoteLabel, seniorityLabel } from "../lib/format.ts";
 import { generatedAt, fxRates } from "../lib/data.ts";
 import CompanyLogo from "./CompanyLogo.astro";
+import { CARD_CLASS as C, CARD_LOGO_PX } from "../lib/jobCardShape.ts";
 
-/** Card mark size — set to the company line it now sits on. The mark used to
- *  own a 32px column down the left of the card, which pushed every title and
- *  badge right of a ragged edge and gave the logo more weight than the role.
- *  Inline at this size it reads as punctuation on the company name instead. */
-const LOGO_PX = 20;
+/* The mark spans the title and company lines it sits beside, so its top and
+   bottom edges land on theirs. It used to be a sibling of the whole card body
+   and so ran a column past the badge row too, which left it floating against
+   dead space below the text. Bounded by the two lines it labels, the badge row
+   underneath still starts at the card's own left edge.
+
+   The markup below is mirrored by makeCard() in JobFilters.astro — see
+   lib/jobCardShape.ts. Change the nesting here and change it there. */
 
 interface Props {
   job: Job;
@@ -27,22 +31,24 @@ const isNew = isNewJob(job.postedAt, generatedAt);
 ---
 
 <li>
-  <a class="job-card" href={href}>
-    <div class="top">
-      <div class="head">
-        <div class="title">{job.title}</div>
-        <div class="company">
-          <CompanyLogo name={job.companyName} slug={job.companySlug} size={LOGO_PX} />
-          <span>{job.companyName}{job.locationRaw ? ` · ${job.locationRaw}` : ""}</span>
+  <a class={C.link} href={href}>
+    <div class={C.top}>
+      <div class={C.head}>
+        <CompanyLogo name={job.companyName} slug={job.companySlug} size={CARD_LOGO_PX} />
+        <div class={C.headText}>
+          <div class={C.title}>{job.title}</div>
+          <div class={C.company}>
+            {job.companyName}{job.locationRaw ? ` · ${job.locationRaw}` : ""}
+          </div>
         </div>
       </div>
-      {salary && <div class="salary">{salary}</div>}
+      {salary && <div class={C.salary}>{salary}</div>}
     </div>
-    <div class="meta">
-      {isNew && <span class="badge new">New</span>}
-      {remote && <span class="badge">{remote}</span>}
-      {sen && <span class="badge">{sen}</span>}
-      {job.skills.slice(0, 4).map((s) => <span class="badge skill">{s}</span>)}
+    <div class={C.meta}>
+      {isNew && <span class={C.badgeNew}>New</span>}
+      {remote && <span class={C.badge}>{remote}</span>}
+      {sen && <span class={C.badge}>{sen}</span>}
+      {job.skills.slice(0, 4).map((s) => <span class={C.badgeSkill}>{s}</span>)}
     </div>
   </a>
 </li>

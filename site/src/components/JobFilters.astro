@@ -1,0 +1,489 @@
+---
+import FilterControls from "./FilterControls.astro";
+import type { FilterOptions } from "../lib/filterOptions.ts";
+
+interface Props extends FilterOptions {
+  /** Payload URL this page's filter narrows — the whole board, or one landing. */
+  src: string;
+  jobBase: string;
+  logoBase: string;
+  /** Roles in scope. */
+  total: number;
+  /** How many the server already rendered into the slot. */
+  initial: number;
+  /** Plural noun for the results line ("open roles", "roles"). */
+  noun?: string;
+  /**
+   * Collapse the controls behind a disclosure. Landings arrive already
+   * filtered — the bar is a refinement there, and open by default it costs the
+   * whole phone fold that the listing itself should be occupying.
+   */
+  collapsible?: boolean;
+  /** The page renders a pager the client has to stand down while filtering. */
+  hasPager?: boolean;
+  /**
+   * Start the results line empty. A landing's hero already states the count,
+   * and repeating it costs a row above the listing to say the same thing twice.
+   * The element stays in the DOM either way — it's the live region, and one
+   * created on first filter wouldn't reliably announce.
+   */
+  quiet?: boolean;
+}
+
+const {
+  src,
+  jobBase,
+  logoBase,
+  total,
+  initial,
+  noun = "open roles",
+  collapsible = false,
+  hasPager = false,
+  quiet = false,
+  roles,
+  countries,
+  seniorities,
+} = Astro.props;
+
+const shown = Math.min(initial, total);
+// With a pager, "show all" would re-render the very thing pagination exists to
+// avoid — it only earns its place once a filter has replaced that list.
+const showAllHidden = hasPager || total <= initial;
+---
+
+<div
+  class="filter-scope"
+  data-src={src}
+  data-job-base={jobBase}
+  data-logo-base={logoBase}
+  data-initial={String(initial)}
+  data-total={String(total)}
+  data-noun={noun}
+  data-has-pager={hasPager ? "1" : ""}
+>
+  {collapsible ? (
+    /* Shares a row with whatever the page puts in `crumbs` — on a phone this
+       control has to cost a row it was already spending, not a new one. */
+    <div class="filter-head">
+      <slot name="crumbs" />
+      <details class="filter-disclosure" id="filter-disclosure">
+        {/* Two phrasings of one label: at 390px the full sentence plus the
+            crumbs beside it needs ~400px of a 350px row, so the pair stacked
+            and cost a second row. The short form keeps the count — the number
+            is the useful part — and fits on the row already being spent. */}
+        <summary>
+          <span class="sum-long">Filter these {total} roles</span>
+          <span class="sum-short">Filter {total}</span>
+        </summary>
+        <FilterControls roles={roles} countries={countries} seniorities={seniorities} />
+      </details>
+    </div>
+  ) : (
+    <FilterControls roles={roles} countries={countries} seniorities={seniorities} />
+  )}
+
+  <div class="results-bar">
+    <p class="results-meta" role="status">
+      <span id="status-text">
+        {quiet ? "" : `Showing the ${shown} newest of ${total} ${noun}`}
+      </span>
+    </p>
+    {/* Skills are filtered exactly (from /stats), but there's no select for
+        them — so the active one gets a chip, or the list is narrowed by
+        something the controls don't show. */}
+    <button class="chip" id="skill-chip" hidden></button>
+    <button class="link-btn" id="clear" hidden>Clear filters</button>
+  </div>
+
+  <slot />
+
+  {/* No role="status" here: the results line above is already a live region,
+      and announcing both makes a zero-result filter speak twice. */}
+  <div class="empty" id="empty" hidden>
+    <p>No roles match those filters.</p>
+    {/* The results bar carries a Clear too, but it sits above the fold of an
+        otherwise blank screen — repeat the way out where the eye already is. */}
+    <button class="btn-secondary" id="empty-clear">Clear all filters</button>
+  </div>
+  <div class="show-more-wrap">
+    <button class="btn-secondary" id="show-all" hidden={showAllHidden}>
+      Show all {total} roles
+    </button>
+  </div>
+</div>
+
+<style>
+  .results-bar { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+
+  /* The disclosure sits beside the page's crumbs; when it's open the controls
+     have to drop to their own full-width line, hence the wrap + 100% basis. */
+  .filter-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px 16px;
+    margin: 10px 0 4px;
+  }
+  .filter-head :global(.crumbs) { margin: 0; }
+  .filter-disclosure[open] { flex: 1 1 100%; }
+
+  /* Landing-page disclosure. Reads as a control, not a heading — same border
+     language as the pager and the secondary buttons. */
+  .filter-disclosure { margin: 0; }
+  .filter-disclosure > summary {
+    display: inline-block;
+    cursor: pointer;
+    color: var(--accent-text);
+    font-size: 0.9rem;
+    border: 1px solid var(--border-strong);
+    border-radius: 10px;
+    padding: 11px 16px;
+    list-style: none;
+  }
+  .filter-disclosure > summary::-webkit-details-marker { display: none; }
+  .filter-disclosure .sum-short { display: none; }
+  @media (max-width: 560px) {
+    .filter-disclosure .sum-long { display: none; }
+    .filter-disclosure .sum-short { display: inline; }
+    .filter-disclosure > summary { padding: 11px 12px; }
+  }
+  .filter-disclosure > summary::before { content: "⌕ "; }
+  .filter-disclosure > summary:hover,
+  .filter-disclosure > summary:focus-visible { border-color: var(--accent); }
+  .filter-disclosure[open] > summary { margin-bottom: 4px; }
+  .filter-disclosure :global(.filters) { margin-top: 10px; }
+
+  /* Active skill filter, e.g. arriving from /stats. */
+  .chip {
+    font: inherit;
+    font-size: 0.8rem;
+    color: var(--text);
+    background: var(--surface-2);
+    border: 1px solid var(--border-strong);
+    border-radius: 999px;
+    padding: 4px 10px;
+    cursor: pointer;
+  }
+  .chip::after { content: " ×"; color: var(--muted); }
+  .chip:hover,
+  .chip:focus-visible { border-color: var(--accent-text); }
+</style>
+
+<script>
+  import { CARD_CLASS as C, CARD_LOGO_PX } from "../lib/jobCardShape.ts";
+
+  interface JobEntry {
+    slug: string; t: string; c: string; l: string; s: string; sr: number;
+    n: number; r: string; sl: string; sn: string; ro: string;
+    co: string; sk: string[]; lg: string;
+    q?: string; // lazily-built lowercase search blob
+  }
+
+  const scope = document.querySelector<HTMLElement>(".filter-scope")!;
+  const INITIAL = Number(scope.dataset.initial);
+  const NOUN = scope.dataset.noun!;
+  const hasPager = Boolean(scope.dataset.hasPager);
+
+  const q = document.getElementById("q") as HTMLInputElement;
+  const role = document.getElementById("role") as HTMLSelectElement;
+  const country = document.getElementById("country") as HTMLSelectElement;
+  const level = document.getElementById("level") as HTMLSelectElement;
+  const sort = document.getElementById("sort") as HTMLSelectElement;
+  const jobsEl = document.getElementById("jobs")!;
+  const statusText = document.getElementById("status-text")!;
+  const empty = document.getElementById("empty")!;
+  const clearBtn = document.getElementById("clear") as HTMLButtonElement;
+  const emptyClearBtn = document.getElementById("empty-clear") as HTMLButtonElement;
+  const showAllBtn = document.getElementById("show-all") as HTMLButtonElement;
+  const skillChip = document.getElementById("skill-chip") as HTMLButtonElement;
+  const disclosure = document.getElementById("filter-disclosure") as HTMLDetailsElement | null;
+  // Pagination and a client-side filter describe the same roles two different
+  // ways; only one of them can be right at a time.
+  const pager = hasPager ? document.querySelector<HTMLElement>(".pager") : null;
+
+  let showAll = false;
+  // Exact skill match, set from the URL only — /stats links every skill row
+  // here, and "?q=Go" would have matched Google and Gong too.
+  let skill = "";
+
+  const jobBase = scope.dataset.jobBase!;
+  let dataPromise: Promise<JobEntry[]> | null = null;
+  function loadData(): Promise<JobEntry[]> {
+    return (dataPromise ??= fetch(scope.dataset.src!).then((res) => {
+      if (!res.ok) throw new Error(`jobs-data ${res.status}`);
+      return res.json() as Promise<JobEntry[]>;
+    }));
+  }
+
+  function searchBlob(j: JobEntry): string {
+    return (j.q ??= `${j.t} ${j.c} ${j.sk.join(" ")} ${j.l}`.toLowerCase());
+  }
+
+  /**
+   * Anchors the query to a word start. A plain substring test makes "rust"
+   * match every "Trust & Safety" and "Trustpilot" role, which reads as a broken
+   * search; anchoring still matches as you type ("engin" → "engineer") but no
+   * longer matches mid-word. Queries starting with punctuation (".net", "c++")
+   * skip the anchor, since \b before a non-word character means the opposite.
+   */
+  function buildMatcher(text: string): RegExp {
+    const escaped = text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    return new RegExp(`${/^\w/.test(text) ? "\\b" : ""}${escaped}`);
+  }
+
+  /**
+   * Skills that caused the match come first. Only four fit on a card, and a
+   * role can carry fifteen — without this, searching "rust" returns cards whose
+   * visible tags never mention Rust and the results look wrong even when right.
+   */
+  function visibleSkills(j: JobEntry, text: string): string[] {
+    const key = text || skill.toLowerCase();
+    if (!key) return j.sk.slice(0, 4);
+    const hit = (s: string) => s.toLowerCase().includes(key);
+    const matched = j.sk.filter(hit);
+    if (!matched.length) return j.sk.slice(0, 4);
+    return [...matched, ...j.sk.filter((s) => !hit(s))].slice(0, 4);
+  }
+
+  /**
+   * Company mark, mirroring components/CompanyLogo.astro. The server renders
+   * the first 50 cards through that component and this renders every card
+   * after a filter, so drift shows up as a visible jump the moment someone
+   * types. Size comes from lib/jobCardShape so it can't diverge again.
+   */
+  const logoBase = scope.dataset.logoBase!;
+  function makeLogo(j: JobEntry): HTMLElement {
+    if (j.lg) {
+      const img = document.createElement("img");
+      img.className = "company-logo";
+      img.src = `${logoBase}${j.lg}`;
+      img.alt = ""; // decorative — the company name sits right beside it
+      img.width = CARD_LOGO_PX;
+      img.height = CARD_LOGO_PX;
+      img.loading = "lazy";
+      img.decoding = "async";
+      img.style.setProperty("--logo-size", `${CARD_LOGO_PX}px`);
+      return img;
+    }
+    const span = document.createElement("span");
+    span.className = "company-logo monogram";
+    span.setAttribute("aria-hidden", "true");
+    span.style.setProperty("--logo-size", `${CARD_LOGO_PX}px`);
+    // Derived here rather than shipped per job — it's one character off a name
+    // the payload already carries. Matches CompanyLogo.astro's fallback.
+    span.textContent = j.c.trim().slice(0, 1).toUpperCase() || "?";
+    return span;
+  }
+
+  // Client-rendered card. Mirrors the markup in JobCard.astro node for node —
+  // see lib/jobCardShape.ts. Built with createElement/textContent only: job
+  // data is untrusted feed content and innerHTML would be an injection point.
+  const cardCache = new Map<JobEntry, HTMLLIElement>();
+  function makeCard(j: JobEntry, text: string): HTMLLIElement {
+    // Only the unfiltered list is cached: with a query the badge order depends
+    // on that query, and the rendered slice is capped at INITIAL anyway, so
+    // rebuilding ~50 cards a keystroke is cheaper than keying a cache by query.
+    const cacheable = !text && !skill;
+    if (cacheable) {
+      const cached = cardCache.get(j);
+      if (cached) return cached;
+    }
+    const li = document.createElement("li");
+    const a = document.createElement("a");
+    a.className = C.link;
+    a.href = `${jobBase}${j.slug}/`;
+
+    const top = document.createElement("div");
+    top.className = C.top;
+    const head = document.createElement("div");
+    head.className = C.head;
+    const headText = document.createElement("div");
+    headText.className = C.headText;
+    const title = document.createElement("div");
+    title.className = C.title;
+    title.textContent = j.t;
+    const company = document.createElement("div");
+    company.className = C.company;
+    company.textContent = j.l ? `${j.c} · ${j.l}` : j.c;
+    headText.append(title, company);
+    head.append(makeLogo(j), headText);
+    top.append(head);
+    if (j.s) {
+      const salary = document.createElement("div");
+      salary.className = C.salary;
+      salary.textContent = j.s;
+      top.append(salary);
+    }
+
+    const meta = document.createElement("div");
+    meta.className = C.meta;
+    const badge = (text: string, cls: string = C.badge) => {
+      const b = document.createElement("span");
+      b.className = cls;
+      b.textContent = text;
+      meta.append(b);
+    };
+    if (j.n) badge("New", C.badgeNew);
+    if (j.r) badge(j.r);
+    if (j.sl) badge(j.sl);
+    for (const s of visibleSkills(j, text)) badge(s, C.badgeSkill);
+
+    a.append(top, meta);
+    li.append(a);
+    if (cacheable) cardCache.set(j, li);
+    return li;
+  }
+
+  // Guards against out-of-order renders while the data fetch is in flight
+  // (e.g. the user keeps typing before the first response lands).
+  let applySeq = 0;
+
+  async function apply(syncUrl = true) {
+    const seq = ++applySeq;
+    // The first interaction pays for a fetch. Without a visible pending state
+    // the page keeps showing the previous results and the previous count, so on
+    // a phone connection it reads as having ignored the keystroke.
+    const pending = dataPromise === null;
+    if (pending) {
+      statusText.textContent = "Loading the full job list…";
+      jobsEl.setAttribute("aria-busy", "true");
+      jobsEl.classList.add("is-loading");
+    }
+    let data: JobEntry[];
+    try {
+      data = await loadData();
+    } catch {
+      dataPromise = null; // allow a retry on the next interaction
+      statusText.textContent = "Couldn't load the full job list — try again.";
+      jobsEl.removeAttribute("aria-busy");
+      jobsEl.classList.remove("is-loading");
+      return;
+    }
+    jobsEl.removeAttribute("aria-busy");
+    jobsEl.classList.remove("is-loading");
+    if (seq !== applySeq) return; // superseded by a newer interaction
+
+    const text = q.value.trim().toLowerCase();
+    const rol = role.value;
+    const cty = country.value;
+    const sen = level.value;
+    const byPay = sort.value === "pay";
+    const filtering = Boolean(text || rol || cty || sen || skill);
+
+    const matcher = text ? buildMatcher(text) : null;
+    let matches = data.filter(
+      (j) =>
+        (!matcher || matcher.test(searchBlob(j))) &&
+        (!rol || j.ro === rol) &&
+        (!cty || j.co === cty) &&
+        (!sen || j.sn === sen) &&
+        (!skill || j.sk.includes(skill)),
+    );
+    if (byPay) {
+      // Stable sort: pay descending, ties keep the newest-first data order.
+      matches = [...matches].sort((a, b) => b.sr - a.sr);
+    }
+
+    // Filtered views are capped like the unfiltered one. Rendering every match
+    // put 2,382 cards and ~32k nodes into a 300,000px document for a query as
+    // ordinary as "engineer" — unusable to scroll and a long jank on a phone.
+    const limit = showAll ? matches.length : INITIAL;
+    const visible = matches.slice(0, limit);
+    jobsEl.replaceChildren(...visible.map((j) => makeCard(j, text)));
+
+    const total = data.length;
+    const capped = visible.length < matches.length;
+    statusText.textContent = filtering
+      ? capped
+        ? `Showing ${visible.length} of ${matches.length} matching roles`
+        : `${matches.length} of ${total} roles match`
+      : showAll
+        ? `Showing all ${total} ${NOUN}${byPay ? ", highest salary first" : ""}`
+        : `Showing the ${Math.min(INITIAL, total)} ${byPay ? "highest-paying" : "newest"} of ${total} ${NOUN}`;
+
+    empty.hidden = matches.length !== 0;
+    clearBtn.hidden = !filtering;
+    skillChip.hidden = !skill;
+    skillChip.textContent = skill;
+    // On a paged landing the unfiltered list is the pager's job — offering
+    // "Show all 688 roles" there rebuilds the 15k-node document PAGE_SIZE
+    // exists to prevent. Once a filter is up the pager is gone and this is the
+    // only way to see past the first 50.
+    showAllBtn.hidden = !capped || (hasPager && !filtering);
+    showAllBtn.textContent = filtering
+      ? `Show all ${matches.length} matching roles`
+      : `Show all ${matches.length} roles`;
+    // The pager describes the unfiltered sequence; while a filter is up, the
+    // list beneath it isn't that sequence any more.
+    if (pager) pager.hidden = filtering || showAll;
+
+    if (syncUrl) {
+      const params = new URLSearchParams();
+      if (text) params.set("q", q.value.trim());
+      if (rol) params.set("role", rol);
+      if (cty) params.set("country", cty);
+      if (sen) params.set("level", sen);
+      if (skill) params.set("skill", skill);
+      if (byPay) params.set("sort", "pay");
+      if (showAll) params.set("all", "1");
+      const qs = params.toString();
+      history.replaceState(null, "", qs ? `?${qs}` : location.pathname);
+    }
+  }
+
+  // Changing the result set retracts "show all" — it was a decision about the
+  // previous set of matches, and silently carrying it into a broader query is
+  // how you end up rendering the whole board again. Re-sorting keeps it: same
+  // roles, different order.
+  q.addEventListener("input", () => {
+    showAll = false;
+    apply();
+  });
+  for (const el of [role, country, level]) {
+    el.addEventListener("change", () => {
+      showAll = false;
+      apply();
+    });
+  }
+  sort.addEventListener("change", () => apply());
+  showAllBtn.addEventListener("click", () => {
+    showAll = true;
+    apply();
+  });
+  skillChip.addEventListener("click", () => {
+    skill = "";
+    showAll = false;
+    apply();
+  });
+  function clearFilters() {
+    q.value = "";
+    role.value = "";
+    country.value = "";
+    level.value = "";
+    skill = "";
+    showAll = false;
+    apply();
+    q.focus();
+  }
+  clearBtn.addEventListener("click", clearFilters);
+  emptyClearBtn.addEventListener("click", clearFilters);
+
+  // Hydrate state from the URL so filtered views are shareable + back-button safe.
+  const params = new URLSearchParams(location.search);
+  q.value = params.get("q") ?? "";
+  role.value = params.get("role") ?? "";
+  country.value = params.get("country") ?? "";
+  level.value = params.get("level") ?? "";
+  skill = params.get("skill") ?? "";
+  sort.value = params.get("sort") === "pay" ? "pay" : "new";
+  showAll = params.get("all") === "1";
+  const active =
+    q.value || role.value || country.value || level.value || skill || sort.value === "pay" || showAll;
+  if (active) {
+    // A filter that arrived in the URL has to be visible, or the page looks
+    // like it's showing everything and quietly isn't.
+    if (disclosure) disclosure.open = true;
+    apply(false);
+  }
+</script>

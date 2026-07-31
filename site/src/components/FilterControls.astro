@@ -1,0 +1,52 @@
+---
+import type { FilterOptions } from "../lib/filterOptions.ts";
+
+// The controls themselves. Split out of JobFilters only so that component can
+// render them either bare or inside a disclosure without duplicating the markup.
+type Props = FilterOptions;
+
+const { roles, countries, seniorities } = Astro.props;
+---
+
+<div class="filters">
+  <div>
+    <label for="q">Search</label>
+    <input type="search" id="q" placeholder="Title, company, skill…" />
+  </div>
+  <div class="toggles">
+    <div>
+      <label for="role">Role type</label>
+      <select id="role">
+        <option value="">Any role</option>
+        {roles.map((r) => (
+          <option value={r.label}>{r.label} ({r.count})</option>
+        ))}
+      </select>
+    </div>
+    <div>
+      <label for="country">Country</label>
+      <select id="country">
+        <option value="">Any country</option>
+        {countries.map((c) => (
+          <option value={c.code}>{c.label} ({c.count})</option>
+        ))}
+      </select>
+    </div>
+    <div>
+      <label for="level">Seniority</label>
+      <select id="level">
+        <option value="">Any level</option>
+        {seniorities.map((s) => (
+          <option value={s.id}>{s.label} ({s.count})</option>
+        ))}
+      </select>
+    </div>
+    <div>
+      <label for="sort">Sort by</label>
+      <select id="sort">
+        <option value="new">Newest first</option>
+        <option value="pay">Highest salary</option>
+      </select>
+    </div>
+  </div>
+</div>

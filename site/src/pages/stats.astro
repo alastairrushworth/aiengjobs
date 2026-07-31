@@ -10,10 +10,29 @@ import {
   SENIORITY_OPTIONS,
 } from "../lib/format.ts";
 import { CLUSTER_PAGES } from "../lib/clusters.ts";
+import { landingBySlug } from "../lib/landings.ts";
 import { openJobs as open, fxRates, generatedAt } from "../lib/data.ts";
 import type { Job } from "@aiengjobs/shared";
 
 const pct = (n: number, d: number) => (d ? Math.round((n / d) * 100) : 0);
+
+// Every row here names a slice the board can already show, so every row links
+// to it. Without these the page is a cul-de-sac: you learn there are 630 senior
+// roles and then have to walk back to the listing and rebuild the filter by
+// hand. `skill` is an exact-match param (see JobFilters) rather than ?q= —
+// "?q=Go" would have matched Google and Gong and undercut the count beside it.
+// url("/") yields the base without its trailing slash ("/aiengjobs"), and the
+// slash-less form is the one GitHub Pages 301s — so build the canonical form
+// here rather than pointing every row on this page at a redirect.
+const homePath = url("/").endsWith("/") ? url("/") : `${url("/")}/`;
+const jobsUrl = (params: Record<string, string>) =>
+  `${homePath}?${new URLSearchParams(params)}`;
+const skillUrl = (name: string, byPay = false) =>
+  jobsUrl(byPay ? { skill: name, sort: "pay" } : { skill: name });
+
+// Remote isn't a filter param — it has a landing of its own, which only exists
+// once enough roles clear MIN_CITY_JOBS.
+const remoteHref = landingBySlug.has("remote-ai-jobs") ? url("/remote-ai-jobs/") : null;
 
 // Salary midpoints (annualized USD) paired with their job — used everywhere we
 // compare pay. Midpoint of the published range, converted to USD with the
@@ -129,12 +148,18 @@ const maxCountry = topCountries[0]?.n ?? 1;
     <p class="updated">Updated {updated} · refreshed nightly</p>
   </section>
 
-  <!-- Headline figures -->
+  {/* Two of the six name a list you can actually open; the rest are properties
+      of the board, not slices of it, and a link that only re-showed everything
+      would be a worse promise than no link. */}
   <div class="figures">
-    <div><span class="num">{totalRoles}</span><span class="lbl">open roles</span></div>
+    <a href={url("/")}><span class="num">{totalRoles}</span><span class="lbl">open roles</span></a>
     <div><span class="num">{companyCount}</span><span class="lbl">companies hiring</span></div>
     <div><span class="num">{k(medianPay)}</span><span class="lbl">median salary</span></div>
-    <div><span class="num">{pct(remoteCount, totalRoles)}%</span><span class="lbl">fully remote</span></div>
+    {remoteHref ? (
+      <a href={remoteHref}><span class="num">{pct(remoteCount, totalRoles)}%</span><span class="lbl">fully remote</span></a>
+    ) : (
+      <div><span class="num">{pct(remoteCount, totalRoles)}%</span><span class="lbl">fully remote</span></div>
+    )}
     <div><span class="num">{pct(paid.length, totalRoles)}%</span><span class="lbl">publish pay</span></div>
     <div><span class="num">{postedThisWeek}</span><span class="lbl">posted this week</span></div>
   </div>
@@ -196,7 +221,7 @@ const maxCountry = topCountries[0]?.n ?? 1;
       <ul class="bars">
         {topSkills.map((s) => (
           <li>
-            <span class="bl">{s.name}</span>
+            <a class="bl" href={skillUrl(s.name)}>{s.name}</a>
             <span class="bar"><span class="fill" style={`width:${(s.n / maxSkill) * 100}%`}></span></span>
             <span class="bv">{s.n}</span>
           </li>
@@ -210,7 +235,7 @@ const maxCountry = topCountries[0]?.n ?? 1;
       <ul class="bars">
         {topPaidSkills.map((s) => (
           <li>
-            <span class="bl">{s.name}</span>
+            <a class="bl" href={skillUrl(s.name, true)}>{s.name}</a>
             <span class="bar"><span class="fill alt" style={`width:${(s.value / maxPaidSkill) * 100}%`}></span></span>
             <span class="bv">{k(s.value)}</span>
           </li>
@@ -226,7 +251,7 @@ const maxCountry = topCountries[0]?.n ?? 1;
       <ul class="bars">
         {seniorityMix.map((s) => (
           <li>
-            <span class="bl">{s.label}</span>
+            <a class="bl" href={jobsUrl({ level: s.id })}>{s.label}</a>
             <span class="bar"><span class="fill" style={`width:${(s.n / maxSen) * 100}%`}></span></span>
             <span class="bv">{s.n}</span>
           </li>
@@ -239,7 +264,7 @@ const maxCountry = topCountries[0]?.n ?? 1;
       <ul class="bars">
         {topCountries.map((c) => (
           <li>
-            <span class="bl">{c.label}</span>
+            <a class="bl" href={jobsUrl({ country: c.code })}>{c.label}</a>
             <span class="bar"><span class="fill alt" style={`width:${(c.n / maxCountry) * 100}%`}></span></span>
             <span class="bv">{c.n}</span>
           </li>
@@ -267,13 +292,17 @@ const maxCountry = topCountries[0]?.n ?? 1;
     gap: 12px;
     margin: 24px 0 8px;
   }
-  .figures > div {
+  .figures > div,
+  .figures > a {
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: var(--radius);
     padding: 18px 12px;
     text-align: center;
+    display: block;
   }
+  .figures > a:hover,
+  .figures > a:focus-visible { border-color: var(--accent-text); }
   .figures .num {
     display: block;
     font-size: 1.7rem;
