@@ -14,7 +14,7 @@ export const getStaticPaths = (() =>
 export const GET: APIRoute = ({ site, props }) => {
   const { landing } = props as { landing: Landing };
   return buildRssFeed({
-    title: `${landing.h1} — aiengjobs`,
+    title: `${landing.h1} — frontierroles.com`,
     description: landing.intro,
     pagePath: `/${landing.slug}/`,
     feedPath: `/${landing.slug}/rss.xml`,
