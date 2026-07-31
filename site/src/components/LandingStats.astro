@@ -46,11 +46,14 @@ const tiles: { label: string; value: string; note?: string }[] = [
     ))}
   </dl>
 
+  {/* Each entry is one .item rather than a run of loose siblings, so the phone
+      rule below can hide whole entries by position instead of counting links,
+      separators and counts. They stay in the markup for crawlers either way. */}
   {stats.topCompanies.length > 0 && (
     <p class="line">
       <span class="lead">Hiring most:</span>
       {stats.topCompanies.map((c, i) => (
-        <>
+        <span class="item">
           {i > 0 && <span class="sep">·</span>}
           {c.slug ? (
             <a href={url(`/companies/${c.slug}/`)}>{c.name}</a>
@@ -58,7 +61,7 @@ const tiles: { label: string; value: string; note?: string }[] = [
             <span>{c.name}</span>
           )}
           <span class="n">{c.count}</span>
-        </>
+        </span>
       ))}
     </p>
   )}
@@ -67,11 +70,11 @@ const tiles: { label: string; value: string; note?: string }[] = [
     <p class="line">
       <span class="lead">Common stack:</span>
       {stats.topSkills.map((s, i) => (
-        <>
+        <span class="item">
           {i > 0 && <span class="sep">·</span>}
           <span>{s.name}</span>
           <span class="n">{s.count}</span>
-        </>
+        </span>
       ))}
     </p>
   )}
@@ -79,9 +82,13 @@ const tiles: { label: string; value: string; note?: string }[] = [
 
 <style>
   .landing-stats { margin: 20px 0 8px; }
+  /* Flex rather than an auto-fit grid: the tile count varies (1–4, depending on
+     what the landing can actually fill) so a grid leaves a dead panel whenever
+     the last row is short — four tiles across three columns left "Top skill"
+     beside a large empty box. Growing flex items fill the row instead. */
   .tiles {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    display: flex;
+    flex-wrap: wrap;
     gap: 1px;
     margin: 0 0 16px;
     background: var(--border);
@@ -89,7 +96,7 @@ const tiles: { label: string; value: string; note?: string }[] = [
     border-radius: var(--radius);
     overflow: hidden;
   }
-  .tile { background: var(--surface); padding: 12px 14px; }
+  .tile { flex: 1 1 150px; background: var(--surface); padding: 12px 14px; }
   .tile dt {
     color: var(--muted);
     font-size: 0.72rem;
@@ -105,15 +112,41 @@ const tiles: { label: string; value: string; note?: string }[] = [
     overflow-wrap: anywhere;
   }
   .tile .note { margin: 2px 0 0; color: var(--muted); font-size: 0.75rem; }
+  /* Flex-wrap, not inline flow: each entry has to wrap as a unit so a row can't
+     end on a bare "·" belonging to the name that wrapped to the next one. The
+     separator leads rather than trails so the mobile cap below can hide an
+     entry without stranding a dangling "·" on the last one still visible.
+     (`white-space: nowrap` alone did not work here — Astro emits no whitespace
+     between the spans, so with no break opportunities left between entries the
+     line stopped wrapping at all and ran off the viewport.) */
   .line {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    row-gap: 4px;
     margin: 0 0 8px;
     font-size: 0.9rem;
-    line-height: 1.9;
+    line-height: 1.6;
     color: var(--text);
   }
   .line .lead { color: var(--muted); margin-right: 6px; }
+  .line .item { white-space: nowrap; }
   .line .sep { color: var(--border-strong); margin: 0 6px; }
   .line .n { color: var(--muted); font-size: 0.78rem; margin-left: 3px; }
   .line a { color: var(--accent-text); }
   .line a:hover { text-decoration: underline; }
+
+  /* On a phone this block sat between the hero and the listing at ~404px — ten
+     skills wrap to five lines at 390px — and pushed every job card off the
+     fold. The first four entries carry almost all of the signal ("mostly
+     Python, mostly OpenAI"); the tail is a desktop luxury. Hidden, not dropped:
+     the full list stays in the HTML for crawlers and for wider screens.
+     .lead is child 1, so n+6 keeps four entries. */
+  @media (max-width: 700px) {
+    .landing-stats { margin: 14px 0 4px; }
+    .tiles { margin-bottom: 12px; }
+    .tile { padding: 10px 12px; }
+    .line { line-height: 1.7; margin-bottom: 6px; }
+    .line .item:nth-child(n + 6) { display: none; }
+  }
 </style>

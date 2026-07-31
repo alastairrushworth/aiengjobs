@@ -13,23 +13,25 @@ import { classifyHeuristic, type ClassifyResult } from "./pipeline/classify.ts";
 import { tagHeuristic } from "./pipeline/tag.ts";
 import { inferSeniority } from "./pipeline/seniority.ts";
 import { parseLocation } from "./pipeline/location.ts";
-import { extractListing, type ExtractResult } from "./pipeline/extract.ts";
+import { parseSalaryFromDescription } from "./pipeline/comp.ts";
 import { contentHash } from "./pipeline/hash.ts";
-import { llmEnabled } from "./pipeline/llm.ts";
-import { LLM_IN_CONFIDENCE_FLOOR, LLM_VETO_CONFIDENCE } from "./config.ts";
-import { canonicalCity } from "@aiengjobs/shared/city";
+import { encoderAvailable, encoderScore } from "./pipeline/encoder.ts";
+import { ENCODER_THRESHOLD, ENCODER_VETO_CONFIDENCE } from "./config.ts";
 import { jobId, jobSlug } from "./util/id.ts";
 import { mapPool } from "./util/concurrency.ts";
 
 const SLEEP_MS = Number(process.env.INGEST_DELAY_MS ?? 400); // polite to feeds (Lever crawl-delay)
-const CONCURRENCY = Number(process.env.INGEST_CONCURRENCY ?? 8); // parallel LLM calls per company
+// Classification is now local and CPU-bound rather than a network round-trip, so
+// this bounds cores in use, not in-flight requests. One session per posting at
+// one thread each; oversubscribing just thrashes.
+const CONCURRENCY = Number(process.env.INGEST_CONCURRENCY ?? 4);
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 // Apply links come from third-party feeds and end up as hrefs on the site —
 // only plain web URLs are acceptable (a javascript: link would be an XSS).
 const isHttpUrl = (u: string) => /^https?:\/\//i.test(u);
 
-// Connectors use undefined for "absent"; the LLM extractor uses null.
+// Connectors use undefined for "absent"; the description parser uses null.
 interface PayFields {
   salaryMin?: number | null;
   salaryMax?: number | null;
@@ -38,20 +40,20 @@ interface PayFields {
 }
 
 /**
- * Pay fields, but only when the currency is known. Feed pay and LLM-extracted
- * pay are taken as a unit rather than field-by-field, so a range can't be
- * paired with a currency parsed from a different source.
+ * Pay fields, but only when the currency is known. Each source is taken as a
+ * unit rather than field-by-field, so a range can't be paired with a currency
+ * parsed from a different source.
  */
 function pay(
   raw: PayFields,
-  ex?: PayFields | null,
+  fromDescription?: PayFields | null,
 ): {
   salaryMin?: number;
   salaryMax?: number;
   salaryCurrency?: string;
   salaryPeriod?: string;
 } {
-  for (const src of [raw, ex]) {
+  for (const src of [raw, fromDescription]) {
     if (!src) continue;
     const min = src.salaryMin;
     const max = src.salaryMax;
@@ -77,7 +79,7 @@ export async function ingest(): Promise<void> {
     return;
   }
   console.log(
-    `Ingest: ${targets.length} sources. LLM ${llmEnabled() ? "enabled (GPT-5.4-nano)" : "disabled — heuristics only"}.`,
+    `Ingest: ${targets.length} sources. Classifier ${encoderAvailable() ? "encoder (local ONNX)" : "unavailable — heuristics only"}.`,
   );
 
   const runStart = new Date().toISOString();
@@ -123,7 +125,7 @@ export async function ingest(): Promise<void> {
 
         const existing = getExistingJob(db, id);
         if (existing && existing.contentHash === hash && existing.isClosed === 0) {
-          markSeen(db, id, runStart); // unchanged → skip reprocessing (saves LLM cost)
+          markSeen(db, id, runStart); // unchanged → skip reprocessing (skips inference)
           skipped++;
           return;
         }
@@ -133,48 +135,47 @@ export async function ingest(): Promise<void> {
         const loc = parseLocation(raw.locationRaw, raw.remoteType, raw.remoteHint);
         const heuristicClass = classifyHeuristic(raw.title);
 
-        // One LLM call does classification + salary + location + seniority.
-        // Skip it for titles the heuristic already rules OUT — they're discarded,
-        // so there's nothing worth extracting (and it keeps the LLM bill down).
+        // Local encoder decides scope. Skip it for titles the heuristic already
+        // rules OUT — those are discarded regardless, and skipping is a third of
+        // the nightly volume.
         let cls: ClassifyResult;
-        let ex: ExtractResult | null = null;
         if (heuristicClass?.classification === "out") {
           cls = heuristicClass;
-        } else if (llmEnabled()) {
-          ex = await extractListing(raw.title, text, raw.locationRaw);
-          if (heuristicClass?.classification === "in") {
-            // Title looks IN. The LLM read the full description, so let it veto an
-            // over-broad title match (e.g. "Support Agent" caught by /agent/) when
-            // it's confidently OUT; otherwise keep the heuristic prior.
+        } else if (encoderAvailable()) {
+          const p = await encoderScore(id, raw.title, t.name, raw.locationRaw ?? "", text);
+          if (p === null) {
+            // Inference failed for this posting; fall back rather than guess.
+            cls = heuristicClass ?? { classification: "out", confidence: 0.3, via: "default" };
+          } else if (heuristicClass?.classification === "in") {
+            // Title looks IN. The model read the description, so let it veto an
+            // over-broad title match (e.g. "Support Agent" caught by /agent/)
+            // when it is confidently OUT; otherwise keep the heuristic prior.
             cls =
-              ex && ex.inScope === false && ex.confidence >= LLM_VETO_CONFIDENCE
-                ? { classification: "out", confidence: ex.confidence, via: "llm" }
+              1 - p >= ENCODER_VETO_CONFIDENCE
+                ? { classification: "out", confidence: 1 - p, via: "model" }
                 : heuristicClass;
           } else {
-            // Ambiguous title → the LLM decides outright, but an IN must clear
-            // the confidence floor: below it the posting is excluded to keep
-            // the board credible (spec: no borderline listings).
-            cls = ex
-              ? {
-                  classification:
-                    ex.inScope && ex.confidence >= LLM_IN_CONFIDENCE_FLOOR
-                      ? "in"
-                      : "out",
-                  confidence: ex.confidence,
-                  via: "llm",
-                }
-              : { classification: "out", confidence: 0.3, via: "default" };
+            // Ambiguous title → the model decides outright at the calibrated
+            // operating point. Confidence is reported as distance from the
+            // decision, so a 0.99 IN and a 0.01 OUT are both high-confidence.
+            const isIn = p >= ENCODER_THRESHOLD;
+            cls = { classification: isIn ? "in" : "out", confidence: isIn ? p : 1 - p, via: "model" };
           }
         } else {
-          // No API key → heuristics only; exclude the ambiguous to stay credible.
+          // No model files → heuristics only; exclude the ambiguous to stay credible.
           cls = heuristicClass ?? { classification: "out", confidence: 0.3, via: "default" };
         }
 
         const skills =
           cls.classification === "in" ? tagHeuristic(text).skills : [];
 
-        // Prefer the ATS/role payload (and the heuristics derived from it); fall
-        // back to the LLM extraction only where the payload is silent.
+        // Everything below the classification comes from the feed payload and
+        // the heuristics derived from it. The LLM used to backfill country,
+        // city, remoteType and seniority where the payload was silent; the
+        // encoder classifies only, so those gaps now stay empty. Measured on
+        // 3,703 live IN jobs, that costs 3.8% of country, 5.3% of city and
+        // 26.2% of seniority values. remoteType is unaffected — parseLocation
+        // always returns one when locationRaw is non-empty, which is always.
         upsertJob(db, {
           id,
           companyId: t.companyId,
@@ -187,18 +188,19 @@ export async function ingest(): Promise<void> {
           descriptionText: norm.descriptionText,
           applyUrl: raw.applyUrl,
           locationRaw: raw.locationRaw,
-          country: loc.country ?? ex?.country ?? undefined,
-          // The LLM's city has to go through the same gate as the parsed one —
-          // it happily returns "null", "Headquarters" or "Bay Area", and this
-          // field is published as addressLocality in the JobPosting markup.
-          city: loc.city ?? canonicalCity(ex?.city) ?? undefined,
-          remoteType: loc.remoteType ?? ex?.remoteType ?? undefined,
-          seniority: inferSeniority(raw.title) ?? ex?.seniority ?? undefined,
+          country: loc.country ?? undefined,
+          city: loc.city ?? undefined,
+          remoteType: loc.remoteType ?? undefined,
+          seniority: inferSeniority(raw.title) ?? undefined,
           // An unlabelled number isn't a salary: the site would render it as
           // USD, and feeds that omit the currency are usually the non-USD ones
           // (a Graphcore posting shipped a bare 260400-352200, which is PLN —
           // ~$70k shown as $260k). Drop the pay rather than guess at it.
-          ...pay(raw, ex),
+          // …and when the feed is silent, fall back to the description itself.
+          // US pay-transparency law puts an explicit range in the body of a lot
+          // of Workday/Greenhouse posts, and missing it renders "Not published"
+          // on a page that visibly publishes one.
+          ...pay(raw, parseSalaryFromDescription(text)),
           classification: cls.classification,
           classificationConfidence: cls.confidence,
           isDirect: 0,

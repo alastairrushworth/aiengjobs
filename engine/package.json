@@ -2,7 +2,7 @@
   "name": "@aiengjobs/engine",
   "version": "0.0.0",
   "type": "module",
-  "description": "ATS ingestion + classification engine. Runs on the DigitalOcean droplet.",
+  "description": "ATS ingestion + classification engine. Runs nightly on a GitHub Actions runner.",
   "scripts": {
     "db:init": "tsx src/cli.ts db:init",
     "seed": "tsx src/cli.ts seed",
@@ -16,7 +16,9 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@aiengjobs/shared": "*"
+    "@aiengjobs/shared": "*",
+    "@huggingface/transformers": "^4.2.0",
+    "onnxruntime-node": "^1.27.0"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",

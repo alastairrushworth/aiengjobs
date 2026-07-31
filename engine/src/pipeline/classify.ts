@@ -8,18 +8,16 @@ import type { Classification } from "@aiengjobs/shared";
 export interface ClassifyResult {
   classification: Classification;
   confidence: number;
-  via: "heuristic" | "llm" | "default";
+  via: "heuristic" | "model" | "default";
 }
 
 /**
  * Heuristic-first IN/OUT classification (§6.4). Returns null when the title is
- * ambiguous, signalling the caller to fall back to the LLM extractor (which also
- * classifies).
+ * ambiguous, signalling the caller to fall back to the local encoder.
  *
- * Only a confident OUT lets the caller skip the LLM entirely (the posting is
- * discarded, so there's nothing to extract). An IN result is just a prior: the
- * caller still runs the LLM for skills/comp/location, and a confident LLM OUT
- * vetoes this IN — see ingest.ts.
+ * Only a confident OUT lets the caller skip inference entirely (the posting is
+ * discarded either way). An IN result is just a prior: a confidently OUT model
+ * score still vetoes it — see ingest.ts.
  */
 export function classifyHeuristic(title: string): ClassifyResult | null {
   if (OUT_TITLE_PATTERNS.some((re) => re.test(title))) {

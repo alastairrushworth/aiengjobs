@@ -2,6 +2,8 @@
 # Nightly refresh: pull latest code, ingest ATS feeds, regenerate the site
 # snapshot, publish it, and tell search engines what changed.
 # Runs on the droplet as the `deploy` user via systemd (see deploy/).
+# SUPERSEDED by scripts/refresh.sh + .github/workflows/refresh.yml; kept only
+# until the droplet is destroyed.
 set -euo pipefail
 
 SELF="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")"
@@ -24,7 +26,7 @@ if [ "${AIENGJOBS_REEXECED:-}" != 1 ]; then
   AIENGJOBS_REEXECED=1 exec "$SELF" "$@"
 fi
 
-# Load secrets (OPENAI_API_KEY etc.) for both manual and systemd runs.
+# Load AIENGJOBS_DB etc. for both manual and systemd runs.
 if [ -f /etc/aiengjobs.env ]; then
   set -a
   . /etc/aiengjobs.env

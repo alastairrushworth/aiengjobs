@@ -38,7 +38,19 @@ const CONCURRENCY = Number(process.env.LOGO_CONCURRENCY ?? 8);
 // good enough to *claim* in structured data is a separate call the site makes
 // from the recorded dimensions (see LOGO_MARKUP_MIN_PX in site/src/lib/logos).
 const MIN_PX = 48;
+// The slot is square and the image is object-fit: contain, so a 3:1 wordmark
+// renders as a thin illegible strip with empty plate above and below it. Real
+// favicons are square; anything this far from it is the company's horizontal
+// logo picked up by mistake, and a monogram beats it.
+const MAX_ASPECT = 1.6;
+// What we're willing to *store*, checked after normalize() has had its go.
 const MAX_BYTES = 300_000;
+// What we're willing to *download*. Held well above MAX_BYTES because shrinking
+// a fat source is exactly normalize()'s job: gating the download at the storage
+// limit threw away icons that would have normalized comfortably under it (IMC's
+// 256x256 arrives at 299KB, Palantir's apple-touch-icon at 413KB). Still bounded
+// — past this it isn't a favicon, it's someone's hero image.
+const MAX_FETCH_BYTES = 4_000_000;
 
 interface Probe {
   ext: string;
@@ -104,10 +116,20 @@ function probeImage(buf: Buffer): Probe | null {
     }
     return { ext: "ico", width: best, height: best };
   }
-  // SVG: vector, so any rendered size is fine — just confirm it's really markup.
+  // SVG: vector, so any rendered size is fine — but the *proportions* still
+  // matter. This used to report a flat 512x512, which made a wide wordmark
+  // indistinguishable from a square mark; the aspect gate in tryFetchImage
+  // needs real numbers to reject one (fiserv.com's logo.svg is 283x110).
   const head = buf.subarray(0, 400).toString("utf8").trimStart();
   if (head.startsWith("<?xml") || head.startsWith("<svg")) {
-    if (/<svg[\s>]/i.test(buf.subarray(0, 2000).toString("utf8"))) {
+    const markup = buf.subarray(0, 2000).toString("utf8");
+    if (/<svg[\s>]/i.test(markup)) {
+      const vb = /viewBox\s*=\s*["']\s*[-\d.]+[,\s]+[-\d.]+[,\s]+([\d.]+)[,\s]+([\d.]+)/i.exec(markup);
+      if (vb) return { ext: "svg", width: Number(vb[1]), height: Number(vb[2]) };
+      const w = /\bwidth\s*=\s*["']([\d.]+)/i.exec(markup);
+      const h = /\bheight\s*=\s*["']([\d.]+)/i.exec(markup);
+      if (w && h) return { ext: "svg", width: Number(w[1]), height: Number(h[1]) };
+      // Neither declared: scalable and unmeasurable, so treat it as fine.
       return { ext: "svg", width: 512, height: 512 };
     }
   }
@@ -142,14 +164,45 @@ function candidates(html: string, base: URL): string[] {
     "/apple-touch-icon.png",
     "/apple-touch-icon-precomposed.png",
     "/favicon.svg",
+    "/icon.svg",
     "/favicon-192x192.png",
+    "/favicon-196x196.png",
+    "/favicon-96x96.png",
+    "/apple-icon-180x180.png",
+    "/android-chrome-192x192.png",
     "/favicon.png",
     "/favicon.ico",
   ];
 
+  // Plenty of sites file their icons in a directory and declare only the .ico
+  // from it — supabase.com points at /favicon/favicon.ico while the 512px
+  // vector sits beside it as /favicon/favicon.svg. Root-relative guesses never
+  // reach those, so re-try the conventional names in whatever directory the
+  // page's own icon links point at. Deliberately no logo.svg/logo.png here:
+  // those are usually the wide wordmark, not the square mark this slot wants.
+  const siblingNames = [
+    "favicon.svg",
+    "icon.svg",
+    "apple-touch-icon.png",
+    "favicon-196x196.png",
+    "favicon-192x192.png",
+    "android-chrome-192x192.png",
+  ];
+  const siblings: string[] = [];
+  for (const href of declared) {
+    try {
+      const abs = new URL(href, base).href;
+      const dir = abs.slice(0, abs.lastIndexOf("/") + 1);
+      if (dir === new URL("/", base).href) continue; // root: the guesses cover it
+      for (const name of siblingNames) siblings.push(dir + name);
+    } catch {
+      /* malformed href — skip it */
+    }
+  }
+
   const seen = new Set<string>();
   const urls: string[] = [];
-  for (const href of [...declared, ...guesses]) {
+  for (const href of [...declared, ...guesses, ...siblings]) {
     try {
       const abs = new URL(href, base).href;
       if (!/^https?:/.test(abs) || seen.has(abs)) continue;
@@ -159,7 +212,8 @@ function candidates(html: string, base: URL): string[] {
       /* malformed href in someone's markup — skip it */
     }
   }
-  return urls;
+  // Bounded so one page's link soup can't turn into dozens of requests.
+  return urls.slice(0, 28);
 }
 
 async function tryFetchImage(url: string): Promise<{ buf: Buffer; probe: Probe } | null> {
@@ -171,12 +225,15 @@ async function tryFetchImage(url: string): Promise<{ buf: Buffer; probe: Probe }
   }
   if (!res.ok) return null;
   const len = Number(res.headers.get("content-length") ?? 0);
-  if (len > MAX_BYTES) return null;
+  if (len > MAX_FETCH_BYTES) return null;
   const buf = Buffer.from(await res.arrayBuffer());
-  if (buf.length === 0 || buf.length > MAX_BYTES) return null;
+  if (buf.length === 0 || buf.length > MAX_FETCH_BYTES) return null;
   const probe = probeImage(buf);
   if (!probe) return null; // e.g. a 200-with-HTML block page
   if (Math.min(probe.width, probe.height) < MIN_PX) return null;
+  if (Math.max(probe.width, probe.height) / Math.min(probe.width, probe.height) > MAX_ASPECT) {
+    return null; // a wordmark, not a square mark
+  }
   return { buf, probe };
 }
 
@@ -307,6 +364,11 @@ export async function fetchLogos(opts: { force?: boolean } = {}): Promise<void> 
       const raw = await tryFetchImage(url);
       if (!raw) continue;
       const got = { ...raw, ...normalize(raw.buf, raw.probe) };
+      // The storage limit lands here, not on the download: normalize() has now
+      // had its chance to shrink an oversized source. Anything still over it
+      // couldn't be reduced — no image tool on this host, or already minimal —
+      // so try the next candidate rather than serve a quarter-megabyte favicon.
+      if (got.buf.length > MAX_BYTES) continue;
       // Replace any previous extension for this slug so we never leave two.
       const prev = existing.get(slug);
       if (prev && prev !== `${slug}.${got.probe.ext}`) {

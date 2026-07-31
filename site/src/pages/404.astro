@@ -23,7 +23,6 @@ import { CLUSTER_PAGES } from "../lib/clusters.ts";
     links={[
       { href: url("/"), text: "Browse all jobs" },
       ...CLUSTER_PAGES.map((p) => ({ href: url(`/${p.slug}/`), text: p.label })),
-      { href: url("/salaries/"), text: "Salaries" },
       { href: url("/stats/"), text: "Stats" },
     ]}
   />

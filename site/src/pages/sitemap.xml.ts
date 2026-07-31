@@ -1,5 +1,4 @@
 import type { APIRoute } from "astro";
-import { CLUSTER_PAGES, salarySlug } from "../lib/clusters.ts";
 import { LANDINGS, pageCount } from "../lib/landings.ts";
 import { url } from "../lib/url.ts";
 import { openJobs, generatedAt, duplicateOf } from "../lib/data.ts";
@@ -16,7 +15,6 @@ export const GET: APIRoute = ({ site }) => {
   const entries: { loc: string; lastmod?: string }[] = [
     { loc: abs("/"), lastmod: day(generatedAt) },
     { loc: abs("/stats"), lastmod: day(generatedAt) },
-    { loc: abs("/salaries"), lastmod: day(generatedAt) },
   ];
   // Every listing page — clusters and locations alike — is paginated; list each
   // slice so the roles past page 1 stay discoverable (pages/[topic]/[...page]).
@@ -25,9 +23,6 @@ export const GET: APIRoute = ({ site }) => {
     for (let n = 2; n <= pageCount(landing); n++) {
       entries.push({ loc: abs(`/${landing.slug}/${n}`), lastmod: day(generatedAt) });
     }
-  }
-  for (const p of CLUSTER_PAGES) {
-    entries.push({ loc: abs(`/salaries/${salarySlug(p.id)}`), lastmod: day(generatedAt) });
   }
   for (const slug of new Set(openJobs.map((j) => j.companySlug))) {
     entries.push({ loc: abs(`/companies/${slug}`), lastmod: day(generatedAt) });
