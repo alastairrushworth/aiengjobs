@@ -10,16 +10,20 @@ Two halves joined by a nightly data hand-off:
 - **`site/`** — an [Astro](https://astro.build) static site deployed to **GitHub Pages**
   (`alastairrushworth.github.io/aiengjobs`). Pre-renders the job index, job detail pages,
   and (later) programmatic SEO pages. Reads `site/src/data/snapshot.json` at build time.
-- **`engine/`** — a TypeScript ingestion engine that runs on a small **DigitalOcean droplet**.
-  Polls public ATS feeds (Greenhouse / Lever / Ashby), classifies + tags into a **SQLite** DB,
-  then exports `snapshot.json` and pushes it to the repo — which triggers the Pages rebuild.
+- **`engine/`** — a TypeScript ingestion engine that runs nightly on a **GitHub Actions**
+  runner. Polls public ATS feeds (Greenhouse / Lever / Ashby), classifies + tags into a
+  **SQLite** DB, then exports `snapshot.json` and pushes it to the repo — which triggers
+  the Pages rebuild.
 - **`shared/`** — the data model (`types.ts`) and skill taxonomy (`taxonomy.ts`), shared by both.
+- **`ml/`** — the labelled corpus and training script for the classifier (see `ml/README.md`).
 
-On-the-fly classification/tagging uses **OpenAI GPT-5.4-nano** (cheapest), heuristic-first and
-content-hash cached so the model only runs on new/changed postings.
+Classification runs **locally**: a ModernBERT-base encoder fine-tuned on 4,898 hand-labelled
+adverts, quantised to int8 and executed under ONNX Runtime in-process. No API key, no
+per-posting network call. It is heuristic-first (a third of postings are ruled out on title
+alone) and content-hash cached, so the model only runs on new or changed postings.
 
 ```
-ATS feeds ─▶ engine (droplet): normalize▸classify▸tag▸dedupe▸expiry ─▶ SQLite
+ATS feeds ─▶ engine (Actions): normalize▸classify▸tag▸dedupe▸expiry ─▶ SQLite
                                               │
                      export ─┬─ snapshot.json ────▶ `snapshot` branch (force-pushed, no history)
                              ├─ snapshot.meta.json ▶ main ─▶ GitHub Actions ─▶ Pages
@@ -50,8 +54,10 @@ npm run typecheck -w @aiengjobs/engine
 
 - **Site:** pushing to `main` runs `.github/workflows/deploy.yml`, which fetches the
   snapshot from the `snapshot` branch, builds Astro and publishes to GitHub Pages.
-- **Engine:** runs on the droplet via a systemd timer (`deploy/`), which invokes
-  `scripts/droplet-refresh.sh`.
+- **Engine:** runs nightly on a GitHub Actions runner via
+  `.github/workflows/refresh.yml`. The SQLite database is not in the repo — it is
+  carried between runs as a gzipped release asset on the `db-latest` tag, with
+  `actions/cache` as a fast path.
 
 > The `snapshot` branch must exist before CI can build. To seed it by hand:
 >

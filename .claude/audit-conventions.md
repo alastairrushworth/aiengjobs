@@ -119,8 +119,10 @@ credibility.
   itself is a considered call.
 - **One shared `og-default.png`** across all pages — a known tradeoff. Flag the
   cost if relevant; don't report it as an oversight.
-- **`reasoning_effort: "none"` / GPT-5.4-nano** in the engine — a deliberate
-  cost choice.
+- **The local ONNX encoder** in the engine (`pipeline/encoder.ts`) — replacing
+  the GPT-5.4-nano call was a deliberate cost and accuracy choice, and the
+  int8 quantisation and 1024-token window are both measured tradeoffs recorded
+  in `ml/README.md`. Its *consequences* are fair game; the choice is settled.
 - **There is no linter or formatter configured** (no ESLint/Biome/Prettier).
   Only recommend adding one if you can point at real defects it would have
   caught. Don't recommend tooling for its own sake.

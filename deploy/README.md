@@ -1,8 +1,13 @@
-# Droplet deployment
+# Droplet deployment (superseded)
 
-The ingestion engine runs on a small DigitalOcean droplet (`aiengjobs-engine`).
-It polls ATS feeds nightly, regenerates `site/src/data/snapshot.json`, and pushes
-it back — which triggers the GitHub Pages rebuild.
+> **This is retained for reference only.** The nightly refresh now runs on a
+> GitHub Actions runner — see `.github/workflows/refresh.yml`. Standard runners
+> are free on public repositories and provide 4 vCPU / 16GB, against the
+> droplet's 1 vCPU / 1GB. These files go away once the droplet is destroyed.
+
+The ingestion engine ran on a small DigitalOcean droplet (`aiengjobs-engine`).
+It polled ATS feeds nightly, regenerated `site/src/data/snapshot.json`, and
+pushed it back — which triggered the GitHub Pages rebuild.
 
 ## One-time setup (as the `deploy` user)
 
@@ -14,8 +19,6 @@ npm ci
 
 # 2. Secrets — create /etc/aiengjobs.env (root-owned, 0640, group deploy):
 #      AIENGJOBS_DB=/var/lib/aiengjobs/aiengjobs.db
-#      OPENAI_API_KEY=sk-...        # GPT-5.4-nano classification/tagging
-#      OPENAI_MODEL=gpt-5.4-nano
 
 # 3. Initialise + seed the database:
 AIENGJOBS_DB=/var/lib/aiengjobs/aiengjobs.db npm run -s db:init -w @aiengjobs/engine
@@ -35,5 +38,6 @@ systemctl start aiengjobs-refresh.service   # same, via systemd
 journalctl -u aiengjobs-refresh.service -n 50
 ```
 
-The OpenAI key is optional: without it the pipeline falls back to heuristic
-classification/tagging (fewer ambiguous roles captured).
+Classification is local (`engine/src/pipeline/encoder.ts`); there is no API key.
+Without the model files under `ml/model/` the pipeline falls back to heuristic
+classification, capturing fewer ambiguous roles.

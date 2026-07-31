@@ -1,36 +1,36 @@
 #!/usr/bin/env bash
-# Nightly refresh: pull latest code, ingest ATS feeds, regenerate the site
-# snapshot, publish it, and tell search engines what changed.
-# Runs on the droplet as the `deploy` user via systemd (see deploy/).
-# SUPERSEDED by scripts/refresh.sh + .github/workflows/refresh.yml; kept only
-# until the droplet is destroyed.
+# Nightly refresh: ingest ATS feeds, regenerate the site snapshot, publish it,
+# and tell search engines what changed.
+#
+# Runs on a GitHub Actions runner (see .github/workflows/refresh.yml). The
+# database is restored and persisted by the workflow, not here.
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
-# Load AIENGJOBS_DB etc. for both manual and systemd runs.
-if [ -f /etc/aiengjobs.env ]; then
-  set -a
-  . /etc/aiengjobs.env
-  set +a
-fi
-
-export AIENGJOBS_DB="${AIENGJOBS_DB:-/var/lib/aiengjobs/aiengjobs.db}"
+: "${AIENGJOBS_DB:?AIENGJOBS_DB must be set}"
 
 SNAPSHOT=site/src/data/snapshot.json
 META=site/src/data/snapshot.meta.json
-
-# Stay in sync with the repo (deploy may have happened from elsewhere).
-git pull --ff-only origin main || true
 
 # Hold on to the pre-refresh snapshot: it's what we diff to work out which job
 # URLs to announce, and what we compare against to decide whether to publish.
 PREV="$(mktemp)"
 trap 'rm -f "$PREV"' EXIT
-cp "$SNAPSHOT" "$PREV" 2>/dev/null || true
+# The workspace has no snapshot.json (it is gitignored), so seed the comparison
+# from the published branch. Without this every job looks new on the first run.
+git fetch --depth=1 origin snapshot 2>/dev/null &&
+  git cat-file blob FETCH_HEAD:snapshot.json > "$PREV" 2>/dev/null ||
+  echo "no published snapshot to diff against (first run?)"
+# Deliberately NOT seeding $SNAPSHOT from $PREV: if the export step then failed
+# to write it, cmp would compare the copy against itself, report "no change" and
+# exit 0 — a broken run that looks like a quiet night.
+rm -f "$SNAPSHOT"
 
 # Poll feeds + regenerate the snapshot and its meta file.
 npm run -s refresh -w @aiengjobs/engine
+
+test -s "$SNAPSHOT" || { echo "refresh produced no snapshot" >&2; exit 1; }
 
 if cmp -s "$PREV" "$SNAPSHOT"; then
   echo "no snapshot change"
@@ -41,19 +41,23 @@ fi
 # night, and that cost scales with refresh frequency — which is exactly the knob
 # we want to be free to turn up. So publish it on a detached, single-commit
 # branch (force-pushed, so the remote never accumulates history) and commit only
-# the small meta file to main, which is what triggers the Pages build.
+# the small meta file to main.
 blob="$(git hash-object -w "$SNAPSHOT")"
 tree="$(printf '100644 blob %s\tsnapshot.json\n' "$blob" | git mktree)"
 commit="$(git commit-tree "$tree" -m "snapshot $(date -u +%FT%TZ)")"
 git push --force origin "$commit:refs/heads/snapshot"
 echo "snapshot published to refs/heads/snapshot"
 
-git add "$META"
-git commit -m "data: refresh snapshot ($(date -u +%FT%TZ))"
-git push origin main
-echo "meta committed + pushed (triggers Pages build)"
+if ! git diff --quiet -- "$META"; then
+  git add "$META"
+  git commit -m "data: refresh snapshot ($(date -u +%FT%TZ))"
+  git push origin HEAD:main
+  echo "meta committed + pushed"
+else
+  echo "meta unchanged"
+fi
 
 # Announce new and closed job URLs. Best-effort: a missed ping costs freshness,
 # whereas failing here would leave the board published but the run marked failed.
-npm run -s notify -w @aiengjobs/engine -- "$PREV" "$SNAPSHOT" || \
+npm run -s notify -w @aiengjobs/engine -- "$PREV" "$SNAPSHOT" ||
   echo "  ! notify failed (non-fatal)"

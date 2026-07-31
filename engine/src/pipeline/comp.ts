@@ -95,8 +95,8 @@ function ratedPeriod(t: string): SalaryPeriod {
 }
 
 /**
- * Salary stated in the body of a description — the last resort, used only when
- * neither the feed nor the LLM extractor produced pay. US pay-transparency law
+ * Salary stated in the body of a description — the fallback, used whenever the
+ * feed itself is silent on pay. US pay-transparency law
  * makes this common on Workday/Greenhouse posts ("The applicable full salary
  * ranges for this position … $199,700.00 - $292,800.00"), and missing it puts
  * "Not published" on a page that visibly publishes a range.
