@@ -67,11 +67,16 @@ export function retag(): void {
 /**
  * Re-decides every live posting with the local encoder.
  *
- * Under the LLM this was restricted to a narrow confidence band, because each
- * job cost an API call. Inference is now local, so the whole backlog is in
- * scope — which matters: the board was built by a classifier measured at 70.8%
- * recall, so the rows worth revisiting are the ones currently marked OUT, and
- * those were never re-examined before.
+ * NOT part of the nightly refresh, and deliberately not reachable from the
+ * refresh workflow. `ingest` skips content-unchanged postings, so the board
+ * only ever moves forward as adverts are added or edited; this rewrites every
+ * stored classification in one go and will add and remove listings in bulk.
+ *
+ * Run it by hand, against a copy of the database, when you actually want that —
+ * for example to apply a better classifier to the backlog the old one built at
+ * 70.8% recall. Under the LLM it was restricted to a narrow confidence band
+ * because each job cost an API call; that limit is gone, which makes it more
+ * useful and more destructive at the same time.
  *
  * Titles the heuristic rules OUT are skipped (ingest never scores them either,
  * so re-deciding them here would apply a rule production does not).
