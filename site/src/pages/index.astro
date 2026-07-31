@@ -284,7 +284,7 @@ const updated = new Date(generatedAt).toLocaleDateString("en-US", {
    * this renders every card after a filter, so any drift shows up as a visible
    * jump the moment someone types. LOGO_PX matches JobCard.astro.
    */
-  const LOGO_PX = 32;
+  const LOGO_PX = 20;
   const logoBase = jobsEl.dataset.logoBase!;
   function makeLogo(j: JobEntry): HTMLElement {
     if (j.lg) {
@@ -324,20 +324,19 @@ const updated = new Date(generatedAt).toLocaleDateString("en-US", {
     const a = document.createElement("a");
     a.className = "job-card";
     a.href = `${jobBase}${j.slug}/`;
-    a.append(makeLogo(j));
-
-    const body = document.createElement("div");
-    body.className = "card-body";
 
     const top = document.createElement("div");
     top.className = "top";
     const head = document.createElement("div");
+    head.className = "head";
     const title = document.createElement("div");
     title.className = "title";
     title.textContent = j.t;
     const company = document.createElement("div");
     company.className = "company";
-    company.textContent = j.l ? `${j.c} · ${j.l}` : j.c;
+    const companyText = document.createElement("span");
+    companyText.textContent = j.l ? `${j.c} · ${j.l}` : j.c;
+    company.append(makeLogo(j), companyText);
     head.append(title, company);
     top.append(head);
     if (j.s) {
@@ -360,8 +359,7 @@ const updated = new Date(generatedAt).toLocaleDateString("en-US", {
     if (j.sl) badge(j.sl);
     for (const s of visibleSkills(j, text)) badge(s, "badge skill");
 
-    body.append(top, meta);
-    a.append(body);
+    a.append(top, meta);
     li.append(a);
     if (!text) cardCache.set(j, li);
     return li;
