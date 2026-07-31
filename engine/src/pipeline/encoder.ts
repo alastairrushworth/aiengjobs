@@ -1,23 +1,23 @@
 import { existsSync } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
-import { ENCODER_DIR, ENCODER_THRESHOLD, ENCODER_WINDOW } from "../config.ts";
+import { ENCODER_DIR, ENCODER_FILE, ENCODER_THRESHOLD, ENCODER_WINDOW } from "../config.ts";
 
 /**
  * Local in/out classification: a ModernBERT-base encoder fine-tuned on 4,898
- * hand-labelled adverts, quantised to int8 and run under ONNX Runtime.
+ * hand-labelled adverts, exported to fp32 ONNX and run under ONNX Runtime.
  *
- * Replaces the per-posting GPT-5.4-nano call. Measured through THIS path (not
- * the PyTorch reference) on the held-out split — companies held out, so
- * near-duplicate reposts cannot leak across it — at the default threshold:
- * 93.9% precision / 84.7% recall, 91.0% precision reweighted to the 13%
- * production base rate. The LLM it replaces scored 86.0% / 70.8%.
+ * Replaces the per-posting GPT-5.4-nano call. Measured through THIS path on the
+ * held-out split — companies held out, so near-duplicate reposts cannot leak
+ * across it — at the default threshold: 94.6% precision / 86.9% recall, 92.0%
+ * precision reweighted to the 13% production base rate. The LLM it replaces
+ * scored 86.0% / 70.8%.
  *
- * onnxruntime-node and onnxruntime-python disagree slightly on int8 kernels:
- * 5 of 984 held-out decisions differ from PyTorch (mean probability delta
- * 0.008, max 0.23). Quote the numbers above, not the training script's.
+ * fp32 reproduces PyTorch to 1.4e-06 with zero differing decisions. An int8
+ * build is a quarter the size and ~1.6x faster, but see ENCODER_FILE in
+ * config.ts for why it is not what ships.
  *
- * The session is created once and reused: loading the 144MB graph costs ~1s and
- * the nightly run classifies a few thousand postings.
+ * The session is created once and reused: loading the graph costs ~1s and the
+ * nightly run classifies a few thousand postings.
  */
 
 // The model was fine-tuned on adverts serialised in exactly this shape. The
@@ -58,7 +58,7 @@ type TensorCtor = new (type: string, data: BigInt64Array, dims: number[]) => unk
 
 /** True when the model files are present. Ingest asserts this before doing any work. */
 export function encoderAvailable(): boolean {
-  return existsSync(join(ENCODER_DIR, "model.int8.onnx"));
+  return existsSync(join(ENCODER_DIR, ENCODER_FILE));
 }
 
 async function init() {
@@ -79,7 +79,7 @@ async function init() {
   const tokenizer = tk as unknown as Tokenizer;
   const sepId = (tk as unknown as { sep_token_id?: number }).sep_token_id;
   if (typeof sepId !== "number") throw new Error("tokenizer has no sep_token_id");
-  const session = (await ort.InferenceSession.create(join(ENCODER_DIR, "model.int8.onnx"), {
+  const session = (await ort.InferenceSession.create(join(ENCODER_DIR, ENCODER_FILE), {
     // One thread per posting: the nightly run is a queue of independent adverts,
     // so parallelism belongs at the posting level, not inside a single graph.
     intraOpNumThreads: 1,

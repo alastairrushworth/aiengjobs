@@ -40,10 +40,9 @@ const filterOptions = buildFilterOptions(jobs);
 // stays a constant size as the board grows.
 
 // Matches the canonical Base.astro emits: the trailing-slash form GitHub Pages
-// serves. Not `${url("/")}/` — url("/") returns the base without its trailing
-// slash ("/aiengjobs"), so appending one works today but yields "//" once base
-// drops to "/" for the custom domain astro.config.mjs anticipates, and
-// new URL("//", site) throws.
+// serves. Not `${url("/")}/` — with base "/" that yields "//", and
+// new URL("//", site) throws. Under a non-root base url("/") drops the trailing
+// slash instead, so the check below covers both.
 const homePath = url("/");
 const homeUrl = new URL(homePath.endsWith("/") ? homePath : `${homePath}/`, Astro.site).href;
 const jsonLd = [

@@ -20,6 +20,7 @@ site/src/data/snapshot.json
 # the small eval.json companion is worth committing.
 ml/model*/*
 !ml/model*/eval.json
+!ml/model*/manifest.json
 ml/ads/
 __pycache__/
 
