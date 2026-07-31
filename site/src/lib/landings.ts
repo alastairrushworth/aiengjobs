@@ -19,7 +19,7 @@ export interface Landing {
   label: string;
   h1: string;
   intro: string;
-  /** Fills "…roles in {where}" / "{where} salaries" copy. */
+  /** Fills "…roles in {where}" / "Hiring snapshot for {where}" copy. */
   where: string;
   jobs: Job[];
 }

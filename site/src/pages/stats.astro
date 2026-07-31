@@ -253,7 +253,6 @@ const maxCountry = topCountries[0]?.n ?? 1;
     links={[
       { href: url("/"), text: "All jobs" },
       ...CLUSTER_PAGES.map((p) => ({ href: url(`/${p.slug}/`), text: p.label })),
-      { href: url("/salaries/"), text: "Salaries" },
     ]}
   />
 </Base>
