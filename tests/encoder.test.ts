@@ -1,6 +1,21 @@
+import { isAbsolute } from "node:path";
 import { describe, expect, it } from "vitest";
 import { serialiseAdvert, inScope } from "../engine/src/pipeline/encoder.ts";
-import { ENCODER_THRESHOLD } from "../engine/src/config.ts";
+import { ENCODER_DIR, ENCODER_THRESHOLD } from "../engine/src/config.ts";
+
+// A relative ENCODER_DIR resolved against the working directory, and
+// `npm run -w @aiengjobs/engine` sets that to engine/. The model was silently
+// not found, encoderAvailable() returned false, and a whole ingest classified
+// on title regexes alone without erroring. The path must be cwd-independent.
+describe("ENCODER_DIR", () => {
+  it("is absolute, so it cannot depend on the working directory", () => {
+    expect(isAbsolute(ENCODER_DIR)).toBe(true);
+  });
+
+  it("does not point inside the engine workspace", () => {
+    expect(ENCODER_DIR).not.toMatch(/[/\\]engine[/\\]ml[/\\]model$/);
+  });
+});
 
 // The encoder was fine-tuned on adverts serialised in one exact shape. A stray
 // space or reordered field scores every posting off-distribution — silently,

@@ -1,3 +1,6 @@
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+
 // Title signals that strongly indicate an in-scope AI-engineering role.
 // A match raises the prior to IN, but the encoder (which reads the description)
 // can still veto it when confidently OUT — see the veto path in ingest.ts. That veto is what lets us keep broad signals like `agent` and the
@@ -98,7 +101,14 @@ export const INDEXNOW_ENDPOINT =
 // --- Classifier configuration -----------------------------------------------
 // Classification runs locally: a fine-tuned ModernBERT encoder under ONNX
 // Runtime (see pipeline/encoder.ts). No API key, no per-posting network call.
-export const ENCODER_DIR = process.env.AIENGJOBS_ENCODER_DIR ?? "ml/model";
+//
+// Anchored to the repo root, NOT the working directory. `npm run -w
+// @aiengjobs/engine` executes with cwd set to engine/, so a relative "ml/model"
+// resolves to engine/ml/model and silently misses — which is exactly how a run
+// once classified a whole ingest on title heuristics alone.
+export const ENCODER_DIR =
+  process.env.AIENGJOBS_ENCODER_DIR ??
+  join(dirname(fileURLToPath(import.meta.url)), "..", "..", "ml", "model");
 
 // Measured on the labelled corpus: 3072 tokens covers 99.2% of adverts whole,
 // but 1024 scores identically on the held-out split (92.4% vs 91.9% F1) at a
