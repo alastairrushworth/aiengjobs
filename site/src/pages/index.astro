@@ -1,9 +1,11 @@
 ---
 import Base from "../layouts/Base.astro";
 import JobCard from "../components/JobCard.astro";
+import JobFilters from "../components/JobFilters.astro";
 import { url } from "../lib/url.ts";
-import { countryName, roleType, SENIORITY_OPTIONS } from "../lib/format.ts";
-import { openJobs, generatedAt } from "../lib/data.ts";
+import { salaryMidpointUsd } from "../lib/format.ts";
+import { buildFilterOptions } from "../lib/filterOptions.ts";
+import { openJobs, generatedAt, fxRates } from "../lib/data.ts";
 import { jsonLdScript } from "../lib/jsonld.ts";
 import { CLUSTER_PAGES } from "../lib/clusters.ts";
 import { LOCATION_LANDINGS } from "../lib/landings.ts";
@@ -20,30 +22,18 @@ const jobs = openJobs; // newest first (see lib/data)
 const INITIAL = 50;
 const initialJobs = jobs.slice(0, INITIAL);
 
-// Country filter options, most common first.
-const countryCounts = new Map<string, number>();
-for (const j of jobs) {
-  if (j.country) countryCounts.set(j.country, (countryCounts.get(j.country) ?? 0) + 1);
-}
-const countries = [...countryCounts.entries()]
-  .sort((a, b) => b[1] - a[1])
-  .map(([code, count]) => ({ code, label: countryName(code) ?? code, count }));
+// Share of the board that publishes a range, so the hero can state the number
+// rather than claim blanket transparency — /stats already reports the same
+// figure, and a promise the listings only half keep costs more trust than the
+// number does. Uses the same gate as every other pay decision (see format.ts).
+const pricedPct = Math.round(
+  (jobs.filter((j) => salaryMidpointUsd(j, fxRates) !== null).length / Math.max(1, jobs.length)) *
+    100,
+);
 
-// Role-type filter options, most common first, catch-all "Other" pinned last.
-const roleCounts = new Map<string, number>();
-for (const j of jobs) {
-  const r = roleType(j);
-  roleCounts.set(r, (roleCounts.get(r) ?? 0) + 1);
-}
-const roles = [...roleCounts.entries()]
-  .sort((a, b) => (a[0] === "Other" ? 1 : b[0] === "Other" ? -1 : b[1] - a[1]))
-  .map(([label, count]) => ({ label, count }));
-
-// Seniority options with live counts.
-const seniorities = SENIORITY_OPTIONS.map((s) => ({
-  ...s,
-  count: jobs.filter((j) => j.seniority === s.id).length,
-})).filter((s) => s.count > 0);
+// Filter options counted against the whole board (see lib/filterOptions) —
+// every landing builds the same lists against its own roles.
+const filterOptions = buildFilterOptions(jobs);
 
 // The full job list ships separately as /jobs-data.json (see lib/jobsPayload)
 // and is fetched by the filter script on first interaction, so index.html
@@ -93,16 +83,39 @@ const updated = new Date(generatedAt).toLocaleDateString("en-US", {
     <h1>The job board for AI engineers</h1>
     <p>
       RAG, agents, evals, inference — browse <span class="count">{jobs.length}</span>
-      first-party roles. Salary-transparent. No ghost jobs.
+      first-party roles. <span class="count">{pricedPct}%</span> publish pay. No ghost jobs.
     </p>
     <p class="updated">Updated {updated} · refreshed nightly</p>
   </section>
 
-  <nav class="browse" aria-label="Browse by stack">
+  {/* One row, scrolling sideways on a phone rather than wrapping to three.
+      Wrapped, this nav plus the hero and the filter bar filled the entire
+      723px fold and pushed every job card off it — the board's own listing
+      pages showed three cards in the same space because they carry neither. */}
+  <nav class="browse browse-rail" aria-label="Browse by stack">
     <span class="browse-label">Browse by stack:</span>
     {CLUSTER_PAGES.map((p) => <a href={url(`/${p.slug}/`)}>{p.label}</a>)}
   </nav>
 
+  <JobFilters
+    src={url("/jobs-data.json")}
+    jobBase={url("/jobs/")}
+    logoBase={url("/logos/")}
+    total={jobs.length}
+    initial={INITIAL}
+    noun="open roles"
+    {...filterOptions}
+  >
+    <ul class="jobs" id="jobs">
+      {initialJobs.map((job) => (
+        <JobCard job={job} href={url(`/jobs/${job.slug}/`)} />
+      ))}
+    </ul>
+  </JobFilters>
+
+  {/* Below the first results, not above them. Stack + location together cost
+      more of the fold than the whole stats block on a landing page, and someone
+      who wants a city can reach one from here or from the filter bar. */}
   <nav class="browse" aria-label="Browse by location">
     <span class="browse-label">Browse by location:</span>
     {topLocations.map((l) => (
@@ -110,271 +123,9 @@ const updated = new Date(generatedAt).toLocaleDateString("en-US", {
     ))}
   </nav>
 
-  <div class="filters">
-    <div>
-      <label for="q">Search</label>
-      <input
-        type="search"
-        id="q"
-        placeholder="Title, company, skill…"
-      />
-    </div>
-    <div class="toggles">
-      <div>
-        <label for="role">Role type</label>
-        <select id="role">
-          <option value="">Any role</option>
-          {roles.map((r) => (
-            <option value={r.label}>{r.label} ({r.count})</option>
-          ))}
-        </select>
-      </div>
-      <div>
-        <label for="country">Country</label>
-        <select id="country">
-          <option value="">Any country</option>
-          {countries.map((c) => (
-            <option value={c.code}>{c.label} ({c.count})</option>
-          ))}
-        </select>
-      </div>
-      <div>
-        <label for="level">Seniority</label>
-        <select id="level">
-          <option value="">Any level</option>
-          {seniorities.map((s) => (
-            <option value={s.id}>{s.label} ({s.count})</option>
-          ))}
-        </select>
-      </div>
-      <div>
-        <label for="sort">Sort by</label>
-        <select id="sort">
-          <option value="new">Newest first</option>
-          <option value="pay">Highest salary</option>
-        </select>
-      </div>
-    </div>
-  </div>
-
-  <div class="results-bar">
-    <p class="results-meta" role="status">
-      <span id="status-text">Showing the {INITIAL} newest of {jobs.length} open roles</span>
-    </p>
-    <button class="link-btn" id="clear" hidden>Clear filters</button>
-  </div>
-
-  <ul
-    class="jobs"
-    id="jobs"
-    data-src={url("/jobs-data.json")}
-    data-job-base={url("/jobs/")}
-  >
-    {initialJobs.map((job) => (
-      <JobCard job={job} href={url(`/jobs/${job.slug}/`)} />
-    ))}
-  </ul>
-  {/* No role="status" here: the results line above is already a live region,
-      and announcing both makes a zero-result filter speak twice. */}
-  <p class="empty" id="empty">
-    No roles match these filters yet.
-  </p>
-  <div class="show-more-wrap">
-    <button class="btn-secondary" id="show-all">Show all {jobs.length} roles</button>
-  </div>
-
   {/* jsonLdScript escapes <, >, & — job titles are untrusted feed content that
       could otherwise break out of these script elements. */}
   {jsonLd.map((block) => (
     <script type="application/ld+json" set:html={jsonLdScript(block)} is:inline />
   ))}
 </Base>
-
-<style>
-  .results-bar { display: flex; align-items: baseline; gap: 8px; }
-</style>
-
-<script>
-  interface JobEntry {
-    slug: string; t: string; c: string; l: string; s: string; sr: number;
-    p: string; n: number; r: string; sl: string; sn: string; ro: string;
-    co: string; sk: string[];
-    q?: string; // lazily-built lowercase search blob
-  }
-
-  const INITIAL = 50;
-
-  const q = document.getElementById("q") as HTMLInputElement;
-  const role = document.getElementById("role") as HTMLSelectElement;
-  const country = document.getElementById("country") as HTMLSelectElement;
-  const level = document.getElementById("level") as HTMLSelectElement;
-  const sort = document.getElementById("sort") as HTMLSelectElement;
-  const jobsEl = document.getElementById("jobs")!;
-  const statusText = document.getElementById("status-text")!;
-  const empty = document.getElementById("empty")!;
-  const clearBtn = document.getElementById("clear") as HTMLButtonElement;
-  const showAllBtn = document.getElementById("show-all") as HTMLButtonElement;
-
-  let showAll = false;
-
-  // The full job list lives in a separate cacheable JSON file (constant-size
-  // index.html); fetch it once, on the first interaction that needs it.
-  const jobBase = jobsEl.dataset.jobBase!;
-  let dataPromise: Promise<JobEntry[]> | null = null;
-  function loadData(): Promise<JobEntry[]> {
-    return (dataPromise ??= fetch(jobsEl.dataset.src!).then((res) => {
-      if (!res.ok) throw new Error(`jobs-data ${res.status}`);
-      return res.json() as Promise<JobEntry[]>;
-    }));
-  }
-
-  function searchBlob(j: JobEntry): string {
-    return (j.q ??= `${j.t} ${j.c} ${j.sk.join(" ")} ${j.l}`.toLowerCase());
-  }
-
-  // Client-rendered card, identical markup to JobCard.astro. Built with
-  // createElement/textContent only — job data is untrusted feed content.
-  const cardCache = new Map<JobEntry, HTMLLIElement>();
-  function makeCard(j: JobEntry): HTMLLIElement {
-    const cached = cardCache.get(j);
-    if (cached) return cached;
-    const li = document.createElement("li");
-    const a = document.createElement("a");
-    a.className = "job-card";
-    a.href = `${jobBase}${j.slug}/`;
-
-    const top = document.createElement("div");
-    top.className = "top";
-    const head = document.createElement("div");
-    const title = document.createElement("div");
-    title.className = "title";
-    title.textContent = j.t;
-    const company = document.createElement("div");
-    company.className = "company";
-    company.textContent = j.l ? `${j.c} · ${j.l}` : j.c;
-    head.append(title, company);
-    top.append(head);
-    if (j.s) {
-      const salary = document.createElement("div");
-      salary.className = "salary";
-      salary.textContent = j.s;
-      top.append(salary);
-    }
-
-    const meta = document.createElement("div");
-    meta.className = "meta";
-    const badge = (text: string, cls = "badge") => {
-      const b = document.createElement("span");
-      b.className = cls;
-      b.textContent = text;
-      meta.append(b);
-    };
-    if (j.n) badge("New", "badge new");
-    if (j.r) badge(j.r);
-    if (j.sl) badge(j.sl);
-    for (const s of j.sk.slice(0, 4)) badge(s, "badge skill");
-    if (j.p) {
-      const posted = document.createElement("span");
-      posted.className = "posted";
-      posted.textContent = `Posted ${j.p}`;
-      meta.append(posted);
-    }
-
-    a.append(top, meta);
-    li.append(a);
-    cardCache.set(j, li);
-    return li;
-  }
-
-  // Guards against out-of-order renders while the data fetch is in flight
-  // (e.g. the user keeps typing before the first response lands).
-  let applySeq = 0;
-
-  async function apply(syncUrl = true) {
-    const seq = ++applySeq;
-    let data: JobEntry[];
-    try {
-      data = await loadData();
-    } catch {
-      dataPromise = null; // allow a retry on the next interaction
-      statusText.textContent = "Couldn't load the full job list — try again.";
-      return;
-    }
-    if (seq !== applySeq) return; // superseded by a newer interaction
-
-    const text = q.value.trim().toLowerCase();
-    const rol = role.value;
-    const cty = country.value;
-    const sen = level.value;
-    const byPay = sort.value === "pay";
-    const filtering = Boolean(text || rol || cty || sen);
-
-    let matches = data.filter(
-      (j) =>
-        (!text || searchBlob(j).includes(text)) &&
-        (!rol || j.ro === rol) &&
-        (!cty || j.co === cty) &&
-        (!sen || j.sn === sen),
-    );
-    if (byPay) {
-      // Stable sort: pay descending, ties keep the newest-first data order.
-      matches = [...matches].sort((a, b) => b.sr - a.sr);
-    }
-
-    const limit = filtering || showAll ? matches.length : INITIAL;
-    const visible = matches.slice(0, limit);
-    jobsEl.replaceChildren(...visible.map(makeCard));
-
-    const total = data.length;
-    statusText.textContent = filtering
-      ? `${matches.length} of ${total} roles match`
-      : showAll
-        ? `Showing all ${total} open roles${byPay ? ", highest salary first" : ""}`
-        : `Showing the ${Math.min(INITIAL, total)} ${byPay ? "highest-paying" : "newest"} of ${total} open roles`;
-
-    empty.style.display = matches.length === 0 ? "block" : "none";
-    clearBtn.hidden = !filtering;
-    showAllBtn.hidden = filtering || showAll || matches.length <= INITIAL;
-
-    if (syncUrl) {
-      const params = new URLSearchParams();
-      if (text) params.set("q", q.value.trim());
-      if (rol) params.set("role", rol);
-      if (cty) params.set("country", cty);
-      if (sen) params.set("level", sen);
-      if (byPay) params.set("sort", "pay");
-      if (showAll && !filtering) params.set("all", "1");
-      const qs = params.toString();
-      history.replaceState(null, "", qs ? `?${qs}` : location.pathname);
-    }
-  }
-
-  q.addEventListener("input", () => apply());
-  for (const el of [role, country, level, sort]) {
-    el.addEventListener("change", () => apply());
-  }
-  showAllBtn.addEventListener("click", () => {
-    showAll = true;
-    apply();
-  });
-  clearBtn.addEventListener("click", () => {
-    q.value = "";
-    role.value = "";
-    country.value = "";
-    level.value = "";
-    apply();
-    q.focus();
-  });
-
-  // Hydrate state from the URL so filtered views are shareable + back-button safe.
-  const params = new URLSearchParams(location.search);
-  q.value = params.get("q") ?? "";
-  role.value = params.get("role") ?? "";
-  country.value = params.get("country") ?? "";
-  level.value = params.get("level") ?? "";
-  sort.value = params.get("sort") === "pay" ? "pay" : "new";
-  showAll = params.get("all") === "1";
-  if (q.value || role.value || country.value || level.value || sort.value === "pay" || showAll) {
-    apply(false);
-  }
-</script>

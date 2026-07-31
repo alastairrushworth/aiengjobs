@@ -1,32 +1,30 @@
-import { readFileSync } from "node:fs";
 /**
  * TF-IDF + logistic-regression baseline for the in/out classification.
  *
- * Deliberately plain: hashless bag of n-grams, sublinear TF, L2-normalised
- * vectors, and a logistic regression trained with AdaGrad. Everything is pure
- * TypeScript so a trained model is a JSON blob the existing Node engine can
- * score in microseconds — no Python runtime on a 961MB droplet.
+ * Trains on the COMPLETE job description. An earlier version used a stitched
+ * ~900-character excerpt (first 300 chars + a responsibilities window + a
+ * requirements window); that turned out to be ~16% of the average ad and cut
+ * off exactly the requirements text where AI tooling is listed. Never reintroduce
+ * a fixed-size slice here.
  *
- * Two experiments, because they answer different questions:
- *   distil  — train on GPT-5.4-nano's labels, score against the gold set.
- *             "Can a local model reproduce what we already pay for?"
- *   gold    — 5-fold CV training on the hand labels alone.
- *             "Can a linear model learn the real target from 500 examples?"
+ * Full text is ~6x the volume, so an explicit term->index vocabulary would hold
+ * millions of bigram keys. We use the hashing trick instead: features hash into
+ * a fixed 2^20 bucket space, which keeps memory flat regardless of corpus size.
+ * Interpretability is recovered with a bounded second pass over titles only.
  *
- * Run: npx tsx ml/baseline.ts <path-to-train-raw.jsonl> <path-to-gold.jsonl>
+ * Run: npx tsx ml/baseline.ts <train-full.jsonl> <index.jsonl> <gold-full.jsonl>
  */
+import { readFileSync, writeFileSync } from "node:fs";
 
-interface Doc {
-  id: string;
-  title: string;
-  excerpt: string;
-}
+const BITS = 22;
+const NBUCKETS = 1 << BITS;
+const MASK = NBUCKETS - 1;
 
 // --- features -------------------------------------------------------------
 
 const STOP = new Set(
   ("the a an and or of to in for with on at by as is are be we you your our this that will from" +
-    " have has can who all their its it they them if not but so such more most other than then").split(/\s+/),
+    " have has can who all their its it they them if not but so such more most other than then a").split(/\s+/),
 );
 
 function tokens(text: string): string[] {
@@ -37,63 +35,43 @@ function tokens(text: string): string[] {
     .filter((t) => t.length > 1 && t.length < 30 && !STOP.has(t));
 }
 
+/** FNV-1a, folded into the bucket space. */
+function hash(s: string): number {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 0x01000193);
+  }
+  return (h >>> 0) & MASK;
+}
+
 /**
- * Title and body live in separate feature namespaces: "senior engineer" in the
- * title is a much stronger signal than the same phrase buried in boilerplate.
- * Bigrams matter here — "data scientist", "forward deployed", "account
- * executive" and "machine learning" are the discriminative units, not "data".
+ * Title and body hash into separate namespaces — "engineer" in the title is a
+ * different signal from "engineer" in a benefits paragraph. Bigrams carry the
+ * discriminative units: "machine learning", "forward deployed", "account executive".
  */
-function features(d: Doc): string[] {
-  const out: string[] = [];
-  for (const [ns, text] of [
-    ["t", d.title],
-    ["b", d.excerpt],
-  ] as const) {
+function* featureBuckets(title: string, body: string): Generator<number> {
+  for (const [ns, text] of [["t", title], ["b", body]] as const) {
     const ts = tokens(text);
-    for (const t of ts) out.push(`${ns}:${t}`);
-    for (let i = 0; i + 1 < ts.length; i++) out.push(`${ns}:${ts[i]}_${ts[i + 1]}`);
+    for (let i = 0; i < ts.length; i++) {
+      yield hash(ns + ":" + ts[i]);
+      if (i + 1 < ts.length) yield hash(ns + ":" + ts[i] + "_" + ts[i + 1]);
+    }
   }
-  return out;
-}
-
-interface Vectoriser {
-  vocab: Map<string, number>;
-  idf: Float64Array;
-}
-
-function fit(docs: Doc[], minDf: number, maxFeatures: number): Vectoriser {
-  const df = new Map<string, number>();
-  for (const d of docs) {
-    for (const f of new Set(features(d))) df.set(f, (df.get(f) ?? 0) + 1);
-  }
-  const kept = [...df.entries()]
-    .filter(([, n]) => n >= minDf)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, maxFeatures);
-  const vocab = new Map<string, number>();
-  const idf = new Float64Array(kept.length);
-  kept.forEach(([term, n], i) => {
-    vocab.set(term, i);
-    idf[i] = Math.log((1 + docs.length) / (1 + n)) + 1;
-  });
-  return { vocab, idf };
 }
 
 type Sparse = { idx: Int32Array; val: Float64Array };
 
-function transform(v: Vectoriser, d: Doc): Sparse {
+function vectorise(title: string, body: string, idf: Float64Array): Sparse {
   const counts = new Map<number, number>();
-  for (const f of features(d)) {
-    const i = v.vocab.get(f);
-    if (i !== undefined) counts.set(i, (counts.get(i) ?? 0) + 1);
-  }
+  for (const b of featureBuckets(title, body)) counts.set(b, (counts.get(b) ?? 0) + 1);
   const idx = new Int32Array(counts.size);
   const val = new Float64Array(counts.size);
   let k = 0;
   let norm = 0;
-  for (const [i, c] of counts) {
-    const w = (1 + Math.log(c)) * v.idf[i]; // sublinear TF
-    idx[k] = i;
+  for (const [b, c] of counts) {
+    const w = (1 + Math.log(c)) * idf[b];
+    idx[k] = b;
     val[k] = w;
     norm += w * w;
     k++;
@@ -105,37 +83,21 @@ function transform(v: Vectoriser, d: Doc): Sparse {
 
 // --- model ----------------------------------------------------------------
 
-interface Model {
-  w: Float64Array;
-  b: number;
-}
-
 const sigmoid = (z: number) => 1 / (1 + Math.exp(-z));
 
-function score(m: Model, x: Sparse): number {
-  let z = m.b;
-  for (let k = 0; k < x.idx.length; k++) z += m.w[x.idx[k]] * x.val[k];
+function score(w: Float64Array, b: number, x: Sparse): number {
+  let z = b;
+  for (let k = 0; k < x.idx.length; k++) z += w[x.idx[k]] * x.val[k];
   return sigmoid(z);
 }
 
-/**
- * AdaGrad logistic regression with L2 and class weighting. Positives are ~13%
- * of the post-prefilter population; without the reweighting the model just
- * learns to say "out".
- */
-function train(
-  X: Sparse[],
-  y: Uint8Array,
-  nFeatures: number,
-  { epochs = 25, lr = 0.5, l2 = 1e-6 } = {},
-): Model {
-  const w = new Float64Array(nFeatures);
-  const g2 = new Float64Array(nFeatures);
+function train(X: Sparse[], y: Uint8Array, { epochs = 20, lr = 0.4, l2 = 2e-6 } = {}) {
+  const w = new Float64Array(NBUCKETS);
+  const g2 = new Float64Array(NBUCKETS);
   let b = 0;
   let b2 = 0;
-
-  const pos = y.reduce((a, v) => a + v, 0);
-  const wPos = (y.length - pos) / Math.max(pos, 1); // balance the classes
+  const pos = y.reduce((a: number, v) => a + v, 0);
+  const wPos = (y.length - pos) / Math.max(pos, 1);
   const order = [...X.keys()];
   let seed = 42;
   const rand = () => ((seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff);
@@ -147,10 +109,8 @@ function train(
     }
     for (const i of order) {
       const x = X[i];
-      const yi = y[i];
-      const sw = yi ? wPos : 1;
-      const p = score({ w, b }, x);
-      const gBase = (p - yi) * sw;
+      const sw = y[i] ? wPos : 1;
+      const gBase = (score(w, b, x) - y[i]) * sw;
       for (let k = 0; k < x.idx.length; k++) {
         const f = x.idx[k];
         const g = gBase * x.val[k] + l2 * w[f];
@@ -166,123 +126,94 @@ function train(
 
 // --- metrics --------------------------------------------------------------
 
-function prf(yTrue: Uint8Array, probs: number[], thr: number) {
+function prf(y: Uint8Array, p: number[], thr: number) {
   let tp = 0, fp = 0, fn = 0, tn = 0;
-  probs.forEach((p, i) => {
-    const pred = p >= thr ? 1 : 0;
-    if (pred && yTrue[i]) tp++;
-    else if (pred && !yTrue[i]) fp++;
-    else if (!pred && yTrue[i]) fn++;
-    else tn++;
+  p.forEach((v, i) => {
+    const pred = v >= thr ? 1 : 0;
+    if (pred && y[i]) tp++; else if (pred && !y[i]) fp++; else if (!pred && y[i]) fn++; else tn++;
   });
-  const prec = tp / (tp + fp || 1);
-  const rec = tp / (tp + fn || 1);
+  const prec = tp / (tp + fp || 1), rec = tp / (tp + fn || 1);
   return { tp, fp, fn, tn, prec, rec, f1: (2 * prec * rec) / (prec + rec || 1) };
 }
+const pct = (x: number) => (100 * x).toFixed(1) + "%";
+const report = (n: string, r: ReturnType<typeof prf>) =>
+  console.log(`${n.padEnd(32)} TP=${String(r.tp).padStart(4)} FP=${String(r.fp).padStart(4)} FN=${String(r.fn).padStart(4)} TN=${String(r.tn).padStart(5)}  P=${pct(r.prec).padStart(6)} R=${pct(r.rec).padStart(6)} F1=${pct(r.f1).padStart(6)}`);
 
-/** Threshold that maximises F1 on the given scores — reported, not tuned on test. */
-function bestThreshold(yTrue: Uint8Array, probs: number[]) {
-  let best = { thr: 0.5, f1: -1 } as { thr: number; f1: number };
+function bestThreshold(y: Uint8Array, p: number[]) {
+  let best = { thr: 0.5, f1: -1 };
   for (let t = 0.05; t <= 0.95; t += 0.01) {
-    const f1 = prf(yTrue, probs, t).f1;
+    const f1 = prf(y, p, t).f1;
     if (f1 > best.f1) best = { thr: t, f1 };
   }
   return best;
 }
 
-const pct = (x: number) => (100 * x).toFixed(1) + "%";
-function report(name: string, r: ReturnType<typeof prf>) {
-  console.log(
-    `${name.padEnd(34)} TP=${String(r.tp).padStart(4)} FP=${String(r.fp).padStart(4)} FN=${String(r.fn).padStart(4)} TN=${String(r.tn).padStart(5)}  P=${pct(r.prec).padStart(6)} R=${pct(r.rec).padStart(6)} F1=${pct(r.f1).padStart(6)}`,
-  );
-}
+// --- data -----------------------------------------------------------------
 
-// --- experiments ----------------------------------------------------------
-
-const [trainPath, goldPath] = process.argv.slice(2);
-if (!trainPath || !goldPath) {
-  console.error("Usage: npx tsx ml/baseline.ts <train-raw.jsonl> <gold.jsonl>");
+const [trainPath, indexPath, goldPath] = process.argv.slice(2);
+if (!trainPath || !indexPath || !goldPath) {
+  console.error("Usage: npx tsx ml/baseline.ts <train-full.jsonl> <index.jsonl> <gold-full.jsonl>");
   process.exit(1);
 }
 
-const readJsonl = (p: string) =>
-  readFileSync(p, "utf8").trim().split("\n").map((l) => JSON.parse(l));
+const readJsonl = (p: string) => readFileSync(p, "utf8").trim().split("\n").map((l) => JSON.parse(l));
 
-const pool = readJsonl(trainPath) as (Doc & Record<string, unknown>)[];
-const gold = readJsonl(goldPath) as (Doc & { label: string; confidence: string; prev_cls: string })[];
+const index = readJsonl(indexPath) as { id: string; title: string; cls: string }[];
+const meta = new Map(index.map((r) => [r.id, r]));
+const gold = readJsonl(goldPath) as { id: string; label: string; confidence: string; prev_cls: string; title: string; full: string }[];
 const goldIds = new Set(gold.map((g) => g.id));
 
-// Nano's decision for every pooled posting, from the live DB snapshot.
-const index = readJsonl(`${trainPath.replace(/[^/]+$/, "")}index.jsonl`) as {
-  id: string;
-  cls: string;
-}[];
-const nanoLabel = new Map(index.map((r) => [r.id, r.cls === "in" ? 1 : 0]));
+const docs: { id: string; title: string; body: string; y: number }[] = [];
+for (const line of readFileSync(trainPath, "utf8").split("\n")) {
+  if (!line) continue;
+  const r = JSON.parse(line) as { id: string; full: string };
+  const m = meta.get(r.id);
+  if (!m || goldIds.has(r.id)) continue; // hold the gold set out entirely
+  docs.push({ id: r.id, title: m.title, body: r.full, y: m.cls === "in" ? 1 : 0 });
+}
+console.log(`training docs: ${docs.length} (gold held out)  avg ${Math.round(docs.reduce((a, d) => a + d.body.length, 0) / docs.length)} chars\n`);
 
-// The prefilter removes heur_out/offtopic_out before a classifier ever runs,
-// so the gold rows outside that population aren't part of this task.
-const poolIds = new Set(pool.map((p) => p.id));
-const goldEval = gold.filter((g) => poolIds.has(g.id));
+// --- idf over the full corpus, in bounded memory --------------------------
+const df = new Int32Array(NBUCKETS);
+for (const d of docs) {
+  const seen = new Set<number>();
+  for (const b of featureBuckets(d.title, d.body)) seen.add(b);
+  for (const b of seen) df[b]++;
+}
+const idf = new Float64Array(NBUCKETS);
+for (let i = 0; i < NBUCKETS; i++) idf[i] = Math.log((1 + docs.length) / (1 + df[i])) + 1;
+const used = df.reduce((a: number, v) => a + (v > 0 ? 1 : 0), 0);
+console.log(`hashed feature space: ${used} of ${NBUCKETS} buckets occupied (${pct(used / NBUCKETS)})\n`);
 
-console.log(`pool=${pool.length}  gold=${gold.length}  gold within post-prefilter population=${goldEval.length}\n`);
+const X = docs.map((d) => vectorise(d.title, d.body, idf));
+const y = Uint8Array.from(docs.map((d) => d.y));
+const model = train(X, y);
 
-// ---- experiment 1: distil nano -------------------------------------------
-const distilDocs = pool.filter((p) => !goldIds.has(p.id));
-const vec = fit(distilDocs, 3, 60_000);
-console.log(`vocabulary: ${vec.vocab.size} features\n`);
+const Xg = gold.map((g) => vectorise(g.title, g.full, idf));
+const yg = Uint8Array.from(gold.map((g) => (g.label === "in" ? 1 : 0)));
+const pg = Xg.map((x) => score(model.w, model.b, x));
 
-const Xtr = distilDocs.map((d) => transform(vec, d));
-const ytr = Uint8Array.from(distilDocs.map((d) => nanoLabel.get(d.id) ?? 0));
-const model = train(Xtr, ytr, vec.vocab.size);
-
-const Xg = goldEval.map((d) => transform(vec, d));
-const yg = Uint8Array.from(goldEval.map((g) => (g.label === "in" ? 1 : 0)));
-const pg = Xg.map((x) => score(model, x));
-
-console.log("=== Experiment 1: distil GPT-5.4-nano, evaluate on gold ===");
+console.log("=== Distil GPT-5.4-nano from FULL text, evaluate on gold ===");
 report("student @0.5", prf(yg, pg, 0.5));
 const bt = bestThreshold(yg, pg);
 report(`student @${bt.thr.toFixed(2)} (best-F1)`, prf(yg, pg, bt.thr));
-const yNano = Uint8Array.from(goldEval.map((g) => (g.prev_cls === "in" ? 1 : 0)));
-report("teacher (live system)", prf(yg, [...yNano].map(Number), 0.5));
+report("teacher (live system)", prf(yg, gold.map((g) => (g.prev_cls === "in" ? 1 : 0)), 0.5));
 
-// How faithfully does the student copy the teacher, on held-out pooled data?
-const teacherAgree = goldEval.filter(
-  (g, i) => (pg[i] >= bt.thr ? 1 : 0) === (g.prev_cls === "in" ? 1 : 0),
-).length;
-console.log(`student/teacher agreement on gold rows: ${pct(teacherAgree / goldEval.length)}\n`);
+const hi = gold.map((g, i) => [g, pg[i]] as const).filter(([g]) => g.confidence === "high");
+report("student, high-conf gold only", prf(
+  Uint8Array.from(hi.map(([g]) => (g.label === "in" ? 1 : 0))), hi.map(([, p]) => p), bt.thr));
 
-// ---- experiment 2: learn the gold target directly ------------------------
-console.log("=== Experiment 2: 5-fold CV on the gold labels alone ===");
-const folds = 5;
-const idxs = goldEval.map((_, i) => i);
-let s = 7;
-const rnd = () => ((s = (s * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff);
-for (let i = idxs.length - 1; i > 0; i--) {
-  const j = Math.floor(rnd() * (i + 1));
-  [idxs[i], idxs[j]] = [idxs[j], idxs[i]];
+// Rows where the model most disagrees with my label — the labels worth re-reading.
+console.log("\n=== Model/label disagreements, most confident first ===");
+const dis = gold
+  .map((g, i) => ({ g, p: pg[i], mine: g.label === "in" ? 1 : 0 }))
+  .filter((d) => (d.p >= bt.thr ? 1 : 0) !== d.mine)
+  .sort((a, b) => Math.abs(b.p - bt.thr) - Math.abs(a.p - bt.thr));
+console.log(`${dis.length} disagreements (${dis.filter((d) => d.mine === 0).length} where the model says IN and I said OUT)`);
+for (const d of dis.slice(0, 20)) {
+  console.log(`  p=${d.p.toFixed(2)} model=${d.p >= bt.thr ? "IN " : "OUT"} mine=${d.g.label.toUpperCase().padEnd(3)} [${d.g.confidence}] ${d.g.title}`);
 }
-const oof = new Array<number>(goldEval.length).fill(0);
-for (let f = 0; f < folds; f++) {
-  const test = new Set(idxs.filter((_, k) => k % folds === f));
-  const trDocs = goldEval.filter((_, i) => !test.has(i));
-  const v2 = fit(trDocs, 2, 60_000);
-  const m2 = train(
-    trDocs.map((d) => transform(v2, d)),
-    Uint8Array.from(trDocs.map((d) => (d.label === "in" ? 1 : 0))),
-    v2.vocab.size,
-    { epochs: 60 },
-  );
-  for (const i of test) oof[i] = score(m2, transform(v2, goldEval[i]));
-}
-report("gold-trained @0.5", prf(yg, oof, 0.5));
-const bt2 = bestThreshold(yg, oof);
-report(`gold-trained @${bt2.thr.toFixed(2)} (best-F1)`, prf(yg, oof, bt2.thr));
-
-// ---- what the distilled model learned ------------------------------------
-console.log("\n=== Strongest features (distilled model) ===");
-const terms = [...vec.vocab.entries()].map(([t, i]) => [t, model.w[i]] as const);
-const top = [...terms].sort((a, b) => b[1] - a[1]).slice(0, 18);
-const bot = [...terms].sort((a, b) => a[1] - b[1]).slice(0, 18);
-console.log("toward IN :", top.map(([t]) => t).join(", "));
-console.log("toward OUT:", bot.map(([t]) => t).join(", "));
+writeFileSync(
+  trainPath.replace(/[^/]+$/, "") + "model-disagreements.json",
+  JSON.stringify(dis.map((d) => ({ id: d.g.id, p: d.p, mine: d.g.label, conf: d.g.confidence }))),
+);

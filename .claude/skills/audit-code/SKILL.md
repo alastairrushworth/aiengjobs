@@ -150,11 +150,13 @@ into a database, an LLM, a published snapshot, and a public site.**
   bounds (present), **redirect handling**, response size limits (an unbounded
   `res.json()` on a hostile feed is a memory DoS), and whether error bodies get
   logged verbatim.
-- **Secrets.** `OPENAI_API_KEY` comes from `/etc/aiengjobs.env`. Verify: nothing
-  logs it or interpolates it into an error message; nothing reaches the snapshot
-  or `site/`; `.env` is gitignored (it is) and `engine/.env.example` contains no
-  real values; no key is baked into a systemd unit or a workflow file. Run a
-  scan for high-entropy strings and `sk-`-style tokens across tracked files.
+- **Secrets.** The engine no longer calls any paid API — classification is a
+  local ONNX model — so there should be *no* third-party key anywhere. Verify
+  that: no `OPENAI_API_KEY` or similar survives in code, workflows, or docs;
+  `.env` is gitignored (it is) and `engine/.env.example` contains no real
+  values; the only credential in CI is the built-in `GITHUB_TOKEN`, and its
+  permissions are scoped per workflow. Run a scan for high-entropy strings and
+  `sk-`-style tokens across tracked files.
 - **What the export leaks.** `export/exportSnapshot.ts` decides what becomes
   world-readable. Confirm nothing internal (raw feed payloads, LLM
   rationales, internal scores/IDs, company contact data) ships that shouldn't.

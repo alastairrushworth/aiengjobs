@@ -29,12 +29,19 @@ const PERIOD_TO_YEAR: Record<string, number> = {
 // (e.g. an equity/valuation number), so we neither rank nor display it.
 const SALARY_FLOOR_USD = 10_000;
 const SALARY_CEILING_USD = 2_000_000;
+// Sub-annual periods get a tighter ceiling than annual ones. A mislabelled
+// period is the common failure — an annual "€68k–86k" tagged as monthly
+// annualizes to €1.05M and takes the top slot on "highest salary", above every
+// genuine top-of-market range. Real monthly/hourly/daily pay doesn't reach
+// $750k/yr, so gating those separately lets the annual ceiling stay loose
+// enough for the $850k US research roles that are legitimately in the data.
+const SUBANNUAL_CEILING_USD = 750_000;
 
 /**
  * Currency → USD multiplier, preferring the snapshot's live rates and falling
  * back to the static table. Returns null when we have no rate for the currency:
  * silently assuming 1:1 inflates a CZK/BRL/JPY range by 5–150×, which then tops
- * the "highest salary" sort and drags the salary-page percentiles up with it.
+ * the "highest salary" sort and drags the stats-page medians up with it.
  * An unconvertible salary is treated as unpriced, never as a huge one.
  */
 function fxToUsd(
@@ -96,9 +103,11 @@ export function salaryMidpointUsd(
   if (fx === null) return null; // unknown currency — unpriced, not 1:1 with USD
   const lo = salaryMin ?? salaryMax!;
   const hi = salaryMax ?? salaryMin!;
-  const perYear = PERIOD_TO_YEAR[job.salaryPeriod ?? "year"] ?? 1;
+  const period = job.salaryPeriod ?? "year";
+  const perYear = PERIOD_TO_YEAR[period] ?? 1;
   const annual = ((lo + hi) / 2) * perYear * fx;
   if (annual < SALARY_FLOOR_USD || annual > SALARY_CEILING_USD) return null;
+  if (period !== "year" && annual > SUBANNUAL_CEILING_USD) return null;
   return annual;
 }
 
@@ -107,16 +116,6 @@ export function median(xs: number[]): number {
   const s = [...xs].sort((a, b) => a - b);
   const m = Math.floor(s.length / 2);
   return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
-}
-
-/** p-th percentile (0–100) by linear interpolation. */
-export function percentile(xs: number[], p: number): number {
-  if (!xs.length) return 0;
-  const s = [...xs].sort((a, b) => a - b);
-  const idx = (Math.min(100, Math.max(0, p)) / 100) * (s.length - 1);
-  const lo = Math.floor(idx);
-  const hi = Math.ceil(idx);
-  return lo === hi ? s[lo] : s[lo] + (s[hi] - s[lo]) * (idx - lo);
 }
 
 /** "$123k" — display formatting for annual USD figures. */

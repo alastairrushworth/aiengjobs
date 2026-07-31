@@ -3,10 +3,6 @@ import type { ClusterId } from "@aiengjobs/shared/taxonomy";
 // Slice size moved to lib/landings.ts as PAGE_SIZE — location pages paginate
 // through the same route, so the constant can't live in the cluster module.
 
-/** URL segment for a cluster's salary page. Taxonomy ids may carry underscores
- *  ("core_ml"); URLs on this site are hyphenated throughout. */
-export const salarySlug = (id: ClusterId): string => id.replace(/_/g, "-");
-
 export interface ClusterPage {
   id: ClusterId;
   /** URL slug for the programmatic page, e.g. "rag-engineer-jobs" → /rag-engineer-jobs */

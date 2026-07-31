@@ -1,13 +1,18 @@
 ---
 import type { Job } from "@aiengjobs/shared";
-import {
-  formatSalary,
-  isNewJob,
-  postedAgo,
-  remoteLabel,
-  seniorityLabel,
-} from "../lib/format.ts";
+import { formatSalary, isNewJob, remoteLabel, seniorityLabel } from "../lib/format.ts";
 import { generatedAt, fxRates } from "../lib/data.ts";
+import CompanyLogo from "./CompanyLogo.astro";
+import { CARD_CLASS as C, CARD_LOGO_PX } from "../lib/jobCardShape.ts";
+
+/* The mark spans the title and company lines it sits beside, so its top and
+   bottom edges land on theirs. It used to be a sibling of the whole card body
+   and so ran a column past the badge row too, which left it floating against
+   dead space below the text. Bounded by the two lines it labels, the badge row
+   underneath still starts at the card's own left edge.
+
+   The markup below is mirrored by makeCard() in JobFilters.astro — see
+   lib/jobCardShape.ts. Change the nesting here and change it there. */
 
 interface Props {
   job: Job;
@@ -18,27 +23,32 @@ const { job, href } = Astro.props;
 const salary = formatSalary(job, fxRates);
 const remote = remoteLabel(job.remoteType);
 const sen = seniorityLabel(job.seniority);
-const posted = postedAgo(job.postedAt, generatedAt);
+// No "posted Xd ago" stamp on cards: nothing older than MAX_JOB_AGE_DAYS is
+// listed at all now, so the only freshness distinction worth drawing is
+// "just posted" — and the New badge already draws it. Showing both put "New"
+// and "Posted today" side by side on every card of a newest-first list.
 const isNew = isNewJob(job.postedAt, generatedAt);
 ---
 
 <li>
-  <a class="job-card" href={href}>
-    <div class="top">
-      <div>
-        <div class="title">{job.title}</div>
-        <div class="company">
-          {job.companyName}{job.locationRaw ? ` · ${job.locationRaw}` : ""}
+  <a class={C.link} href={href}>
+    <div class={C.top}>
+      <div class={C.head}>
+        <CompanyLogo name={job.companyName} slug={job.companySlug} size={CARD_LOGO_PX} />
+        <div class={C.headText}>
+          <div class={C.title}>{job.title}</div>
+          <div class={C.company}>
+            {job.companyName}{job.locationRaw ? ` · ${job.locationRaw}` : ""}
+          </div>
         </div>
       </div>
-      {salary && <div class="salary">{salary}</div>}
+      {salary && <div class={C.salary}>{salary}</div>}
     </div>
-    <div class="meta">
-      {isNew && <span class="badge new">New</span>}
-      {remote && <span class="badge">{remote}</span>}
-      {sen && <span class="badge">{sen}</span>}
-      {job.skills.slice(0, 4).map((s) => <span class="badge skill">{s}</span>)}
-      {posted && <span class="posted">Posted {posted}</span>}
+    <div class={C.meta}>
+      {isNew && <span class={C.badgeNew}>New</span>}
+      {remote && <span class={C.badge}>{remote}</span>}
+      {sen && <span class={C.badge}>{sen}</span>}
+      {job.skills.slice(0, 4).map((s) => <span class={C.badgeSkill}>{s}</span>)}
     </div>
   </a>
 </li>

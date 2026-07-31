@@ -1,24 +1,65 @@
 # ml/ — replacing the classification LLM call
 
-Working area for moving the in/out classification off the OpenAI API and onto
-the droplet. See [RUBRIC.md](RUBRIC.md) for the labelling definition and
+How the in/out classification moved off the OpenAI API and into the engine. See
+[RUBRIC.md](RUBRIC.md) for the labelling definition and
 [gold/gold.jsonl](gold/gold.jsonl) for the hand-labelled evaluation set.
+
+## Outcome
+
+**Shipped.** `train_encoder.py` fine-tunes ModernBERT-base on the 4,898 labels in
+`gold/labels.jsonl`; the result is quantised to int8 ONNX (144MB) and run
+in-process by `engine/src/pipeline/encoder.ts`. There is no API key.
+
+Held-out split — whole companies held out, so near-duplicate reposts cannot leak
+across it — at the 1024-token production window and the 0.70 operating point:
+
+| | Precision | Recall | Precision @13% base rate |
+|---|---|---|---|
+| GPT-5.4-nano (what it replaced) | 86.0% | 70.8% | 86.0% |
+| Encoder @0.70, PyTorch reference | 94.6% | 86.9% | 92.0% |
+| **Encoder @0.70, as shipped (Node int8 ONNX)** | **93.9%** | **84.7%** | **91.0%** |
+
+Better on both axes. Quote the shipped row: `onnxruntime-node` and
+`onnxruntime-python` implement int8 kernels differently, so the deployed path
+scores marginally below the PyTorch reference — 5 of 984 held-out decisions
+differ (mean probability delta 0.008, max 0.23). The int8 quantisation itself is
+near-lossless; this is a runtime difference, and it is why the numbers are
+measured end-to-end through Node rather than taken from `train_encoder.py`.
+
+The threshold was picked off the precision/recall curve rather than by
+maximising F1: the curve knees at 0.70, and pushing to 0.87 buys ~1pp of
+precision for 13 more missed roles out of 183.
+
+Two things the LLM did that the encoder does not:
+
+- It backfilled `country`, `city`, `remoteType` and `seniority` where the feed
+  was silent. Measured on 3,703 live IN jobs, dropping it costs **3.8%** of
+  country, **5.3%** of city and **26.2%** of seniority values. `remoteType` is
+  unaffected. This was accepted deliberately; `inferSeniority` reads only the
+  title, so a body-text parser is the obvious way to claw the 26% back.
+- It read salary. That is already covered by `parseSalaryFromDescription`, which
+  sits ahead of it in `pay()`'s precedence chain.
 
 ## Why this exists
 
-The nightly ingest makes at most one GPT-5.4-nano call per new-or-changed
-posting. That call returns classification, salary, location and seniority —
+The nightly ingest made at most one GPT-5.4-nano call per new-or-changed
+posting. That call returned classification, salary, location and seniority —
 but everything except the classification is either overridden by feed data or
 (in the case of skills) provably redundant, so the classification decision is
 the only part worth replacing with a local model.
 
-## Hardware constraint
+## Hardware constraint (historic)
 
-The droplet is **1 vCPU / 961MB RAM** (~635MB free), no GPU. That rules out a
-quantised 1B generative model: weights alone would not leave room to work, and
-single-vCPU decode would take tens of seconds per posting. It comfortably fits a
-small encoder (22–150M params) or a linear model, which is why everything here
-is built to run in-process in Node rather than behind a Python service.
+This was designed for a **1 vCPU / 961MB** droplet with no GPU, which is what
+ruled out a generative model and drove every sizing decision below. The refresh
+now runs on a GitHub Actions runner (4 vCPU / 16GB, free on public repos), so
+the memory ceiling no longer binds — but the model stays small because runner
+minutes are metered if the repo ever goes private.
+
+Measured footprint of the shipped model: **527MB peak RSS** at a 1024-token
+window, **1.8s per posting** single-threaded. A 3072-token window needs 1.6GB
+(the eager-attention mask is quadratic in sequence length) and would not have fit
+the droplet at all.
 
 ## The gold set
 
