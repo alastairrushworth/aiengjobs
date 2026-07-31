@@ -260,6 +260,12 @@ a { color: inherit; text-decoration: none; }
   height: var(--logo-size);
   flex: 0 0 var(--logo-size);
   border-radius: calc(var(--logo-size) * 0.2);
+  /* The plate below is light in every theme, so tell the image it is sitting in
+     a light context. Several of these SVGs carry their own
+     `@media (prefers-color-scheme: dark)` rule that flips the mark to white —
+     without this they inherit the page's dark scheme and render as a white mark
+     on a near-white plate, i.e. invisible (palantir, remotecom, graphcore). */
+  color-scheme: light;
   /* Logos are mostly dark marks on a transparent ground, so they need a light
      plate to stay legible here. Not pure white, though: at #fff a page of these
      is the highest-contrast thing on it and outshouts the titles they're meant
