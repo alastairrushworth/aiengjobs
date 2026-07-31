@@ -18,8 +18,8 @@ describe("diffSnapshots", () => {
     const next = snapshot("b.json", [{ slug: "acme-two" }, { slug: "acme-three" }]);
 
     const { added, removed } = diffSnapshots(prev, next);
-    expect(added).toEqual(["https://alastairrushworth.com/aiengjobs/jobs/acme-three/"]);
-    expect(removed).toEqual(["https://alastairrushworth.com/aiengjobs/jobs/acme-one/"]);
+    expect(added).toEqual(["https://frontierroles.com/jobs/acme-three/"]);
+    expect(removed).toEqual(["https://frontierroles.com/jobs/acme-one/"]);
   });
 
   it("treats a job that closed as removed, not merely absent", () => {
@@ -28,7 +28,7 @@ describe("diffSnapshots", () => {
 
     const { added, removed } = diffSnapshots(prev, next);
     expect(added).toEqual([]);
-    expect(removed).toEqual(["https://alastairrushworth.com/aiengjobs/jobs/acme-one/"]);
+    expect(removed).toEqual(["https://frontierroles.com/jobs/acme-one/"]);
   });
 
   it("reports nothing when the board is unchanged", () => {

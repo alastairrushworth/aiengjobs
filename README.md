@@ -8,7 +8,7 @@ See [`spec.md`](./spec.md) for the full product & technical spec.
 Two halves joined by a nightly data hand-off:
 
 - **`site/`** — an [Astro](https://astro.build) static site deployed to **GitHub Pages**
-  (`alastairrushworth.github.io/aiengjobs`). Pre-renders the job index, job detail pages,
+  at [frontierroles.com](https://frontierroles.com). Pre-renders the job index, job detail pages,
   and (later) programmatic SEO pages. Reads `site/src/data/snapshot.json` at build time.
 - **`engine/`** — a TypeScript ingestion engine that runs nightly on a **GitHub Actions**
   runner. Polls public ATS feeds (Greenhouse / Lever / Ashby), classifies + tags into a

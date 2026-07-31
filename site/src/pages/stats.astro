@@ -21,9 +21,9 @@ const pct = (n: number, d: number) => (d ? Math.round((n / d) * 100) : 0);
 // roles and then have to walk back to the listing and rebuild the filter by
 // hand. `skill` is an exact-match param (see JobFilters) rather than ?q= —
 // "?q=Go" would have matched Google and Gong and undercut the count beside it.
-// url("/") yields the base without its trailing slash ("/aiengjobs"), and the
-// slash-less form is the one GitHub Pages 301s — so build the canonical form
-// here rather than pointing every row on this page at a redirect.
+// Build the trailing-slash form GitHub Pages serves rather than pointing every
+// row on this page at a redirect. url("/") already returns "/" at the domain
+// apex; under a non-root base it drops the trailing slash, hence the check.
 const homePath = url("/").endsWith("/") ? url("/") : `${url("/")}/`;
 const jobsUrl = (params: Record<string, string>) =>
   `${homePath}?${new URLSearchParams(params)}`;
