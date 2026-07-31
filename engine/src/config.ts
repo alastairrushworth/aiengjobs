@@ -110,6 +110,14 @@ export const ENCODER_DIR =
   process.env.AIENGJOBS_ENCODER_DIR ??
   join(dirname(fileURLToPath(import.meta.url)), "..", "..", "ml", "model");
 
+// fp32, deliberately, despite int8 being a quarter the size. ONNX Runtime uses
+// VPMADDUBSW for int8 matmuls on x86-64 AVX2/AVX512 without VNNI, which
+// saturates: the same int8 graph that scores 0.9992 on an ARM Mac scored 0.6583
+// on a GitHub runner, collapsing every decision toward 0.5. reduce_range=True
+// mitigates it, but fp32 removes the failure mode rather than tuning it — and
+// the 961MB droplet that forced quantisation is gone. Runners have 16GB.
+export const ENCODER_FILE = process.env.AIENGJOBS_ENCODER_FILE ?? "model.onnx";
+
 // Measured on the labelled corpus: 3072 tokens covers 99.2% of adverts whole,
 // but 1024 scores identically on the held-out split (92.4% vs 91.9% F1) at a
 // quarter the attention memory. The gain from a longer window is not worth
@@ -117,7 +125,7 @@ export const ENCODER_DIR =
 export const ENCODER_WINDOW = Number(process.env.AIENGJOBS_ENCODER_WINDOW ?? 1024);
 
 // Chosen from the held-out precision/recall curve, which knees here. Measured
-// through the Node runtime at 0.70: 93.9% precision / 84.7% recall (91.0%
+// through the Node runtime at 0.70: 94.6% precision / 86.9% recall (92.0%
 // precision reweighted to the 13% production base rate). Pushing to 0.87 buys
 // ~1pp more precision for 13 more missed roles out of 183 — a bad exchange.
 // Raise it if the board should be stricter still.
