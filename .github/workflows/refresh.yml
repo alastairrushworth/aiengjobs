@@ -8,11 +8,6 @@ on:
   schedule:
     - cron: "30 3 * * *"
   workflow_dispatch:
-    inputs:
-      reclassify:
-        description: "Re-score the whole live backlog with the encoder"
-        type: boolean
-        default: false
 
 # The database is mutable state carried between runs. Two concurrent refreshes
 # would race on it and one would silently lose its work, so queue instead of
@@ -100,10 +95,11 @@ jobs:
             db.close();
           '
 
-      - name: Re-score backlog
-        if: inputs.reclassify
-        run: npm run -s reclassify -w @aiengjobs/engine
-
+      # Deliberately no backlog re-scoring step here. `ingest` skips postings
+      # whose content hash is unchanged, so the encoder only ever decides new or
+      # changed adverts and stored classifications are left alone. Re-scoring the
+      # whole board is `npm run reclassify -w @aiengjobs/engine`, run by hand
+      # against a database copy — not something a click on this workflow can do.
       - name: Refresh
         run: scripts/refresh.sh
         env:
