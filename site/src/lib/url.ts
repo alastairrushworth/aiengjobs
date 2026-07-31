@@ -1,4 +1,5 @@
-// Prefix an internal path with the configured base path (e.g. "/aiengjobs").
+// Prefix an internal path with the configured base path ("/" today, since the
+// site sits at its domain apex — kept for the day it doesn't).
 // Astro exposes the base as import.meta.env.BASE_URL (with a trailing slash).
 const BASE = import.meta.env.BASE_URL;
 

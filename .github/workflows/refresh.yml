@@ -48,7 +48,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ml/model
-          key: encoder-${{ hashFiles('ml/model/eval.json') }}
+          key: encoder-${{ hashFiles('ml/model/manifest.json') }}
 
       - name: Download encoder
         if: steps.encoder-cache.outputs.cache-hit != 'true'
@@ -56,7 +56,9 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           mkdir -p ml/model
-          gh release download model-latest --dir ml/model --clobber
+          for f in model.onnx tokenizer.json tokenizer_config.json config.json; do
+            gh release download model-latest --pattern "$f" --dir ml/model --clobber
+          done
           ls -la ml/model
 
       # Fail in seconds if the classifier is unusable, rather than after polling
