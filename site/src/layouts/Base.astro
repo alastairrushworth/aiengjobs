@@ -34,7 +34,7 @@ const {
   canonicalOverride,
 } = Astro.props;
 
-const fullTitle = noBrandSuffix ? title : `${title} — aiengjobs`;
+const fullTitle = noBrandSuffix ? title : `${title} — frontierroles.com`;
 
 // Canonical always uses the trailing-slash form GitHub Pages actually serves
 // (directory URLs 301 to it), so we never canonicalize to a redirect.
@@ -58,7 +58,7 @@ const ogImage = new URL(url("/og-default.png"), Astro.site).href;
     <link
       rel="alternate"
       type="application/rss+xml"
-      title={feedTitle ?? "aiengjobs — newest AI engineering jobs"}
+      title={feedTitle ?? "frontierroles.com — newest AI engineering jobs"}
       href={new URL(feed ?? url("/rss.xml"), Astro.site).href}
     />
     <link rel="icon" type="image/svg+xml" href={url("/favicon.svg")} />
@@ -68,7 +68,7 @@ const ogImage = new URL(url("/og-default.png"), Astro.site).href;
     <meta property="og:description" content={description} />
     <meta property="og:type" content="website" />
     <meta property="og:url" content={canonical} />
-    <meta property="og:site_name" content="aiengjobs" />
+    <meta property="og:site_name" content="frontierroles.com" />
     <meta property="og:image" content={ogImage} />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content={fullTitle} />
@@ -89,7 +89,7 @@ const ogImage = new URL(url("/og-default.png"), Astro.site).href;
     <a class="skip-link" href="#main">Skip to content</a>
     <header class="site-header">
       <div class="container">
-        <a class="brand" href={url("/")}>aieng<span class="dot">.</span>jobs</a>
+        <a class="brand" href={url("/")}>frontierroles<span class="dot">.</span>com</a>
         <nav class="site-nav" aria-label="Site">
           <a href={url("/")}>Jobs</a>
           <a href={url("/stats/")}>Stats</a>
