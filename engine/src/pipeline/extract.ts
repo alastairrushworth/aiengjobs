@@ -111,7 +111,14 @@ const SYSTEM =
   "not only from an explicit country name; use null only when no location signal exists at all. " +
   "Use null for any other field that is absent or not clearly inferable.";
 
-const MAX_CHARS = 6000; // enough to reach most comp/location sections; cheap on nano
+// The classification decision turns on the responsibilities and requirements
+// sections, which sit in the back half of a posting — the old 6000-char bound
+// truncated 44.5% of ads and cut exactly there. It was sized when this call's
+// job was pulling comp/location out of the top of the ad; those now come from
+// the feed. 30000 covers every real posting (p99 is 11,773 chars) and exists
+// only to bound a pathological payload: the longest ad in the corpus is 270k
+// chars, almost certainly concatenated listings.
+const MAX_CHARS = 30_000;
 
 /**
  * Single GPT-5.4-nano structured-output call: classification + salary +
