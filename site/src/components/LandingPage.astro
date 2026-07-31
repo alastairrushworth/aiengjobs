@@ -10,7 +10,7 @@ import { url } from "../lib/url.ts";
 import { jsonLdScript } from "../lib/jsonld.ts";
 import { computeLandingStats } from "../lib/landingStats.ts";
 import { fxRates } from "../lib/data.ts";
-import { CLUSTER_PAGES, salarySlug } from "../lib/clusters.ts";
+import { CLUSTER_PAGES } from "../lib/clusters.ts";
 import { LOCATION_LANDINGS } from "../lib/landings.ts";
 
 interface Props {
@@ -62,15 +62,6 @@ const otherClusters = CLUSTER_PAGES.filter((p) => p.slug !== landing.slug);
 const otherLocations = LOCATION_LANDINGS.filter((l) => l.slug !== landing.slug).slice(0, 8);
 const stackLinks = otherClusters.map((p) => ({ href: url(`/${p.slug}/`), text: p.label }));
 const locationLinks = otherLocations.map((l) => ({ href: url(`/${l.slug}/`), text: l.label }));
-if (landing.kind === "cluster") {
-  const cluster = CLUSTER_PAGES.find((p) => p.slug === landing.slug);
-  if (cluster) {
-    stackLinks.push({
-      href: url(`/salaries/${salarySlug(cluster.id)}/`),
-      text: `${cluster.label} salaries →`,
-    });
-  }
-}
 
 // Newer/Older alone costs 21 clicks to reach the last page of a 22-page
 // landing. A windowed run of numbers puts any page one or two hops away while

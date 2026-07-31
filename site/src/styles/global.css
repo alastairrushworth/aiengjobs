@@ -340,32 +340,6 @@ a { color: inherit; text-decoration: none; }
 .back { color: var(--muted); }
 .back:hover { color: var(--accent-text); }
 
-/* Salary distribution cards */
-.salary-stats {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 12px;
-  margin: 22px 0 8px;
-}
-.salary-stats > div {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 16px;
-  text-align: center;
-}
-.salary-stats .num {
-  display: block;
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: var(--accent-2);
-  letter-spacing: -0.02em;
-}
-.salary-stats .lbl { color: var(--muted); font-size: 0.8rem; }
-@media (max-width: 560px) {
-  .salary-stats { grid-template-columns: repeat(2, 1fr); }
-}
-
 /* Narrow screens: stack salary under the title so long titles don't cramp. */
 @media (max-width: 480px) {
   .job-card .top { flex-direction: column; gap: 4px; align-items: flex-start; }

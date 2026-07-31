@@ -41,7 +41,7 @@ const SUBANNUAL_CEILING_USD = 750_000;
  * Currency → USD multiplier, preferring the snapshot's live rates and falling
  * back to the static table. Returns null when we have no rate for the currency:
  * silently assuming 1:1 inflates a CZK/BRL/JPY range by 5–150×, which then tops
- * the "highest salary" sort and drags the salary-page percentiles up with it.
+ * the "highest salary" sort and drags the stats-page medians up with it.
  * An unconvertible salary is treated as unpriced, never as a huge one.
  */
 function fxToUsd(
@@ -116,16 +116,6 @@ export function median(xs: number[]): number {
   const s = [...xs].sort((a, b) => a - b);
   const m = Math.floor(s.length / 2);
   return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
-}
-
-/** p-th percentile (0–100) by linear interpolation. */
-export function percentile(xs: number[], p: number): number {
-  if (!xs.length) return 0;
-  const s = [...xs].sort((a, b) => a - b);
-  const idx = (Math.min(100, Math.max(0, p)) / 100) * (s.length - 1);
-  const lo = Math.floor(idx);
-  const hi = Math.ceil(idx);
-  return lo === hi ? s[lo] : s[lo] + (s[hi] - s[lo]) * (idx - lo);
 }
 
 /** "$123k" — display formatting for annual USD figures. */

@@ -3,7 +3,6 @@ import {
   formatSalary,
   isNewJob,
   median,
-  percentile,
   postedAgo,
   safeUrl,
   salaryMidpointUsd,
@@ -128,18 +127,11 @@ describe("salaryRank", () => {
   });
 });
 
-describe("median / percentile", () => {
+describe("median", () => {
   it("computes median for odd and even lengths", () => {
     expect(median([3, 1, 2])).toBe(2);
     expect(median([4, 1, 2, 3])).toBe(2.5);
     expect(median([])).toBe(0);
-  });
-
-  it("computes interpolated percentiles", () => {
-    const xs = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100];
-    expect(percentile(xs, 0)).toBe(10);
-    expect(percentile(xs, 100)).toBe(100);
-    expect(percentile(xs, 50)).toBe(median(xs));
   });
 });
 
