@@ -4,10 +4,12 @@ import type { Job } from "@aiengjobs/shared";
 import type { Landing } from "../lib/landings.ts";
 import Base from "../layouts/Base.astro";
 import JobCard from "./JobCard.astro";
+import JobFilters from "./JobFilters.astro";
 import LandingStats from "./LandingStats.astro";
 import BrowseNav from "./BrowseNav.astro";
 import { url } from "../lib/url.ts";
 import { jsonLdScript } from "../lib/jsonld.ts";
+import { buildFilterOptions } from "../lib/filterOptions.ts";
 import { computeLandingStats } from "../lib/landingStats.ts";
 import { fxRates } from "../lib/data.ts";
 import { CLUSTER_PAGES } from "../lib/clusters.ts";
@@ -85,6 +87,16 @@ function pageWindow(current: number, last: number): (number | "gap")[] {
 }
 const pageNumbers = paged ? pageWindow(page.currentPage, page.lastPage) : [];
 
+// Refining a landing is a page-1 affordance. Pages 2+ are slices of one
+// ordering, and a filter there would have to either silently jump you back to
+// the first page of a different list or paginate two ways at once; page 1 is
+// also where search traffic lands and where the stats block already sits.
+//
+// Filter options and the payload are scoped to this landing, so "Senior (240)"
+// counts senior roles in *this* list — a filter bar carrying whole-board counts
+// would be a worse answer than no filter bar.
+const filterOptions = page.currentPage === 1 ? buildFilterOptions(landing.jobs) : null;
+
 const feedHref = url(`/${landing.slug}/rss.xml`);
 const description = `${landing.intro} ${page.total} open role${page.total === 1 ? "" : "s"} right now.${
   page.currentPage > 1 ? ` Page ${page.currentPage} of ${page.lastPage}.` : ""
@@ -95,22 +107,49 @@ const description = `${landing.intro} ${page.total} open role${page.total === 1 
   <section class="hero" style="padding-bottom:8px">
     <h1>{landing.h1}</h1>
     <p>{landing.intro}</p>
+    {/* Page 1's range is stated by the filter bar's results line, which also
+        keeps saying something true once you narrow it. Later pages have no
+        filter bar, so the range stays here. */}
     <p class="count">
       {page.total} open role{page.total === 1 ? "" : "s"}
-      {paged && ` · showing ${page.start + 1}–${page.end + 1}`}
+      {paged && page.currentPage > 1 && ` · showing ${page.start + 1}–${page.end + 1}`}
     </p>
   </section>
 
   {stats && <LandingStats stats={stats} where={landing.where} />}
 
-  <p class="crumbs">
-    <a class="back" href={url("/")}>← All jobs</a>
-    <a class="feed" href={feedHref}>RSS feed</a>
-  </p>
-
-  <ul class="jobs">
-    {page.data.map((job) => <JobCard job={job} href={url(`/jobs/${job.slug}/`)} />)}
-  </ul>
+  {filterOptions ? (
+    <JobFilters
+      src={url(`/${landing.slug}/jobs-data.json`)}
+      jobBase={url("/jobs/")}
+      logoBase={url("/logos/")}
+      total={landing.jobs.length}
+      initial={page.data.length}
+      noun="roles"
+      collapsible
+      quiet
+      hasPager={paged}
+      {...filterOptions}
+    >
+      <p class="crumbs" slot="crumbs">
+        <a class="back" href={url("/")}>← All jobs</a>
+        <a class="feed" href={feedHref}>RSS feed</a>
+      </p>
+      <ul class="jobs" id="jobs">
+        {page.data.map((job) => <JobCard job={job} href={url(`/jobs/${job.slug}/`)} />)}
+      </ul>
+    </JobFilters>
+  ) : (
+    <>
+      <p class="crumbs">
+        <a class="back" href={url("/")}>← All jobs</a>
+        <a class="feed" href={feedHref}>RSS feed</a>
+      </p>
+      <ul class="jobs">
+        {page.data.map((job) => <JobCard job={job} href={url(`/jobs/${job.slug}/`)} />)}
+      </ul>
+    </>
+  )}
   {page.data.length === 0 && (
     <p class="empty">No open roles here right now.</p>
   )}
