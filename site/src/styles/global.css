@@ -215,6 +215,62 @@ a { color: inherit; text-decoration: none; }
   }
 }
 .filters .toggles { display: flex; flex-wrap: wrap; gap: 10px; }
+
+/* Work location, freshness and pay. Three questions a select answers worse:
+   their answers fit on one line, so a dropdown only adds a click to see them,
+   and the whole point of the work-location control is that it's the first thing
+   most people want and should be one tap away. */
+.filters .quick { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; }
+.seg { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+/* The button labels already say what they are ("Remote", "Past week"), so the
+   group captions are a desktop luxury — they aid scanning where there's room
+   and cost a row of a 390px fold where there isn't. The accessible name comes
+   from the group's aria-label either way, so nothing is lost below 701px. */
+.seg-label {
+  display: none;
+  color: var(--muted);
+  font-size: 0.74rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+@media (min-width: 701px) {
+  .seg-label { display: inline; }
+}
+.seg-btn {
+  font: inherit;
+  font-size: 0.85rem;
+  color: var(--muted);
+  background: var(--surface-2);
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  padding: 8px 14px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.seg-btn:hover { color: var(--text); border-color: var(--accent); }
+.seg-btn[aria-pressed="true"] {
+  color: var(--text);
+  border-color: var(--accent);
+  /* Indigo marks what you can act on, and a pressed filter is the clearest
+     case of it — a tint rather than a fill, so a row of these doesn't outshout
+     the listing they're narrowing. */
+  background: rgba(124, 92, 255, 0.22);
+}
+.seg-btn:disabled { opacity: 0.4; cursor: default; }
+.seg-btn:disabled:hover { color: var(--muted); border-color: var(--border-strong); }
+.seg-n { color: var(--muted); font-variant-numeric: tabular-nums; }
+.seg-btn[aria-pressed="true"] .seg-n { color: inherit; opacity: 0.8; }
+/* Taller for a thumb (WCAG 2.5.5 asks 44px) and narrower so the rows still
+   fit. This block is the largest thing above the listing on a phone, and at
+   the desktop padding it wrapped into four rows — 200px of an 844px fold, for
+   six controls. Trimming the horizontal padding and the gaps puts the three
+   work-location chips on one line and the freshness pair plus the pay toggle
+   on a second, which is 96px for the same six controls. */
+@media (max-width: 700px) {
+  .filters .quick { gap: 8px 10px; }
+  .seg { gap: 5px; }
+  .seg-btn { padding: 11px 10px; font-size: 0.82rem; }
+}
 /* min-width:0 or the flex basis is a lie: a flex item's default min-width is
    min-content, and a select's min-content is its longest option ("Hong Kong SAR
    China (3)"). That measured wider than 160px, so at 390px the four dropped to
@@ -327,14 +383,31 @@ a { color: inherit; text-decoration: none; }
    titles and badges start at the card's own left edge. */
 .job-card {
   display: block;
+  position: relative;
   padding: 16px 18px;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   transition: border-color 0.15s ease, transform 0.05s ease;
 }
+/* :focus-within, not :focus-visible — the card is the <li> now and never takes
+   focus itself; what takes focus is the link inside it, or one of the skill
+   links beside it. */
 .job-card:hover,
-.job-card:focus-visible { border-color: var(--accent); }
+.job-card:focus-within { border-color: var(--accent); }
+/* The link owns the whole card through this overlay rather than by wrapping it.
+   Wrapping is what it used to do, and it made the four skill badges on every
+   card unlinkable: an <a> inside an <a> is invalid and unreachable by keyboard.
+   The overlay keeps the big click target and lets the badges be real links,
+   which is the difference between a card that shows you four skills and one
+   that lets you filter by them. */
+.job-card .card-link { display: block; }
+.job-card .card-link::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+}
 .job-card .top { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; }
 /* The mark sits beside the title/company pair and is sized to span exactly those
    two lines, so its edges land on theirs. centre rather than stretch: the mark
@@ -370,11 +443,42 @@ a { color: inherit; text-decoration: none; }
    card against one seniority badge — the quieter tone keeps them from being the
    loudest thing in the row. (These two used to be the other way round.) */
 .badge.skill { color: var(--muted); }
+/* On a card these are links, so they have to sit above the link overlay that
+   claims the rest of it — and they have to look pressable, or four of the most
+   useful filters on the page go on reading as decoration. Kept to a border
+   change on hover: a row of four buttons styled like buttons would outweigh the
+   job title above them. */
+a.badge.skill {
+  position: relative;
+  z-index: 1;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+a.badge.skill:hover,
+a.badge.skill:focus-visible { color: var(--text); border-color: var(--accent); }
 /* The posted stamp replaced a green "New" flag. It stays in the quiet tone: the
    date now carries the recency itself ("today" vs "6d ago"), so it no longer
    needs a colour to say it, and on a newest-first list every card would have
    been wearing the loud one. */
 .badge.posted { color: var(--muted); }
+
+/* One per active filter, above the listing — each its own way out, where
+   "Clear filters" beside them is all-or-nothing. Global rather than scoped
+   inside JobFilters.astro because the script builds these at runtime and a
+   scoped rule can't reach an element Astro never stamped at build time. */
+.chip {
+  font: inherit;
+  font-size: 0.8rem;
+  color: var(--text);
+  background: var(--surface-2);
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  padding: 4px 10px;
+  cursor: pointer;
+}
+.chip::after { content: " ×"; color: var(--muted); }
+.chip:hover,
+.chip:focus-visible { border-color: var(--accent-text); }
+.chip:hover::after { color: var(--text); }
 
 .show-more-wrap { text-align: center; margin: 18px 0; }
 .btn-secondary {

@@ -25,7 +25,13 @@
 export const CARD_LOGO_PX = 44;
 
 export const CARD_CLASS = {
-  link: "job-card",
+  /** The <li>. Carries the card's border and padding, and is the positioning
+   *  context for the link's stretched hit area. */
+  card: "job-card",
+  /** The <a> to the job page. Covers the whole card through a ::after overlay,
+   *  which is what lets the skill badges beside it be real links rather than
+   *  spans nested inside an anchor. */
+  link: "card-link",
   top: "top",
   head: "head",
   headText: "head-text",

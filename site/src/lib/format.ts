@@ -74,12 +74,6 @@ export function formatSalary(
   return `${sym}${range}${per}`;
 }
 
-// Salary sort key: highest annual pay first; unpriced, unconvertible and
-// implausible roles sink to the bottom (0).
-export function salaryRank(job: SalaryFields, fxRates?: Record<string, number>): number {
-  return salaryMidpointUsd(job, fxRates) ?? 0;
-}
-
 /**
  * Annualized USD *midpoint* of a pay range (mean of min & max, or the lone bound
  * when only one is given). Returns null when there's no usable salary, no FX
