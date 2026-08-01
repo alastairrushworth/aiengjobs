@@ -29,9 +29,25 @@ const {
 // landing with a single work type or one city loses those without a special
 // case anywhere.
 const shows = (id: string, options: number) => !hide.includes(id) && options > 1;
+
+// Nothing to disclose on a landing that has already answered all three (one
+// seniority, its own city, its own country) — the disclosure would open onto an
+// empty panel.
+const hasSelects =
+  shows("level", seniorities.length) ||
+  shows("country", countries.length) ||
+  shows("city", cities.length);
 ---
 
 <div class="filters">
+  {/* The one control that stays whatever else moves. It's the fastest way to
+      narrow 2,000 roles and the only one that can say a thing the selects and
+      the pills have no option for, so it sits above both. */}
+  <div>
+    <label for="q">Search</label>
+    <input type="search" id="q" placeholder="Title, company, skill, city…" />
+  </div>
+
   {/* Three things a select would answer worse. Work location is the first
       question most people ask and has three answers — as a dropdown it's an
       extra click to see options that fit on one line. Pay and freshness are
@@ -77,19 +93,15 @@ const shows = (id: string, options: number) => !hide.includes(id) && options > 1
     )}
   </div>
 
-  {/* Everything that needs typing or a dropdown, closed by default. The pills
-      above answer in one tap and cost one row; these four cost four rows, and
-      they were spending them on top of the listing they exist to narrow. The
-      script opens this on arrival when a filter came in on the URL — a filter
-      you can't see is a page that looks like it's showing everything. */}
-  <details class="more" id="filter-disclosure">
-    <summary>Search &amp; more filters</summary>
-    <div class="more-body">
-      <div>
-        <label for="q">Search</label>
-        <input type="search" id="q" placeholder="Title, company, skill, city…" />
-      </div>
-
+  {/* The dropdowns, closed by default. The search box and the pills above are
+      one row each and answer the questions most people arrive with; these three
+      cost a row apiece and were spending them on top of the listing they exist
+      to narrow. The script opens this on arrival when a filter came in on the
+      URL — a filter you can't see is a page that looks like it's showing
+      everything. */}
+  {hasSelects && (
+    <details class="more" id="filter-disclosure">
+      <summary>More filters</summary>
       <div class="toggles">
         {shows("level", seniorities.length) && (
           <div>
@@ -131,6 +143,6 @@ const shows = (id: string, options: number) => !hide.includes(id) && options > 1
           </div>
         )}
       </div>
-    </div>
-  </details>
+    </details>
+  )}
 </div>
