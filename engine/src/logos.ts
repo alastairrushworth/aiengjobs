@@ -83,6 +83,13 @@ const IMAGE_HEADERS = {
 // — past this it isn't a favicon, it's someone's hero image.
 const MAX_FETCH_BYTES = 4_000_000;
 
+const PNG_SIGNATURE = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+// An upper bound on plausibility, not on taste: real masters do reach a few
+// thousand pixels (one arrives at 4110 square). Past this, the number came from
+// a misread header rather than an image, and normalize() would hand sips a file
+// it can't make sense of.
+const MAX_PX = 8192;
+
 interface Probe {
   ext: string;
   width: number;
@@ -92,7 +99,13 @@ interface Probe {
 /** Identify format and dimensions from the header bytes alone. */
 export function probeImage(buf: Buffer): Probe | null {
   // PNG: 8-byte signature, then an IHDR chunk carrying width/height as u32be.
-  if (buf.length > 24 && buf.readUInt32BE(0) === 0x89504e47) {
+  // All eight bytes get checked, not just the \x89PNG magic. The \r\n\x1a\n tail
+  // exists precisely to catch mangled transfers, and comcast.com serves a
+  // favicon with the \r stripped: matching on the first four bytes accepted it,
+  // then read the dimensions one byte off and believed the icon was 46080px
+  // square. Everything downstream — the size gate, the aspect gate, sips — was
+  // working from that number, and a corrupt file landed in site/public/logos.
+  if (buf.length > 24 && buf.subarray(0, 8).equals(PNG_SIGNATURE)) {
     return { ext: "png", width: buf.readUInt32BE(16), height: buf.readUInt32BE(20) };
   }
   // GIF87a / GIF89a: dimensions are u16le at offset 6.
@@ -181,22 +194,42 @@ function attr(tag: string, name: string): string | undefined {
   return new RegExp(`\\b${name}\\s*=\\s*([^\\s"'>]+)`, "i").exec(tag)?.[1];
 }
 
+/** Where a page's web app manifest might live: declared first, then the usual names. */
+export function manifestUrls(html: string, base: URL): string[] {
+  const hrefs: string[] = [];
+  for (const tag of html.match(/<link\b[^>]*>/gi) ?? []) {
+    if (!(attr(tag, "rel") ?? "").toLowerCase().includes("manifest")) continue;
+    const href = attr(tag, "href");
+    if (href) hrefs.push(href);
+  }
+  hrefs.push("/site.webmanifest", "/manifest.json");
+  const seen = new Set<string>();
+  const urls: string[] = [];
+  for (const href of hrefs) {
+    try {
+      const abs = new URL(href, base).href;
+      if (!/^https?:/.test(abs) || seen.has(abs)) continue;
+      seen.add(abs);
+      urls.push(abs);
+    } catch {
+      /* malformed href — skip it */
+    }
+  }
+  return urls.slice(0, 3);
+}
+
 /**
  * Icons listed in the web app manifest, largest first.
  *
  * A site that declares only a 32px favicon in its markup often still ships
  * 192/512px icons here for Android home screens — fundingcircle.com's only
- * usable mark is its manifest's 512px PNG. Worth one extra request.
+ * usable mark is its manifest's 512px PNG. Worth the extra request, but only
+ * once everything the page declares directly has already failed, which is why
+ * this is a separate step from candidates() rather than folded into it.
  */
-async function manifestIcons(hrefs: string[], base: URL): Promise<string[]> {
+async function manifestIcons(urls: string[]): Promise<string[]> {
   const out: { src: string; px: number }[] = [];
-  for (const href of hrefs.slice(0, 3)) {
-    let url: string;
-    try {
-      url = new URL(href, base).href;
-    } catch {
-      continue;
-    }
+  for (const url of urls) {
     const res = await fetchRetry(
       url,
       { redirect: "follow", headers: { ...IMAGE_HEADERS, Accept: "application/manifest+json,application/json,*/*" } },
@@ -231,16 +264,11 @@ async function manifestIcons(hrefs: string[], base: URL): Promise<string[]> {
 }
 
 /** Icon URLs declared by the page, best first, plus the conventional fallbacks. */
-export async function candidates(html: string, base: URL): Promise<string[]> {
+export function candidates(html: string, base: URL): string[] {
   const out: { href: string; score: number }[] = [];
-  const manifestHrefs: string[] = [];
   const linkRe = /<link\b[^>]*>/gi;
   for (const tag of html.match(linkRe) ?? []) {
     const rel = attr(tag, "rel")?.toLowerCase() ?? "";
-    if (rel.includes("manifest")) {
-      const href = attr(tag, "href");
-      if (href) manifestHrefs.push(href);
-    }
     if (!/\bicon\b/.test(rel)) continue;
     const href = attr(tag, "href");
     if (!href) continue;
@@ -270,10 +298,11 @@ export async function candidates(html: string, base: URL): Promise<string[]> {
     "/apple-icon-180x180.png",
     "/android-chrome-192x192.png",
     "/android-chrome-512x512.png",
-    // The Windows tile. Named for 150px but routinely larger in practice, and
-    // always square by spec — cmegroup.com's is a 270px PNG, and it's the only
-    // usable mark on the site.
-    "/mstile-150x150.png",
+    // Deliberately not /mstile-150x150.png. It looks tempting — square by spec,
+    // routinely larger than its name — but a Windows tile is drawn as a white
+    // silhouette meant to sit on the accent colour from browserconfig.xml, so on
+    // our light plate it renders as an empty box. cmegroup.com's is 270px of
+    // pure white. Blank is worse than the monogram it would displace.
     "/favicon.png",
     "/favicon.ico",
   ];
@@ -304,16 +333,9 @@ export async function candidates(html: string, base: URL): Promise<string[]> {
     }
   }
 
-  // Only worth a request once the page's own icons have failed us, which is
-  // also the only case where anything below `declared` gets reached at all.
-  const fromManifest = await manifestIcons(
-    [...manifestHrefs, "/site.webmanifest", "/manifest.json"],
-    base,
-  );
-
   const seen = new Set<string>();
   const urls: string[] = [];
-  for (const href of [...declared, ...fromManifest, ...guesses, ...siblings]) {
+  for (const href of [...declared, ...guesses, ...siblings]) {
     try {
       // A data: URI is already the image — sourcegraph.com inlines its 128px
       // PNG this way and declares nothing else. Passed through verbatim for
@@ -378,6 +400,8 @@ async function tryFetchImage(url: string): Promise<{ buf: Buffer; probe: Probe }
   // the viewBox threw away perfectly good marks (autodesk.com declares a 32x32
   // viewBox and nothing else). The aspect check below still applies: those are
   // proportions, and a wide wordmark stays wrong at every size.
+  if (!(probe.width > 0) || !(probe.height > 0)) return null;
+  if (Math.max(probe.width, probe.height) > MAX_PX) return null;
   if (probe.ext !== "svg" && Math.min(probe.width, probe.height) < MIN_PX) return null;
   if (Math.max(probe.width, probe.height) / Math.min(probe.width, probe.height) > MAX_ASPECT) {
     return null; // a wordmark, not a square mark
@@ -508,15 +532,15 @@ export async function fetchLogos(opts: { force?: boolean } = {}): Promise<void> 
       /* homepage unreachable — the conventional paths may still work */
     }
 
-    for (const url of await candidates(html, base)) {
+    const store = async (url: string): Promise<LogoResult | null> => {
       const raw = await tryFetchImage(url);
-      if (!raw) continue;
+      if (!raw) return null;
       const got = { ...raw, ...normalize(raw.buf, raw.probe) };
       // The storage limit lands here, not on the download: normalize() has now
       // had its chance to shrink an oversized source. Anything still over it
       // couldn't be reduced — no image tool on this host, or already minimal —
       // so try the next candidate rather than serve a quarter-megabyte favicon.
-      if (got.buf.length > MAX_BYTES) continue;
+      if (got.buf.length > MAX_BYTES) return null;
       // Replace any previous extension for this slug so we never leave two.
       const prev = existing.get(slug);
       if (prev && prev !== `${slug}.${got.probe.ext}`) {
@@ -531,6 +555,17 @@ export async function fetchLogos(opts: { force?: boolean } = {}): Promise<void> 
         width: got.probe.width,
         height: got.probe.height,
       };
+    };
+
+    for (const url of candidates(html, base)) {
+      const done = await store(url);
+      if (done) return done;
+    }
+    // Last resort, and one extra request only for a site that has already given
+    // us nothing usable: the icons a site ships for Android home screens.
+    for (const url of await manifestIcons(manifestUrls(html, base))) {
+      const done = await store(url);
+      if (done) return done;
     }
     return { slug, status: "failed", detail: `no usable icon at ${company.domain}` };
   });
