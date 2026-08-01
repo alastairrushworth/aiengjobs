@@ -119,16 +119,35 @@ no deploy.
 ## Layout
 
 ```
-src/board.ts   data access + caching   — no MCP types, no Node built-ins
-src/tools.ts   what the tools do       — plain functions over a Board
-src/stdio.ts   the protocol layer      — argument validation and serialisation
+src/board.ts    data access + caching  — no MCP types, no Node built-ins
+src/tools.ts    what the tools do      — plain functions over a Board
+src/render.ts   results as markdown    — see below
+src/server.ts   the five tools         — schemas and result shaping
+src/stdio.ts    local transport
+src/worker.ts   remote transport
 ```
 
-`board.ts` and `tools.ts` avoid Node-specific APIs on purpose: standing the same
-tools up over Streamable HTTP on a Worker is a second file the size of `stdio.ts`,
-not a rewrite.
+`board.ts`, `tools.ts` and `render.ts` avoid Node-specific APIs on purpose, which
+is why the same code runs unchanged on a Worker.
 
-Tests are at `tests/mcpTools.test.ts` in the repo root, run by `npm test`.
+### Why results are markdown
+
+Tools answer with markdown in `content` and data in `structuredContent`.
+
+The markdown is not cosmetic. When a role arrives as a JSON object of fifteen
+equal-looking keys, `applyUrl` reads as plumbing, and a model summarising twenty
+of those into prose keeps the title, company and pay and drops the link — which
+was exactly the observed behaviour. Rendering the title *as* the link means the
+URL can't be dropped without dropping the role.
+
+No instruction is embedded in the rendered output. Tool results are the same
+channel employer-authored job descriptions arrive on, and a model that obeys
+"always show the apply link" from that channel is a model that obeys worse things
+from it. Instructions live in the tool descriptions, which are ours and can't be
+spoofed.
+
+Tests are at `tests/mcpTools.test.ts` and `tests/mcpRender.test.ts`, run by
+`npm test`.
 
 ## Development
 
