@@ -8,13 +8,42 @@
  * other way round. See ml/TRAINING_INFERENCE_PARITY.md.
  */
 import { describe, expect, it } from "vitest";
-import { readdirSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { ENCODER_WINDOW } from "../engine/src/config.ts";
 import { serialiseAdvert } from "../engine/src/pipeline/encoder.ts";
 
 const TRAIN_SCRIPT = "ml/train_encoder.py";
 const ADS_DIR = "ml/ads";
+const FIXTURE_DIR = "tests/fixtures";
+
+const HEADER =
+  /^ID: (.*)\nTITLE: (.*)\nCOMPANY: (.*)\nLOCATION: (.*)\n\nFULL JOB ADVERT \(verbatim, untruncated\):\n([\s\S]*)$/;
+
+/**
+ * Re-serialise each file from the fields its own header carries and demand the
+ * bytes come back identical. The regex is an independent restatement of the
+ * layout, so a change to serialiseAdvert alone always fails here.
+ */
+function roundTrip(dir: string, files: string[]): string[] {
+  const mismatched: string[] = [];
+  for (const f of files) {
+    const want = readFileSync(join(dir, f), "utf8");
+    const m = want.match(HEADER);
+    if (!m) {
+      mismatched.push(`${f}: does not match the expected header layout`);
+      continue;
+    }
+    const got = serialiseAdvert(m[1]!, m[2]!, m[3]!, m[4]!, m[5]!);
+    if (got !== want) mismatched.push(`${f}: serialiseAdvert output differs`);
+  }
+  return mismatched;
+}
+
+const DRIFT =
+  `serialiseAdvert no longer reproduces the training corpus. The model was ` +
+  `fitted on these exact strings; changing the layout scores every advert ` +
+  `off-distribution.`;
 
 describe("token window", () => {
   it("matches MAX_TOKENS in the training script", () => {
@@ -33,10 +62,26 @@ describe("token window", () => {
 });
 
 describe("advert serialisation", () => {
-  // The corpus is the contract: these are the exact byte sequences the weights
-  // were fitted on. Round-tripping real files catches header drift that a
-  // hand-written fixture would not, because the fixture would be edited to match.
-  const files = readdirSync(ADS_DIR)
+  // ml/ads is 38MB of verbatim third-party adverts and is deliberately not in
+  // the repo (see .gitignore), so CI has no corpus to round-trip. This file is
+  // one real corpus entry with its body clipped — the same bytes the template
+  // produced, header fields and all — so the layout guard still runs there.
+  it("reproduces a committed corpus sample byte for byte", () => {
+    const mismatched = roundTrip(FIXTURE_DIR, ["serialised-advert.txt"]);
+    expect(mismatched, `${DRIFT}\n${mismatched.join("\n")}`).toEqual([]);
+  });
+});
+
+// The corpus is the contract: these are the exact byte sequences the weights
+// were fitted on. Round-tripping thousands of real files catches drift the
+// single sample above cannot — odd characters, unusual field values — but it
+// can only run where the corpus lives, which is a developer machine.
+const corpus = existsSync(ADS_DIR);
+
+describe.skipIf(!corpus)("advert serialisation (full corpus)", () => {
+  // Guarded: vitest still evaluates the body of a skipped suite, so this must
+  // not touch the filesystem when the corpus is absent.
+  const files = (corpus ? readdirSync(ADS_DIR) : [])
     .filter((f) => f.endsWith(".txt"))
     .sort()
     .filter((_, i) => i % 97 === 0); // ~50 spread across the corpus
@@ -46,24 +91,7 @@ describe("advert serialisation", () => {
   });
 
   it("reproduces the training corpus byte for byte", () => {
-    const header =
-      /^ID: (.*)\nTITLE: (.*)\nCOMPANY: (.*)\nLOCATION: (.*)\n\nFULL JOB ADVERT \(verbatim, untruncated\):\n([\s\S]*)$/;
-    const mismatched: string[] = [];
-    for (const f of files) {
-      const want = readFileSync(join(ADS_DIR, f), "utf8");
-      const m = want.match(header);
-      if (!m) {
-        mismatched.push(`${f}: does not match the expected header layout`);
-        continue;
-      }
-      const got = serialiseAdvert(m[1]!, m[2]!, m[3]!, m[4]!, m[5]!);
-      if (got !== want) mismatched.push(`${f}: serialiseAdvert output differs`);
-    }
-    expect(
-      mismatched,
-      `serialiseAdvert no longer reproduces the training corpus. The model was ` +
-        `fitted on these exact strings; changing the layout scores every advert ` +
-        `off-distribution.\n${mismatched.slice(0, 5).join("\n")}`,
-    ).toEqual([]);
+    const mismatched = roundTrip(ADS_DIR, files);
+    expect(mismatched, `${DRIFT}\n${mismatched.slice(0, 5).join("\n")}`).toEqual([]);
   });
 });
