@@ -668,10 +668,7 @@ const showAllHidden = hasPager || total <= initial;
     showAll = false;
     syncToControls();
     apply();
-    // Only when the box is actually on screen: the search input lives inside a
-    // disclosure that starts closed, and focusing a control in a closed
-    // <details> either does nothing or drags the page somewhere unasked.
-    if (!disclosure || disclosure.open) q.focus();
+    q.focus();
   }
   clearBtn.addEventListener("click", clearFilters);
   emptyClearBtn.addEventListener("click", clearFilters);
@@ -692,8 +689,10 @@ const showAllHidden = hasPager || total <= initial;
   syncToControls();
   if (isFiltering(state) || showAll) {
     // A filter that arrived in the URL has to be visible, or the page looks
-    // like it's showing everything and quietly isn't.
-    if (disclosure) disclosure.open = true;
+    // like it's showing everything and quietly isn't. Only the selects need
+    // the panel opened for that — the search box and the pills are on show,
+    // and every active filter carries a chip above the listing regardless.
+    if (disclosure && SELECT_KEYS.some((k) => state[k])) disclosure.open = true;
     apply(false);
   }
 </script>

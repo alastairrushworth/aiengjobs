@@ -217,10 +217,10 @@ a { color: inherit; text-decoration: none; }
 }
 .filters .toggles { display: flex; flex-wrap: wrap; gap: 10px; }
 
-/* The search box and the selects, behind a disclosure that starts closed. The
-   summary reads as a control rather than a heading — same border language as
-   the pager and the secondary buttons — and keeps its own row so opening it
-   pushes the listing down instead of reflowing the pill row above it. */
+/* The selects, behind a disclosure that starts closed. The summary reads as a
+   control rather than a heading — same border language as the pager and the
+   secondary buttons — and keeps its own row so opening it pushes the listing
+   down instead of reflowing the pill row above it. */
 .filters .more { margin: 0; }
 .filters .more > summary {
   display: inline-block;
@@ -239,7 +239,6 @@ a { color: inherit; text-decoration: none; }
 .filters .more > summary:hover,
 .filters .more > summary:focus-visible { border-color: var(--accent); }
 .filters .more[open] > summary { margin-bottom: 10px; }
-.filters .more-body { display: flex; flex-direction: column; gap: 10px; }
 
 /* Work location, freshness and pay. Three questions a select answers worse:
    their answers fit on one line, so a dropdown only adds a click to see them,
