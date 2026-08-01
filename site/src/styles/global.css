@@ -185,13 +185,20 @@ a { color: inherit; text-decoration: none; }
   border: 1px solid var(--border);
   border-radius: var(--radius);
 }
+/* Every control names itself at rest — "Any level", "Any country", "Any city",
+   and a placeholder on the search box — so the caption above each was a second
+   copy of the same word. It was costing the panel a row on the phone fold and,
+   on the desktop, a line of shouty uppercase over a bar that is now mostly one
+   row of pills. The name still reaches a screen reader; it just isn't drawn. */
 .filters label {
-  display: block;
-  color: var(--muted);
-  font-size: 0.74rem;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  margin-bottom: 4px;
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 .filters input[type="search"],
 .filters select {
@@ -217,16 +224,22 @@ a { color: inherit; text-decoration: none; }
 }
 .filters .toggles { display: flex; flex-wrap: wrap; gap: 10px; }
 
-/* The search box and the selects, behind a disclosure that starts closed. The
-   summary reads as a control rather than a heading — same border language as
-   the pager and the secondary buttons — and keeps its own row so opening it
-   pushes the listing down instead of reflowing the pill row above it. */
+/* The selects, behind a disclosure that starts closed.
+
+   The summary is a pill like the ones above it — same size, same border, same
+   muted-until-you-touch-it colour — so the bar reads as one row of controls
+   chips with one more control after them rather than a stray button under a
+   group of them. It keeps its own row and its own place at the left rag:
+   opening the panel must not move the control that opened it, which is what a
+   summary hoisted into the pill row would do the moment the panel needed the
+   full width back, and right-aligning it only opened a hole in the row. */
 .filters .more { margin: 0; }
 .filters .more > summary {
   display: inline-block;
   cursor: pointer;
-  color: var(--accent-text);
+  color: var(--muted);
   font-size: 0.85rem;
+  background: var(--surface-2);
   border: 1px solid var(--border-strong);
   border-radius: 999px;
   padding: 8px 14px;
@@ -234,12 +247,25 @@ a { color: inherit; text-decoration: none; }
 }
 /* No glyph before the label: "⌕" is a rare codepoint most system stacks have no
    glyph for, and it fell back to a hairline mark that read as a stray
-   character. The words already say what the control is. */
+   character. The chevron after it is drawn from two borders for the same
+   reason — it says "there is more under here" without depending on a font. */
 .filters .more > summary::-webkit-details-marker { display: none; }
+.filters .more > summary::after {
+  content: "";
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin: 0 1px 2px 8px;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: rotate(45deg);
+  transition: transform 0.15s ease;
+  vertical-align: middle;
+}
+.filters .more[open] > summary::after { transform: rotate(225deg) translate(-2px, -2px); }
 .filters .more > summary:hover,
-.filters .more > summary:focus-visible { border-color: var(--accent); }
-.filters .more[open] > summary { margin-bottom: 10px; }
-.filters .more-body { display: flex; flex-direction: column; gap: 10px; }
+.filters .more > summary:focus-visible { color: var(--text); border-color: var(--accent); }
+.filters .more[open] > summary { color: var(--text); margin-bottom: 10px; }
 
 /* Work location, freshness and pay. Three questions a select answers worse:
    their answers fit on one line, so a dropdown only adds a click to see them,
@@ -287,16 +313,19 @@ a { color: inherit; text-decoration: none; }
 .seg-btn[aria-pressed="true"] .seg-n { color: inherit; opacity: 0.8; }
 /* Taller for a thumb (WCAG 2.5.5 asks 44px) and narrower so the rows still
    fit. This block is the largest thing above the listing on a phone, and at
-   the desktop padding it wrapped into four rows — 200px of an 844px fold, for
-   six controls. Trimming the horizontal padding and the gaps puts the three
-   work-location chips on one line and the freshness pair plus the pay toggle
-   on a second, which is 96px for the same six controls. */
+   the desktop padding it wrapped into four rows of chips.
+
+   The horizontal numbers are what they are because of a two-pixel overflow:
+   at 11px/10px padding and a 5px gap the three work-location chips measured
+   302px inside a 300px box at 390px, so "On-site" dropped to a line of its
+   own and the group read as a mistake. 9px padding, a 4px gap and a hair off
+   the type put them at ~288 with room to spare for a five-digit count. */
 @media (max-width: 700px) {
   .filters .quick { gap: 8px 10px; }
-  .seg { gap: 5px; }
-  .seg-btn { padding: 11px 10px; font-size: 0.82rem; }
+  .seg { gap: 4px; }
+  .seg-btn { padding: 11px 9px; font-size: 0.8rem; }
   /* Same thumb target as the pills it sits under (WCAG 2.5.5 asks 44px). */
-  .filters .more > summary { padding: 11px 12px; font-size: 0.82rem; }
+  .filters .more > summary { padding: 11px 12px; font-size: 0.8rem; }
 }
 /* min-width:0 or the flex basis is a lie: a flex item's default min-width is
    min-content, and a select's min-content is its longest option ("Hong Kong SAR
@@ -314,20 +343,6 @@ a { color: inherit; text-decoration: none; }
      160px bases plus the gap need 330 — four pixels over, so 190px of controls
      where two rows need 86. A grid can't be four pixels wrong. */
   .filters .toggles { display: grid; grid-template-columns: 1fr 1fr; }
-  /* Every control names itself at rest — "Any role", "Any country", "Any
-     level", "Newest first", and a placeholder on the search box. The visible
-     caption above each is a second copy costing ~72px of an 844px fold, so on a
-     phone it goes to the screen reader only and the control carries its label. */
-  .filters label {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    padding: 0;
-    margin: -1px;
-    overflow: hidden;
-    clip-path: inset(50%);
-    white-space: nowrap;
-  }
 }
 
 /* Job list */
