@@ -192,21 +192,35 @@ export function markSeen(db: DatabaseSync, jobId: string, ts: string): void {
   );
 }
 
-/** Mark non-direct jobs not seen in this run as closed — the "no ghost jobs" promise (§6.5). */
+/**
+ * Mark non-direct jobs not seen in this run as closed — the "no ghost jobs"
+ * promise (§6.5) — and report how many went per source.
+ *
+ * The breakdown is what makes the number actionable: 800 closures spread over
+ * the whole board is a normal night, whereas 800 from one source is a feed that
+ * changed shape and quietly emptied a company off the site.
+ */
 export function closeStaleJobs(
   db: DatabaseSync,
   runStart: string,
   polledSourceIds: string[],
-): number {
-  if (polledSourceIds.length === 0) return 0;
+): Map<string, number> {
+  const bySource = new Map<string, number>();
+  if (polledSourceIds.length === 0) return bySource;
   const placeholders = polledSourceIds.map(() => "?").join(",");
-  const res = db
+  // RETURNING gives the affected rows from the same statement that closes them,
+  // so the breakdown cannot drift from what was actually written.
+  const rows = db
     .prepare(
       `UPDATE jobs SET is_closed = 1
        WHERE is_direct = 0 AND is_closed = 0
          AND source_id IN (${placeholders})
-         AND (last_seen_at IS NULL OR last_seen_at < ?)`,
+         AND (last_seen_at IS NULL OR last_seen_at < ?)
+       RETURNING source_id`,
     )
-    .run(...polledSourceIds, runStart);
-  return Number(res.changes);
+    .all(...polledSourceIds, runStart) as { source_id: string }[];
+  for (const r of rows) {
+    bySource.set(r.source_id, (bySource.get(r.source_id) ?? 0) + 1);
+  }
+  return bySource;
 }

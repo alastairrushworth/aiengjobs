@@ -18,7 +18,7 @@ Two halves joined by a nightly data hand-off:
 - **`ml/`** — the labelled corpus and training script for the classifier (see `ml/README.md`).
 
 Classification runs **locally**: a ModernBERT-base encoder fine-tuned on 4,898 hand-labelled
-adverts, quantised to int8 and executed under ONNX Runtime in-process. No API key, no
+adverts, shipped as fp32 and executed under ONNX Runtime in-process. No API key, no
 per-posting network call. It is heuristic-first (a third of postings are ruled out on title
 alone) and content-hash cached, so the model only runs on new or changed postings.
 

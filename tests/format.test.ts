@@ -1,12 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   formatSalary,
-  isNewJob,
   median,
   postedAgo,
   safeUrl,
   salaryMidpointUsd,
-  salaryRank,
   roleType,
   type SalaryFields,
 } from "../site/src/lib/format.ts";
@@ -79,9 +77,9 @@ describe("formatSalary", () => {
 });
 
 describe("salary gate consistency", () => {
-  // Regression: formatSalary/salaryRank used to gate on salaryMax while
+  // Regression: formatSalary used to gate on salaryMax while
   // salaryMidpointUsd gated on the midpoint, so a role could be listed (and
-  // top-ranked) on "Roles with published pay" while rendering no pay at all.
+  // selected) on "Roles with published pay" while rendering no pay at all.
   const cases: SalaryFields[] = [
     { salaryMin: 131_975, salaryMax: 197_966, salaryCurrency: "CZK", salaryPeriod: "month" },
     { salaryMin: 100_000, salaryMax: 3_500_000 },
@@ -91,11 +89,10 @@ describe("salary gate consistency", () => {
     { salaryCurrency: "USD" },
   ];
 
-  it("agrees across display, rank and midpoint", () => {
+  it("agrees across display and midpoint", () => {
     for (const job of cases) {
       const priced = salaryMidpointUsd(job, {}) !== null;
       expect(formatSalary(job, {}) !== null).toBe(priced);
-      expect(salaryRank(job, {}) > 0).toBe(priced);
     }
   });
 });
@@ -119,14 +116,6 @@ describe("salaryMidpointUsd", () => {
   });
 });
 
-describe("salaryRank", () => {
-  it("sinks outliers and missing salaries to zero", () => {
-    expect(salaryRank({})).toBe(0);
-    expect(salaryRank({ salaryMin: 34_500_000 })).toBe(0);
-    expect(salaryRank({ salaryMin: 200_000 })).toBe(200_000);
-  });
-});
-
 describe("median", () => {
   it("computes median for odd and even lengths", () => {
     expect(median([3, 1, 2])).toBe(2);
@@ -135,7 +124,7 @@ describe("median", () => {
   });
 });
 
-describe("postedAgo / isNewJob", () => {
+describe("postedAgo", () => {
   const gen = "2026-07-01T00:00:00Z";
   it("renders relative stamps", () => {
     expect(postedAgo("2026-07-01T00:00:00Z", gen)).toBe("today");
@@ -146,10 +135,14 @@ describe("postedAgo / isNewJob", () => {
     expect(postedAgo(undefined, gen)).toBeNull();
   });
 
-  it("marks jobs new within 7 days of posting", () => {
-    expect(isNewJob("2026-06-28T00:00:00Z", gen)).toBe(true);
-    expect(isNewJob("2026-06-01T00:00:00Z", gen)).toBe(false);
-    expect(isNewJob(undefined, gen)).toBe(false);
+  // Cards render this straight into a badge, so a future date (an ATS posting
+  // dated ahead of the nightly export) has to read as "today", never "-2d ago".
+  it("floors future postings at today", () => {
+    expect(postedAgo("2026-07-05T00:00:00Z", gen)).toBe("today");
+  });
+
+  it("returns null rather than a stamp for unparseable dates", () => {
+    expect(postedAgo("not-a-date", gen)).toBeNull();
   });
 });
 

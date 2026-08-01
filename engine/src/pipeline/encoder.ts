@@ -1,6 +1,12 @@
 import { existsSync } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
-import { ENCODER_DIR, ENCODER_FILE, ENCODER_THRESHOLD, ENCODER_WINDOW } from "../config.ts";
+import {
+  ENCODER_DIR,
+  ENCODER_FILE,
+  ENCODER_THREADS,
+  ENCODER_THRESHOLD,
+  ENCODER_WINDOW,
+} from "../config.ts";
 
 /**
  * Local in/out classification: a ModernBERT-base encoder fine-tuned on 4,898
@@ -80,9 +86,12 @@ async function init() {
   const sepId = (tk as unknown as { sep_token_id?: number }).sep_token_id;
   if (typeof sepId !== "number") throw new Error("tokenizer has no sep_token_id");
   const session = (await ort.InferenceSession.create(join(ENCODER_DIR, ENCODER_FILE), {
-    // One thread per posting: the nightly run is a queue of independent adverts,
-    // so parallelism belongs at the posting level, not inside a single graph.
-    intraOpNumThreads: 1,
+    // Parallelism has to live inside the graph: ORT serialises concurrent run()
+    // calls on a session, so the posting-level pool cannot provide it. See
+    // ENCODER_THREADS in config.ts for the measurements.
+    intraOpNumThreads: ENCODER_THREADS,
+    // One graph, run one advert at a time — there are no independent branches
+    // for inter-op threads to overlap, so they would only add scheduling.
     interOpNumThreads: 1,
     graphOptimizationLevel: "all",
   })) as unknown as Session;

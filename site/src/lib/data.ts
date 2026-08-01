@@ -19,7 +19,7 @@ const snapshotAgeDays = (Date.now() - Date.parse(data.generatedAt)) / 86_400_000
 if (snapshotAgeDays > 5 && !process.env.ALLOW_STALE_SNAPSHOT) {
   throw new Error(
     `snapshot.json is ${Math.floor(snapshotAgeDays)} days old — the nightly refresh ` +
-      `loop is probably broken. Fix the droplet job (or set ALLOW_STALE_SNAPSHOT=1 ` +
+      `loop is probably broken. Check the refresh workflow (or set ALLOW_STALE_SNAPSHOT=1 ` +
       `to build anyway).`,
   );
 }
@@ -35,7 +35,7 @@ export const companies = data.companies;
 
 const postedTs = (j: Job): number => (j.postedAt ? Date.parse(j.postedAt) || 0 : 0);
 
-// The snapshot is produced by whatever engine version last ran on the droplet,
+// The snapshot is produced by whatever engine version last ran nightly,
 // so the site canonicalizes city names on read rather than trusting the file.
 // Without this the site is one nightly export behind its own rules — enough to
 // split /ai-jobs-bangalore from /ai-jobs-bengaluru and to publish a junk

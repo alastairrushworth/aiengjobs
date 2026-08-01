@@ -1,3 +1,4 @@
+import { availableParallelism } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -120,11 +121,22 @@ export const ENCODER_DIR =
 // the 961MB droplet that forced quantisation is gone. Runners have 16GB.
 export const ENCODER_FILE = process.env.AIENGJOBS_ENCODER_FILE ?? "model.onnx";
 
-// Measured on the labelled corpus: 3072 tokens covers 99.2% of adverts whole,
-// but 1024 scores identically on the held-out split (92.4% vs 91.9% F1) at a
-// quarter the attention memory. The gain from a longer window is not worth
-// quadrupling the footprint on a shared runner.
-export const ENCODER_WINDOW = Number(process.env.AIENGJOBS_ENCODER_WINDOW ?? 1024);
+// MUST equal MAX_TOKENS in ml/train_encoder.py. The model was fine-tuned on
+// adverts truncated at that length, so serving it a shorter window scores every
+// longer advert off-distribution — on a question the cut text often answers.
+// tests/trainInferenceParity.test.ts fails the build if the two drift apart.
+// Read ml/TRAINING_INFERENCE_PARITY.md before touching this line.
+//
+// Deliberately NOT env-overridable. This is not a tuning knob: it is one half of
+// a contract with the training run, and the other half is a committed constant.
+//
+// It was 1024 for the 961MB droplet, which could not hold the quadratic
+// attention mask at 3072. That machine is gone and the runner has 16GB (this
+// peaks at 2.5GB). 1024 truncated 70% of live adverts to ~80% of their text,
+// and that silently moved decisions: one sampled advert scored 0.148 truncated
+// against 0.971 whole — OUT and IN across the same 0.70 threshold. Honouring the
+// training window costs 1.78x per advert on a representative sample.
+export const ENCODER_WINDOW = 3072;
 
 // Chosen from the held-out precision/recall curve, which knees here. Measured
 // through the Node runtime at 0.70: 94.6% precision / 86.9% recall (92.0%
@@ -132,6 +144,30 @@ export const ENCODER_WINDOW = Number(process.env.AIENGJOBS_ENCODER_WINDOW ?? 102
 // ~1pp more precision for 13 more missed roles out of 183 — a bad exchange.
 // Raise it if the board should be stricter still.
 export const ENCODER_THRESHOLD = Number(process.env.AIENGJOBS_ENCODER_THRESHOLD ?? 0.7);
+
+// Threads ONNX Runtime may use inside a single graph.
+//
+// This used to be pinned to 1, on the reasoning that the nightly run is a queue
+// of independent adverts so parallelism belonged at the posting level. That
+// premise does not hold: onnxruntime-node serialises concurrent run() calls on
+// a session, so posting-level concurrency does not parallelise inference at all
+// (measured: 8 adverts took 27.6s sequentially and 27.6s under Promise.all —
+// 1.00x). Pinning to 1 therefore gave up intra-graph parallelism without buying
+// anything, and left the 4-vCPU runner classifying on one core.
+//
+// Intra-op threads do scale, near-linearly, on a 1024-token advert:
+//   1 thread 3.44s   2 threads 1.80s   4 threads 0.94s   8 threads 0.58s
+//
+// availableParallelism() honours the cgroup/affinity limits a runner or
+// container imposes, so this tracks the cores actually granted rather than the
+// cores the host happens to have.
+//
+// `||` rather than `??` because the value reaches a native API: a non-numeric
+// or zero override falls back to the default instead of passing NaN into ORT.
+export const ENCODER_THREADS = Math.max(
+  1,
+  Math.trunc(Number(process.env.AIENGJOBS_ENCODER_THREADS) || availableParallelism()),
+);
 
 // A heuristic IN title is only overturned when the model is at least this sure
 // the role is OUT. Set conservatively so a stray "out" can't suppress a clear

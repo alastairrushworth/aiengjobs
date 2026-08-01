@@ -1,52 +1,136 @@
 ---
 import type { FilterOptions } from "../lib/filterOptions.ts";
+import { SENIOR_PLUS } from "../lib/search.ts";
 
 // The controls themselves. Split out of JobFilters only so that component can
 // render them either bare or inside a disclosure without duplicating the markup.
-type Props = FilterOptions;
+interface Props extends FilterOptions {
+  /**
+   * Controls this page is already scoped by, so it doesn't offer to narrow what
+   * it has already narrowed — /ai-jobs-london shouldn't spend a row of the
+   * panel on a Country select whose answer is "United Kingdom".
+   */
+  hide?: string[];
+}
 
-const { roles, countries, seniorities } = Astro.props;
+const {
+  roles,
+  countries,
+  cities,
+  seniorities,
+  seniorPlus,
+  works,
+  sinces,
+  paid,
+  hide = [],
+} = Astro.props;
+
+// A select with one option narrows nothing — it's a row of the panel spent
+// restating what the page already said. Same test for every control, so a
+// landing with a single work type or one city loses those without a special
+// case anywhere.
+const shows = (id: string, options: number) => !hide.includes(id) && options > 1;
 ---
 
 <div class="filters">
   <div>
     <label for="q">Search</label>
-    <input type="search" id="q" placeholder="Title, company, skill…" />
+    <input type="search" id="q" placeholder="Title, company, skill, city…" />
   </div>
+
   <div class="toggles">
-    <div>
-      <label for="role">Role type</label>
-      <select id="role">
-        <option value="">Any role</option>
-        {roles.map((r) => (
-          <option value={r.label}>{r.label} ({r.count})</option>
+    {shows("role", roles.length) && (
+      <div>
+        <label for="role">Role type</label>
+        <select id="role">
+          <option value="">Any role</option>
+          {roles.map((r) => (
+            <option value={r.label}>{r.label} ({r.count})</option>
+          ))}
+        </select>
+      </div>
+    )}
+    {shows("level", seniorities.length) && (
+      <div>
+        <label for="level">Seniority</label>
+        <select id="level">
+          <option value="">Any level</option>
+          {/* The band, above the rungs. "Senior or above" is the most common
+              thing anyone wants to say about level and the one thing a
+              one-of-eight select couldn't say. */}
+          {seniorPlus > 0 && <option value={SENIOR_PLUS}>Senior and above ({seniorPlus})</option>}
+          {seniorities.map((s) => (
+            <option value={s.id}>{s.label} ({s.count})</option>
+          ))}
+        </select>
+      </div>
+    )}
+    {shows("country", countries.length) && (
+      <div>
+        <label for="country">Country</label>
+        <select id="country">
+          <option value="">Any country</option>
+          {countries.map((c) => (
+            <option value={c.code}>{c.label} ({c.count})</option>
+          ))}
+        </select>
+      </div>
+    )}
+    {shows("city", cities.length) && (
+      <div>
+        <label for="city">City</label>
+        <select id="city">
+          <option value="">Any city</option>
+          {cities.map((c) => (
+            <option value={c.name}>{c.name} ({c.count})</option>
+          ))}
+        </select>
+      </div>
+    )}
+  </div>
+
+  {/* Three things a select would answer worse. Work location is the first
+      question most people ask and has three answers — as a dropdown it's an
+      extra click to see options that fit on one line. Pay and freshness are
+      one-bit questions; a select for a boolean is a control that has to be
+      opened to find out it only says yes or no.
+
+      No "Any" button in any group: each of these toggles off when you press the
+      one that's on, and every active filter also carries a removable chip above
+      the listing. An explicit "Any" would be a fourth control per group saying
+      what the absence of a pressed one already says — three extra buttons, and
+      on a 390px phone each row of them is a row of the fold. */}
+  <div class="quick">
+    {shows("work", works.length) && (
+      <div class="seg" role="group" aria-label="Work location" data-filter="work">
+        <span class="seg-label">Work</span>
+        {works.map((w) => (
+          <button type="button" class="seg-btn" data-value={w.id} aria-pressed="false">
+            {w.label} <span class="seg-n">{w.count}</span>
+          </button>
         ))}
-      </select>
-    </div>
-    <div>
-      <label for="country">Country</label>
-      <select id="country">
-        <option value="">Any country</option>
-        {countries.map((c) => (
-          <option value={c.code}>{c.label} ({c.count})</option>
+      </div>
+    )}
+    {sinces.length > 0 && !hide.includes("since") && (
+      <div class="seg" role="group" aria-label="Posted within" data-filter="since">
+        <span class="seg-label">Posted</span>
+        {sinces.map((o) => (
+          <button type="button" class="seg-btn" data-value={o.id} aria-pressed="false">
+            {o.label} <span class="seg-n">{o.count}</span>
+          </button>
         ))}
-      </select>
-    </div>
-    <div>
-      <label for="level">Seniority</label>
-      <select id="level">
-        <option value="">Any level</option>
-        {seniorities.map((s) => (
-          <option value={s.id}>{s.label} ({s.count})</option>
-        ))}
-      </select>
-    </div>
-    <div>
-      <label for="sort">Sort by</label>
-      <select id="sort">
-        <option value="new">Newest first</option>
-        <option value="pay">Highest salary</option>
-      </select>
-    </div>
+      </div>
+    )}
+    {/* Replaces the "Highest salary" sort. That control ranked the 53% of roles
+        with no published range at zero and buried them under a line claiming to
+        show the highest-paying of all of them; what it was really being asked
+        was this question, which it can now be asked directly. */}
+    {paid > 0 && (
+      <div class="seg" role="group" aria-label="Pay" data-filter="pay">
+        <button type="button" class="seg-btn" data-value="1" aria-pressed="false">
+          Shows pay <span class="seg-n">{paid}</span>
+        </button>
+      </div>
+    )}
   </div>
 </div>

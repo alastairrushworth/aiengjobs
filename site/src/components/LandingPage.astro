@@ -12,7 +12,6 @@ import { jsonLdScript } from "../lib/jsonld.ts";
 import { buildFilterOptions } from "../lib/filterOptions.ts";
 import { computeLandingStats } from "../lib/landingStats.ts";
 import { fxRates } from "../lib/data.ts";
-import { CLUSTER_PAGES } from "../lib/clusters.ts";
 import { LOCATION_LANDINGS } from "../lib/landings.ts";
 
 interface Props {
@@ -55,14 +54,11 @@ const itemList = {
   })),
 };
 
-// Cross-links: the other clusters, plus the biggest location pages. Capped so
-// the foot of every listing page isn't a link farm. Kept in two labelled rows
-// rather than one — the homepage already teaches "Browse by stack" vs "Browse
-// by location", and flattening them here made 16 links read as an undifferen-
-// tiated dump where a stack and a city looked like the same kind of thing.
-const otherClusters = CLUSTER_PAGES.filter((p) => p.slug !== landing.slug);
+// Location cross-links. Capped so the foot of every listing page isn't a link
+// farm. The cluster row that used to sit beside this one is gone — the footer
+// nav links all eight on every page, and two copies within 200px of each other
+// was the whole of what this row added.
 const otherLocations = LOCATION_LANDINGS.filter((l) => l.slug !== landing.slug).slice(0, 8);
-const stackLinks = otherClusters.map((p) => ({ href: url(`/${p.slug}/`), text: p.label }));
 const locationLinks = otherLocations.map((l) => ({ href: url(`/${l.slug}/`), text: l.label }));
 
 // Newer/Older alone costs 21 clicks to reach the last page of a 22-page
@@ -97,6 +93,19 @@ const pageNumbers = paged ? pageWindow(page.currentPage, page.lastPage) : [];
 // would be a worse answer than no filter bar.
 const filterOptions = page.currentPage === 1 ? buildFilterOptions(landing.jobs) : null;
 
+// Don't offer to narrow what the page has already narrowed. /ai-jobs-london
+// spent a row of the panel on a Country select whose honest answer was "United
+// Kingdom (117)" — and on a City select offering London — while /remote-ai-jobs
+// offered a work-location filter on a list that is entirely remote by
+// construction. A control that can only return the list you're already looking
+// at reads as a filter that doesn't work.
+const hide =
+  landing.kind === "city"
+    ? ["city", "country"]
+    : landing.kind === "remote"
+      ? ["work"]
+      : [];
+
 const feedHref = url(`/${landing.slug}/rss.xml`);
 const description = `${landing.intro} ${page.total} open role${page.total === 1 ? "" : "s"} right now.${
   page.currentPage > 1 ? ` Page ${page.currentPage} of ${page.lastPage}.` : ""
@@ -129,6 +138,7 @@ const description = `${landing.intro} ${page.total} open role${page.total === 1 
       collapsible
       quiet
       hasPager={paged}
+      hide={hide}
       {...filterOptions}
     >
       <p class="crumbs" slot="crumbs">
@@ -136,7 +146,7 @@ const description = `${landing.intro} ${page.total} open role${page.total === 1 
         <a class="feed" href={feedHref}>RSS feed</a>
       </p>
       <ul class="jobs" id="jobs">
-        {page.data.map((job) => <JobCard job={job} href={url(`/jobs/${job.slug}/`)} />)}
+        {page.data.map((job, i) => <JobCard job={job} href={url(`/jobs/${job.slug}/`)} eager={i < 6} />)}
       </ul>
     </JobFilters>
   ) : (
@@ -146,7 +156,7 @@ const description = `${landing.intro} ${page.total} open role${page.total === 1 
         <a class="feed" href={feedHref}>RSS feed</a>
       </p>
       <ul class="jobs">
-        {page.data.map((job) => <JobCard job={job} href={url(`/jobs/${job.slug}/`)} />)}
+        {page.data.map((job, i) => <JobCard job={job} href={url(`/jobs/${job.slug}/`)} eager={i < 6} />)}
       </ul>
     </>
   )}
@@ -183,9 +193,11 @@ const description = `${landing.intro} ${page.total} open role${page.total === 1 
     </nav>
   )}
 
-  <BrowseNav label="Browse by stack:" links={stackLinks} />
+  {/* Stack cross-links removed: the footer nav carries all eight cluster pages
+      on every page of the site, so this row was a second copy of them ~200px
+      above the first. Locations have no such duplicate, so they stay. */}
   {locationLinks.length > 0 && (
-    <BrowseNav label="Browse by location:" links={locationLinks} compact ariaLabel="Browse by location" />
+    <BrowseNav label="Browse by location:" links={locationLinks} ariaLabel="Browse by location" />
   )}
 
   <script type="application/ld+json" set:html={jsonLdScript(itemList)} is:inline />
@@ -245,8 +257,18 @@ const description = `${landing.intro} ${page.total} open role${page.total === 1 
   .pager .pager-num:hover,
   .pager .pager-num:focus-visible { color: var(--text); background: var(--surface-2); }
   .pager-gap { color: var(--muted); }
+  /* Narrow: give the numbers their own row rather than letting the flex line
+     break wherever it runs out. "← Newer", five numbers and "Older →" need
+     ~440px; at 390 the line wrapped after the numbers and left "Older →"
+     stranded alone and centred underneath — the forward control, on the pages
+     where paging forward is the whole point, looking like a mistake. Ordering
+     the number run last puts the deliberate break between the two directional
+     buttons and the digits, so both rows read as intended. */
+  @media (max-width: 560px) {
+    .pager { gap: 10px 12px; }
+    .pager-nums { order: 2; flex: 0 0 100%; }
+  }
   @media (max-width: 420px) {
-    .pager { gap: 8px; }
     .pager a, .pager .disabled { padding: 12px 10px; }
     .pager .pager-num { min-width: 40px; padding: 12px 2px; }
   }

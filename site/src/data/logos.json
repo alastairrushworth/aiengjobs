@@ -4,15 +4,30 @@
   "w": 180,
   "h": 180
  },
+ "abacum": {
+  "file": "abacum.png",
+  "w": 400,
+  "h": 400
+ },
  "abridge": {
   "file": "abridge.png",
   "w": 256,
   "h": 256
  },
+ "abundant": {
+  "file": "abundant.png",
+  "w": 350,
+  "h": 350
+ },
  "acorns": {
   "file": "acorns.png",
   "w": 228,
   "h": 228
+ },
+ "adaptyv": {
+  "file": "adaptyv.png",
+  "w": 128,
+  "h": 128
  },
  "adobe-wd5-external-experienced": {
   "file": "adobe-wd5-external-experienced.png",
@@ -33,6 +48,21 @@
   "file": "affirm.png",
   "w": 64,
   "h": 64
+ },
+ "afterquery": {
+  "file": "afterquery.png",
+  "w": 180,
+  "h": 180
+ },
+ "agilityrobotics": {
+  "file": "agilityrobotics.png",
+  "w": 256,
+  "h": 256
+ },
+ "aiprise": {
+  "file": "aiprise.svg",
+  "w": 256,
+  "h": 256
  },
  "airbnb": {
   "file": "airbnb.png",
@@ -74,8 +104,18 @@
   "w": 180,
   "h": 180
  },
+ "alphasense": {
+  "file": "alphasense.png",
+  "w": 180,
+  "h": 180
+ },
  "ambiencehealthcare": {
   "file": "ambiencehealthcare.png",
+  "w": 180,
+  "h": 180
+ },
+ "ambirobotics": {
+  "file": "ambirobotics.png",
   "w": 180,
   "h": 180
  },
@@ -99,6 +139,16 @@
   "w": 180,
   "h": 180
  },
+ "anterior": {
+  "file": "anterior.png",
+  "w": 256,
+  "h": 256
+ },
+ "anthrogen": {
+  "file": "anthrogen.png",
+  "w": 256,
+  "h": 256
+ },
  "anthropic": {
   "file": "anthropic.png",
   "w": 256,
@@ -109,6 +159,11 @@
   "w": 56,
   "h": 56
  },
+ "apify": {
+  "file": "apify.png",
+  "w": 180,
+  "h": 180
+ },
  "appian": {
   "file": "appian.png",
   "w": 180,
@@ -118,6 +173,16 @@
   "file": "applied.png",
   "w": 180,
   "h": 180
+ },
+ "apptronik": {
+  "file": "apptronik.png",
+  "w": 256,
+  "h": 256
+ },
+ "arini": {
+  "file": "arini.png",
+  "w": 256,
+  "h": 256
  },
  "arizeai": {
   "file": "arizeai.png",
@@ -134,6 +199,11 @@
   "w": 512,
   "h": 512
  },
+ "artisan": {
+  "file": "artisan.png",
+  "w": 256,
+  "h": 256
+ },
  "arxroboticsgmbh": {
   "file": "arxroboticsgmbh.png",
   "w": 180,
@@ -144,18 +214,48 @@
   "w": 48,
   "h": 48
  },
+ "assembledhq": {
+  "file": "assembledhq.png",
+  "w": 256,
+  "h": 256
+ },
  "assemblyai": {
   "file": "assemblyai.png",
   "w": 64,
   "h": 64
+ },
+ "astrazeneca-wd3-careers": {
+  "file": "astrazeneca-wd3-careers.png",
+  "w": 152,
+  "h": 152
  },
  "att-wd1-attgeneral": {
   "file": "att-wd1-attgeneral.png",
   "w": 48,
   "h": 48
  },
+ "auctor": {
+  "file": "auctor.png",
+  "w": 256,
+  "h": 256
+ },
  "aurorainnovation": {
   "file": "aurorainnovation.png",
+  "w": 180,
+  "h": 180
+ },
+ "autodesk-wd1-ext": {
+  "file": "autodesk-wd1-ext.svg",
+  "w": 32,
+  "h": 32
+ },
+ "automat": {
+  "file": "automat.png",
+  "w": 256,
+  "h": 256
+ },
+ "avallon": {
+  "file": "avallon.png",
   "w": 180,
   "h": 180
  },
@@ -163,6 +263,21 @@
   "file": "aveva-wd3-aveva-careers.png",
   "w": 48,
   "h": 48
+ },
+ "aviator": {
+  "file": "aviator.png",
+  "w": 256,
+  "h": 256
+ },
+ "aviva-wd1-external": {
+  "file": "aviva-wd1-external.png",
+  "w": 180,
+  "h": 180
+ },
+ "avoca": {
+  "file": "avoca.png",
+  "w": 207,
+  "h": 207
  },
  "barclays-wd3-external-career-site-barclays": {
   "file": "barclays-wd3-external-career-site-barclays.png",
@@ -189,10 +304,25 @@
   "w": 400,
   "h": 400
  },
+ "bild-ai": {
+  "file": "bild-ai.png",
+  "w": 64,
+  "h": 64
+ },
  "blackforestlabs": {
   "file": "blackforestlabs.png",
   "w": 180,
   "h": 180
+ },
+ "bland": {
+  "file": "bland.png",
+  "w": 256,
+  "h": 256
+ },
+ "blaxel": {
+  "file": "blaxel.png",
+  "w": 256,
+  "h": 256
  },
  "block": {
   "file": "block.png",
@@ -209,6 +339,11 @@
   "w": 48,
   "h": 48
  },
+ "brettonai": {
+  "file": "brettonai.png",
+  "w": 256,
+  "h": 256
+ },
  "brex": {
   "file": "brex.png",
   "w": 48,
@@ -224,15 +359,35 @@
   "w": 48,
   "h": 48
  },
+ "browserbase": {
+  "file": "browserbase.svg",
+  "w": 200,
+  "h": 200
+ },
+ "bunkerhillhealth": {
+  "file": "bunkerhillhealth.png",
+  "w": 512,
+  "h": 512
+ },
  "calendly": {
   "file": "calendly.png",
   "w": 48,
   "h": 48
  },
+ "campfire": {
+  "file": "campfire.png",
+  "w": 110,
+  "h": 110
+ },
  "capitalone-wd12-capital-one": {
   "file": "capitalone-wd12-capital-one.png",
   "w": 180,
   "h": 180
+ },
+ "career-schwab": {
+  "file": "career-schwab.svg",
+  "w": 955.844,
+  "h": 955.844
  },
  "careers-ice": {
   "file": "careers-ice.png",
@@ -241,6 +396,11 @@
  },
  "carta": {
   "file": "carta.png",
+  "w": 180,
+  "h": 180
+ },
+ "cartesia": {
+  "file": "cartesia.png",
   "w": 180,
   "h": 180
  },
@@ -264,6 +424,16 @@
   "w": 256,
   "h": 256
  },
+ "chaidiscovery": {
+  "file": "chaidiscovery.png",
+  "w": 210,
+  "h": 210
+ },
+ "chalk": {
+  "file": "chalk.png",
+  "w": 256,
+  "h": 256
+ },
  "character": {
   "file": "character.png",
   "w": 512,
@@ -279,6 +449,21 @@
   "w": 367,
   "h": 367
  },
+ "claim-health": {
+  "file": "claim-health.png",
+  "w": 256,
+  "h": 256
+ },
+ "clara": {
+  "file": "clara.png",
+  "w": 180,
+  "h": 180
+ },
+ "clarion": {
+  "file": "clarion.png",
+  "w": 256,
+  "h": 256
+ },
  "cleerlyhealth": {
   "file": "cleerlyhealth.png",
   "w": 48,
@@ -289,6 +474,11 @@
   "w": 192,
   "h": 192
  },
+ "cline": {
+  "file": "cline.png",
+  "w": 180,
+  "h": 180
+ },
  "clipboard": {
   "file": "clipboard.png",
   "w": 256,
@@ -298,6 +488,11 @@
   "file": "cloudflare.png",
   "w": 99,
   "h": 96
+ },
+ "cmegroup-wd1-cme-careers": {
+  "file": "cmegroup-wd1-cme-careers.png",
+  "w": 48,
+  "h": 48
  },
  "cognition": {
   "file": "cognition.png",
@@ -324,6 +519,31 @@
   "w": 256,
   "h": 256
  },
+ "comcast-wd5-comcast-careers": {
+  "file": "comcast-wd5-comcast-careers.svg",
+  "w": 700,
+  "h": 700
+ },
+ "comena": {
+  "file": "comena.png",
+  "w": 180,
+  "h": 180
+ },
+ "commodityai": {
+  "file": "commodityai.png",
+  "w": 180,
+  "h": 180
+ },
+ "commure": {
+  "file": "commure.png",
+  "w": 256,
+  "h": 256
+ },
+ "confido": {
+  "file": "confido.png",
+  "w": 256,
+  "h": 256
+ },
  "confluent": {
   "file": "confluent.png",
   "w": 180,
@@ -344,6 +564,11 @@
   "w": 180,
   "h": 180
  },
+ "credal": {
+  "file": "credal.png",
+  "w": 256,
+  "h": 256
+ },
  "cresta": {
   "file": "cresta.png",
   "w": 256,
@@ -356,6 +581,11 @@
  },
  "crusoe": {
   "file": "crusoe.png",
+  "w": 256,
+  "h": 256
+ },
+ "ctgt": {
+  "file": "ctgt.png",
   "w": 256,
   "h": 256
  },
@@ -384,9 +614,24 @@
   "w": 256,
   "h": 256
  },
+ "dataleap": {
+  "file": "dataleap.png",
+  "w": 180,
+  "h": 180
+ },
+ "david-ai": {
+  "file": "david-ai.png",
+  "w": 256,
+  "h": 256
+ },
  "decagon": {
   "file": "decagon.png",
   "w": 256,
+  "h": 256
+ },
+ "decodahealth": {
+  "file": "decodahealth.png",
+  "w": 254,
   "h": 256
  },
  "deepgram": {
@@ -399,15 +644,35 @@
   "w": 180,
   "h": 180
  },
+ "deepmind": {
+  "file": "deepmind.png",
+  "w": 192,
+  "h": 192
+ },
  "deliveroo": {
   "file": "deliveroo.png",
   "w": 180,
   "h": 180
  },
+ "dexterity": {
+  "file": "dexterity.png",
+  "w": 256,
+  "h": 256
+ },
  "discord": {
   "file": "discord.png",
   "w": 256,
   "h": 256
+ },
+ "distyl": {
+  "file": "distyl.svg",
+  "w": 23,
+  "h": 22
+ },
+ "dnb": {
+  "file": "dnb.png",
+  "w": 180,
+  "h": 180
  },
  "docker": {
   "file": "docker.png",
@@ -449,6 +714,16 @@
   "w": 200,
   "h": 200
  },
+ "eloquentai": {
+  "file": "eloquentai.png",
+  "w": 256,
+  "h": 256
+ },
+ "enchargeai36": {
+  "file": "enchargeai36.png",
+  "w": 256,
+  "h": 256
+ },
  "encord": {
   "file": "encord.png",
   "w": 144,
@@ -474,10 +749,25 @@
   "w": 57,
   "h": 57
  },
+ "exa": {
+  "file": "exa.png",
+  "w": 256,
+  "h": 256
+ },
  "experian": {
   "file": "experian.png",
   "w": 512,
   "h": 512
+ },
+ "fa-extu-saasfaprod1-fa-ocs-oraclecloud-com-cx-1": {
+  "file": "fa-extu-saasfaprod1-fa-ocs-oraclecloud-com-cx-1.png",
+  "w": 64,
+  "h": 64
+ },
+ "factory": {
+  "file": "factory.svg",
+  "w": 508,
+  "h": 508
  },
  "faculty": {
   "file": "faculty.png",
@@ -488,6 +778,11 @@
   "file": "faire.png",
   "w": 192,
   "h": 192
+ },
+ "fico-wd1-external": {
+  "file": "fico-wd1-external.png",
+  "w": 200,
+  "h": 200
  },
  "fiddler-ai": {
   "file": "fiddler-ai.png",
@@ -504,6 +799,16 @@
   "w": 320,
   "h": 320
  },
+ "finvest": {
+  "file": "finvest.svg",
+  "w": 256,
+  "h": 256
+ },
+ "firecrawl": {
+  "file": "firecrawl.png",
+  "w": 48,
+  "h": 48
+ },
  "fireworksai": {
   "file": "fireworksai.png",
   "w": 180,
@@ -519,10 +824,20 @@
   "w": 180,
   "h": 180
  },
+ "fleetworks": {
+  "file": "fleetworks.png",
+  "w": 180,
+  "h": 180
+ },
  "flexport": {
   "file": "flexport.png",
   "w": 256,
   "h": 256
+ },
+ "flint": {
+  "file": "flint.png",
+  "w": 180,
+  "h": 180
  },
  "flower": {
   "file": "flower.png",
@@ -544,15 +859,55 @@
   "w": 180,
   "h": 180
  },
+ "fundingcircle": {
+  "file": "fundingcircle.png",
+  "w": 192,
+  "h": 192
+ },
+ "furiosa-ai": {
+  "file": "furiosa-ai.png",
+  "w": 256,
+  "h": 256
+ },
+ "furtherai": {
+  "file": "furtherai.png",
+  "w": 256,
+  "h": 256
+ },
+ "gamma": {
+  "file": "gamma.png",
+  "w": 180,
+  "h": 180
+ },
+ "gartner-wd5-ext": {
+  "file": "gartner-wd5-ext.png",
+  "w": 180,
+  "h": 180
+ },
  "gecko-robotics": {
   "file": "gecko-robotics.png",
   "w": 256,
   "h": 256
  },
+ "genesis": {
+  "file": "genesis.png",
+  "w": 129,
+  "h": 129
+ },
  "gensyn": {
   "file": "gensyn.png",
   "w": 48,
   "h": 48
+ },
+ "getzuma": {
+  "file": "getzuma.png",
+  "w": 256,
+  "h": 256
+ },
+ "giskard": {
+  "file": "giskard.png",
+  "w": 256,
+  "h": 256
  },
  "gitlab": {
   "file": "gitlab.png",
@@ -574,15 +929,35 @@
   "w": 180,
   "h": 180
  },
+ "gradient-labs": {
+  "file": "gradient-labs.png",
+  "w": 180,
+  "h": 180
+ },
+ "granola": {
+  "file": "granola.png",
+  "w": 180,
+  "h": 180
+ },
  "graphcore": {
   "file": "graphcore.svg",
   "w": 512,
   "h": 512
  },
+ "greptile": {
+  "file": "greptile.png",
+  "w": 256,
+  "h": 256
+ },
  "gsk-wd5-gskcareers": {
   "file": "gsk-wd5-gskcareers.png",
   "w": 152,
   "h": 152
+ },
+ "gusto": {
+  "file": "gusto.png",
+  "w": 192,
+  "h": 192
  },
  "h1": {
   "file": "h1.png",
@@ -599,6 +974,21 @@
   "w": 180,
   "h": 180
  },
+ "halluminate": {
+  "file": "halluminate.png",
+  "w": 256,
+  "h": 256
+ },
+ "handoff": {
+  "file": "handoff.png",
+  "w": 256,
+  "h": 256
+ },
+ "harperinsure": {
+  "file": "harperinsure.svg",
+  "w": 400,
+  "h": 400
+ },
  "harvey": {
   "file": "harvey.png",
   "w": 256,
@@ -609,8 +999,23 @@
   "w": 256,
   "h": 256
  },
+ "healthtech-1": {
+  "file": "healthtech-1.png",
+  "w": 500,
+  "h": 500
+ },
  "healx": {
   "file": "healx.png",
+  "w": 180,
+  "h": 180
+ },
+ "hebbia-ai": {
+  "file": "hebbia-ai.png",
+  "w": 180,
+  "h": 180
+ },
+ "hedra": {
+  "file": "hedra.png",
   "w": 180,
   "h": 180
  },
@@ -618,6 +1023,16 @@
   "file": "hextechnologies.svg",
   "w": 512,
   "h": 512
+ },
+ "heygen": {
+  "file": "heygen.png",
+  "w": 48,
+  "h": 48
+ },
+ "higgsfieldai": {
+  "file": "higgsfieldai.png",
+  "w": 180,
+  "h": 180
  },
  "hightouch": {
   "file": "hightouch.png",
@@ -639,15 +1054,35 @@
   "w": 288,
   "h": 288
  },
+ "humaans": {
+  "file": "humaans.png",
+  "w": 256,
+  "h": 256
+ },
  "hyperexponential": {
   "file": "hyperexponential.png",
   "w": 64,
   "h": 64
  },
+ "icarus": {
+  "file": "icarus.png",
+  "w": 100,
+  "h": 100
+ },
  "imc": {
   "file": "imc.png",
   "w": 256,
   "h": 256
+ },
+ "inflectionai": {
+  "file": "inflectionai.png",
+  "w": 180,
+  "h": 180
+ },
+ "inkeep": {
+  "file": "inkeep.png",
+  "w": 320,
+  "h": 320
  },
  "instacart": {
   "file": "instacart.png",
@@ -663,6 +1098,11 @@
   "file": "intercom.png",
   "w": 48,
   "h": 48
+ },
+ "interface": {
+  "file": "interface.png",
+  "w": 180,
+  "h": 180
  },
  "invisibletech": {
   "file": "invisibletech.png",
@@ -704,6 +1144,11 @@
   "w": 160,
   "h": 160
  },
+ "kastle": {
+  "file": "kastle.png",
+  "w": 65,
+  "h": 64
+ },
  "klaviyo": {
   "file": "klaviyo.png",
   "w": 256,
@@ -739,6 +1184,11 @@
   "w": 180,
   "h": 180
  },
+ "latentlabs": {
+  "file": "latentlabs.png",
+  "w": 180,
+  "h": 180
+ },
  "launchdarkly": {
   "file": "launchdarkly.png",
   "w": 96,
@@ -759,6 +1209,16 @@
   "w": 180,
   "h": 180
  },
+ "liquid": {
+  "file": "liquid.png",
+  "w": 256,
+  "h": 256
+ },
+ "liveflow": {
+  "file": "liveflow.png",
+  "w": 480,
+  "h": 480
+ },
  "llamaindex": {
   "file": "llamaindex.png",
   "w": 180,
@@ -774,10 +1234,25 @@
   "w": 48,
   "h": 48
  },
+ "lucis": {
+  "file": "lucis.png",
+  "w": 180,
+  "h": 180
+ },
+ "lumaai": {
+  "file": "lumaai.png",
+  "w": 48,
+  "h": 48
+ },
  "lyft": {
   "file": "lyft.png",
   "w": 150,
   "h": 150
+ },
+ "magic-dev": {
+  "file": "magic-dev.png",
+  "w": 48,
+  "h": 48
  },
  "mangroup": {
   "file": "mangroup.png",
@@ -789,20 +1264,40 @@
   "w": 256,
   "h": 256
  },
+ "mastercard-wd1-corporatecareers": {
+  "file": "mastercard-wd1-corporatecareers.png",
+  "w": 180,
+  "h": 180
+ },
  "matx": {
   "file": "matx.png",
   "w": 180,
   "h": 180
+ },
+ "maven-agi": {
+  "file": "maven-agi.png",
+  "w": 256,
+  "h": 256
  },
  "maymobility": {
   "file": "maymobility.png",
   "w": 180,
   "h": 180
  },
+ "mem0": {
+  "file": "mem0.svg",
+  "w": 100,
+  "h": 100
+ },
  "mercor": {
   "file": "mercor.png",
   "w": 256,
   "h": 256
+ },
+ "mercura": {
+  "file": "mercura.png",
+  "w": 300,
+  "h": 300
  },
  "mercury": {
   "file": "mercury.png",
@@ -814,8 +1309,28 @@
   "w": 256,
   "h": 256
  },
+ "meticulous": {
+  "file": "meticulous.png",
+  "w": 256,
+  "h": 256
+ },
+ "middesk": {
+  "file": "middesk.png",
+  "w": 180,
+  "h": 180
+ },
  "mindfoundry": {
   "file": "mindfoundry.png",
+  "w": 256,
+  "h": 256
+ },
+ "minerva": {
+  "file": "minerva.png",
+  "w": 180,
+  "h": 180
+ },
+ "mirage": {
+  "file": "mirage.png",
   "w": 256,
   "h": 256
  },
@@ -844,6 +1359,16 @@
   "w": 512,
   "h": 512
  },
+ "moss": {
+  "file": "moss.png",
+  "w": 48,
+  "h": 48
+ },
+ "multiplylabs": {
+  "file": "multiplylabs.png",
+  "w": 191,
+  "h": 200
+ },
  "n26": {
   "file": "n26.png",
   "w": 256,
@@ -859,8 +1384,38 @@
   "w": 48,
   "h": 48
  },
+ "nanonets": {
+  "file": "nanonets.png",
+  "w": 256,
+  "h": 256
+ },
+ "nasdaq-wd1-global-external-site": {
+  "file": "nasdaq-wd1-global-external-site.png",
+  "w": 180,
+  "h": 180
+ },
+ "nebius": {
+  "file": "nebius.png",
+  "w": 180,
+  "h": 180
+ },
  "netcompany1": {
   "file": "netcompany1.png",
+  "w": 180,
+  "h": 180
+ },
+ "netomi": {
+  "file": "netomi.png",
+  "w": 180,
+  "h": 180
+ },
+ "nimblerobotics": {
+  "file": "nimblerobotics.png",
+  "w": 256,
+  "h": 256
+ },
+ "normalcomputing": {
+  "file": "normalcomputing.png",
   "w": 180,
   "h": 180
  },
@@ -874,8 +1429,18 @@
   "w": 256,
   "h": 256
  },
+ "numeric": {
+  "file": "numeric.png",
+  "w": 256,
+  "h": 256
+ },
  "nuro": {
   "file": "nuro.png",
+  "w": 256,
+  "h": 256
+ },
+ "observeai": {
+  "file": "observeai.png",
   "w": 256,
   "h": 256
  },
@@ -894,15 +1459,45 @@
   "w": 256,
   "h": 256
  },
+ "openai": {
+  "file": "openai.png",
+  "w": 180,
+  "h": 180
+ },
+ "openevidence": {
+  "file": "openevidence.png",
+  "w": 180,
+  "h": 180
+ },
+ "openhands": {
+  "file": "openhands.svg",
+  "w": 1024,
+  "h": 1024
+ },
+ "openrouter": {
+  "file": "openrouter.png",
+  "w": 256,
+  "h": 256
+ },
  "optiverus": {
   "file": "optiverus.png",
   "w": 192,
   "h": 192
  },
+ "otterai": {
+  "file": "otterai.png",
+  "w": 256,
+  "h": 256
+ },
  "outreach": {
   "file": "outreach.png",
   "w": 256,
   "h": 256
+ },
+ "overview": {
+  "file": "overview.png",
+  "w": 180,
+  "h": 180
  },
  "owkin": {
   "file": "owkin.png",
@@ -929,6 +1524,16 @@
   "w": 300,
   "h": 300
  },
+ "pathrobotics": {
+  "file": "pathrobotics.png",
+  "w": 256,
+  "h": 256
+ },
+ "patronusaiinc": {
+  "file": "patronusaiinc.png",
+  "w": 256,
+  "h": 256
+ },
  "payoneer": {
   "file": "payoneer.png",
   "w": 180,
@@ -951,6 +1556,11 @@
  },
  "people-ai": {
   "file": "people-ai.png",
+  "w": 256,
+  "h": 256
+ },
+ "permitflow": {
+  "file": "permitflow.svg",
   "w": 256,
   "h": 256
  },
@@ -984,6 +1594,11 @@
   "w": 48,
   "h": 48
  },
+ "pingo": {
+  "file": "pingo.png",
+  "w": 180,
+  "h": 180
+ },
  "pinterest": {
   "file": "pinterest.png",
   "w": 144,
@@ -994,15 +1609,30 @@
   "w": 180,
   "h": 180
  },
+ "plus-2": {
+  "file": "plus-2.svg",
+  "w": 128,
+  "h": 128
+ },
  "point72": {
   "file": "point72.png",
   "w": 180,
   "h": 180
  },
+ "pointone": {
+  "file": "pointone.png",
+  "w": 1024,
+  "h": 1024
+ },
  "polyai": {
   "file": "polyai.png",
   "w": 100,
   "h": 100
+ },
+ "polymath": {
+  "file": "polymath.svg",
+  "w": 379.1,
+  "h": 379.1
  },
  "poolside": {
   "file": "poolside.png",
@@ -1019,10 +1649,25 @@
   "w": 256,
   "h": 256
  },
+ "prodigal": {
+  "file": "prodigal.png",
+  "w": 256,
+  "h": 256
+ },
  "prolific": {
   "file": "prolific.png",
   "w": 48,
   "h": 48
+ },
+ "prox": {
+  "file": "prox.png",
+  "w": 48,
+  "h": 48
+ },
+ "pylon": {
+  "file": "pylon.png",
+  "w": 180,
+  "h": 180
  },
  "qualtrics": {
   "file": "qualtrics.png",
@@ -1039,6 +1684,11 @@
   "w": 180,
   "h": 180
  },
+ "rain": {
+  "file": "rain.png",
+  "w": 100,
+  "h": 100
+ },
  "ramp": {
   "file": "ramp.png",
   "w": 180,
@@ -1049,10 +1699,30 @@
   "w": 64,
   "h": 64
  },
+ "reducto": {
+  "file": "reducto.png",
+  "w": 180,
+  "h": 180
+ },
+ "reflectionai": {
+  "file": "reflectionai.png",
+  "w": 180,
+  "h": 180
+ },
+ "regal-ai": {
+  "file": "regal-ai.png",
+  "w": 256,
+  "h": 256
+ },
  "reka": {
   "file": "reka.png",
   "w": 128,
   "h": 128
+ },
+ "relx-wd3-relx": {
+  "file": "relx-wd3-relx.png",
+  "w": 64,
+  "h": 64
  },
  "remotecom": {
   "file": "remotecom.svg",
@@ -1069,10 +1739,20 @@
   "w": 64,
   "h": 64
  },
+ "retell-ai": {
+  "file": "retell-ai.png",
+  "w": 256,
+  "h": 256
+ },
  "revenuecat": {
   "file": "revenuecat.png",
   "w": 512,
   "h": 512
+ },
+ "rime": {
+  "file": "rime.png",
+  "w": 180,
+  "h": 180
  },
  "robin-ai": {
   "file": "robin-ai.png",
@@ -1089,15 +1769,50 @@
   "w": 180,
   "h": 180
  },
+ "roboflow": {
+  "file": "roboflow.png",
+  "w": 256,
+  "h": 256
+ },
+ "rogo": {
+  "file": "rogo.png",
+  "w": 256,
+  "h": 256
+ },
  "rolandberger": {
   "file": "rolandberger.png",
   "w": 180,
   "h": 180
  },
+ "rollsroyce-wd3-professional": {
+  "file": "rollsroyce-wd3-professional.png",
+  "w": 180,
+  "h": 180
+ },
+ "runpod": {
+  "file": "runpod.png",
+  "w": 256,
+  "h": 256
+ },
  "runway": {
   "file": "runway.png",
   "w": 320,
   "h": 320
+ },
+ "safetykit": {
+  "file": "safetykit.svg",
+  "w": 32,
+  "h": 32
+ },
+ "sagecare": {
+  "file": "sagecare.png",
+  "w": 384,
+  "h": 384
+ },
+ "salient": {
+  "file": "salient.svg",
+  "w": 300,
+  "h": 405
  },
  "sambanovasystems": {
   "file": "sambanovasystems.png",
@@ -1119,8 +1834,18 @@
   "w": 64,
   "h": 64
  },
+ "sarvam": {
+  "file": "sarvam.svg",
+  "w": 344,
+  "h": 341
+ },
  "scaleai": {
   "file": "scaleai.png",
+  "w": 180,
+  "h": 180
+ },
+ "sema4-ai": {
+  "file": "sema4-ai.png",
   "w": 180,
   "h": 180
  },
@@ -1139,6 +1864,16 @@
   "w": 48,
   "h": 48
  },
+ "serverobotics": {
+  "file": "serverobotics.png",
+  "w": 180,
+  "h": 180
+ },
+ "servicenow": {
+  "file": "servicenow.png",
+  "w": 48,
+  "h": 48
+ },
  "shieldai": {
   "file": "shieldai.png",
   "w": 512,
@@ -1149,10 +1884,30 @@
   "w": 180,
   "h": 180
  },
+ "sieve": {
+  "file": "sieve.svg",
+  "w": 528,
+  "h": 528
+ },
+ "sift": {
+  "file": "sift.png",
+  "w": 180,
+  "h": 180
+ },
  "sigmacomputing": {
   "file": "sigmacomputing.png",
   "w": 256,
   "h": 256
+ },
+ "sim": {
+  "file": "sim.png",
+  "w": 256,
+  "h": 256
+ },
+ "simple-ai": {
+  "file": "simple-ai.png",
+  "w": 160,
+  "h": 160
  },
  "skydio": {
   "file": "skydio.png",
@@ -1168,6 +1923,11 @@
   "file": "smartsheet.png",
   "w": 180,
   "h": 180
+ },
+ "smithnephew-wd5-external": {
+  "file": "smithnephew-wd5-external.png",
+  "w": 48,
+  "h": 48
  },
  "smithsgroup2": {
   "file": "smithsgroup2.png",
@@ -1194,15 +1954,55 @@
   "w": 256,
   "h": 256
  },
+ "solveintelligence": {
+  "file": "solveintelligence.png",
+  "w": 256,
+  "h": 256
+ },
  "soprasteria1": {
   "file": "soprasteria1.png",
   "w": 64,
   "h": 64
  },
+ "sourcegraph91": {
+  "file": "sourcegraph91.png",
+  "w": 128,
+  "h": 128
+ },
+ "speak": {
+  "file": "speak.png",
+  "w": 256,
+  "h": 256
+ },
  "speechmatics": {
   "file": "speechmatics.png",
   "w": 180,
   "h": 180
+ },
+ "spellbook-com": {
+  "file": "spellbook-com.png",
+  "w": 256,
+  "h": 256
+ },
+ "spellbrush": {
+  "file": "spellbrush.png",
+  "w": 48,
+  "h": 48
+ },
+ "spgi-wd5-spgi-careers": {
+  "file": "spgi-wd5-spgi-careers.png",
+  "w": 192,
+  "h": 192
+ },
+ "sphere": {
+  "file": "sphere.png",
+  "w": 256,
+  "h": 256
+ },
+ "spur": {
+  "file": "spur.png",
+  "w": 256,
+  "h": 256
  },
  "squarespace": {
   "file": "squarespace.png",
@@ -1214,10 +2014,20 @@
   "w": 100,
   "h": 100
  },
+ "standardbots": {
+  "file": "standardbots.png",
+  "w": 256,
+  "h": 256
+ },
  "stripe": {
   "file": "stripe.svg",
   "w": 512,
   "h": 512
+ },
+ "substrate": {
+  "file": "substrate.png",
+  "w": 256,
+  "h": 256
  },
  "suki": {
   "file": "suki.png",
@@ -1244,20 +2054,45 @@
   "w": 109,
   "h": 113
  },
+ "superannotate": {
+  "file": "superannotate.png",
+  "w": 256,
+  "h": 256
+ },
  "supercell": {
   "file": "supercell.png",
   "w": 48,
   "h": 48
+ },
+ "surge-ai": {
+  "file": "surge-ai.png",
+  "w": 180,
+  "h": 180
+ },
+ "sygaldry-technologies": {
+  "file": "sygaldry-technologies.png",
+  "w": 180,
+  "h": 180
  },
  "synthesia": {
   "file": "synthesia.png",
   "w": 256,
   "h": 256
  },
+ "tailor": {
+  "file": "tailor.png",
+  "w": 128,
+  "h": 128
+ },
  "taktile": {
   "file": "taktile.png",
   "w": 180,
   "h": 180
+ },
+ "tamarindbio": {
+  "file": "tamarindbio.png",
+  "w": 256,
+  "h": 256
  },
  "tavus": {
   "file": "tavus.png",
@@ -1269,6 +2104,11 @@
   "w": 180,
   "h": 180
  },
+ "tenstorrent": {
+  "file": "tenstorrent.png",
+  "w": 500,
+  "h": 500
+ },
  "tesslcareers": {
   "file": "tesslcareers.png",
   "w": 48,
@@ -1279,10 +2119,20 @@
   "w": 256,
   "h": 256
  },
+ "thinkingmachines": {
+  "file": "thinkingmachines.png",
+  "w": 180,
+  "h": 180
+ },
  "tide": {
   "file": "tide.png",
   "w": 180,
   "h": 180
+ },
+ "tmobile-wd1-external": {
+  "file": "tmobile-wd1-external.png",
+  "w": 57,
+  "h": 57
  },
  "toast": {
   "file": "toast.png",
@@ -1299,10 +2149,25 @@
   "w": 256,
   "h": 256
  },
+ "toloka": {
+  "file": "toloka.png",
+  "w": 180,
+  "h": 180
+ },
  "tomorrow": {
   "file": "tomorrow.png",
   "w": 180,
   "h": 180
+ },
+ "topline-pro": {
+  "file": "topline-pro.png",
+  "w": 180,
+  "h": 180
+ },
+ "torcrobotics": {
+  "file": "torcrobotics.png",
+  "w": 300,
+  "h": 300
  },
  "tractian": {
   "file": "tractian.png",
@@ -1313,6 +2178,11 @@
   "file": "trainline.png",
   "w": 48,
   "h": 48
+ },
+ "triomics": {
+  "file": "triomics.png",
+  "w": 180,
+  "h": 180
  },
  "trm-labs": {
   "file": "trm-labs.png",
@@ -1334,6 +2204,11 @@
   "w": 180,
   "h": 180
  },
+ "truthsystems": {
+  "file": "truthsystems.png",
+  "w": 48,
+  "h": 48
+ },
  "truveta": {
   "file": "truveta.png",
   "w": 180,
@@ -1344,6 +2219,16 @@
   "w": 256,
   "h": 256
  },
+ "turing": {
+  "file": "turing.png",
+  "w": 48,
+  "h": 48
+ },
+ "twelve-labs": {
+  "file": "twelve-labs.png",
+  "w": 180,
+  "h": 180
+ },
  "twilio": {
   "file": "twilio.png",
   "w": 180,
@@ -1353,6 +2238,21 @@
   "file": "twitch.png",
   "w": 180,
   "h": 180
+ },
+ "udio": {
+  "file": "udio.png",
+  "w": 256,
+  "h": 256
+ },
+ "unstructured": {
+  "file": "unstructured.png",
+  "w": 180,
+  "h": 180
+ },
+ "usul": {
+  "file": "usul.png",
+  "w": 1080,
+  "h": 1080
  },
  "vannevarlabs": {
   "file": "vannevarlabs.svg",
@@ -1374,6 +2274,11 @@
   "w": 256,
   "h": 256
  },
+ "veritus": {
+  "file": "veritus.png",
+  "w": 256,
+  "h": 256
+ },
  "version1": {
   "file": "version1.png",
   "w": 180,
@@ -1389,15 +2294,35 @@
   "w": 180,
   "h": 180
  },
+ "vooma": {
+  "file": "vooma.png",
+  "w": 256,
+  "h": 256
+ },
+ "waabi": {
+  "file": "waabi.png",
+  "w": 192,
+  "h": 192
+ },
  "warnerbros-wd5-global": {
   "file": "warnerbros-wd5-global.png",
   "w": 64,
   "h": 64
  },
+ "warpbuild": {
+  "file": "warpbuild.png",
+  "w": 180,
+  "h": 180
+ },
  "wayve": {
   "file": "wayve.png",
   "w": 180,
   "h": 180
+ },
+ "weave": {
+  "file": "weave.png",
+  "w": 1200,
+  "h": 1200
  },
  "weaviate": {
   "file": "weaviate.png",
@@ -1424,10 +2349,20 @@
   "w": 180,
   "h": 180
  },
+ "workiva-wd503-careers": {
+  "file": "workiva-wd503-careers.png",
+  "w": 180,
+  "h": 180
+ },
  "workos": {
   "file": "workos.png",
   "w": 256,
   "h": 256
+ },
+ "worldlabs": {
+  "file": "worldlabs.png",
+  "w": 48,
+  "h": 48
  },
  "wrike": {
   "file": "wrike.png",
@@ -1444,10 +2379,20 @@
   "w": 48,
   "h": 48
  },
+ "xairatherapeutics": {
+  "file": "xairatherapeutics.png",
+  "w": 256,
+  "h": 256
+ },
  "xebiacee": {
   "file": "xebiacee.png",
   "w": 180,
   "h": 180
+ },
+ "xendit": {
+  "file": "xendit.png",
+  "w": 512,
+  "h": 503
  },
  "xtxmarketstechnologies": {
   "file": "xtxmarketstechnologies.png",
@@ -1458,6 +2403,11 @@
   "file": "zapier.png",
   "w": 192,
   "h": 192
+ },
+ "zeit-ai": {
+  "file": "zeit-ai.png",
+  "w": 256,
+  "h": 256
  },
  "zilliz": {
   "file": "zilliz.svg",
