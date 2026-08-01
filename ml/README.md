@@ -4,6 +4,12 @@ How the in/out classification moved off the OpenAI API and into the engine. See
 [RUBRIC.md](RUBRIC.md) for the labelling definition and
 [gold/gold.jsonl](gold/gold.jsonl) for the hand-labelled evaluation set.
 
+> **Before changing anything in the classification path, read
+> [TRAINING_INFERENCE_PARITY.md](TRAINING_INFERENCE_PARITY.md).** Inference must
+> reproduce the training conditions exactly, and when they disagree the training
+> run is authoritative. Breaking that does not throw and does not show up in the
+> logs — it just makes every decision quietly worse.
+
 ## Outcome
 
 **Shipped.** `train_encoder.py` fine-tunes ModernBERT-base on the 4,898 labels in
@@ -11,7 +17,7 @@ How the in/out classification moved off the OpenAI API and into the engine. See
 in-process by `engine/src/pipeline/encoder.ts`. There is no API key.
 
 Held-out split — whole companies held out, so near-duplicate reposts cannot leak
-across it — at the 1024-token production window and the 0.70 operating point:
+across it — at the 0.70 operating point:
 
 | | Precision | Recall | Precision @13% base rate |
 |---|---|---|---|
@@ -20,6 +26,12 @@ across it — at the 1024-token production window and the 0.70 operating point:
 
 Better on both axes. The fp32 graph reproduces PyTorch to 1.4e-06 with zero
 differing decisions, so the shipped path and the training reference agree.
+
+> **These numbers were measured at a 1024-token inference window and have not
+> been re-measured since it was corrected to the training window of 3072.** They
+> are a floor, not a current reading: 70% of adverts were being truncated when
+> they were taken, and untruncating moves decisions. Re-run the held-out
+> evaluation before quoting them as the shipped quality.
 
 ### Why not int8
 
