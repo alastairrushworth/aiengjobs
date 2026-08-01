@@ -86,6 +86,14 @@ const updated = new Date(generatedAt).toLocaleDateString("en-US", {
     noun="open roles"
     {...filterOptions}
   >
+    {/* Sits with the result count rather than at the foot of the page. The
+        argument for the foot was that freshness is a question you only ask
+        after reading the listings — true on a desktop, but the homepage is
+        ~13 phone screens tall, so at the foot it was a claim almost nobody
+        reached. "No ghost jobs" is the board's whole pitch; the date that
+        backs it belongs where the scanning starts. */}
+    <p class="updated">Updated {updated} · refreshed nightly</p>
+
     <ul class="jobs" id="jobs">
       {initialJobs.map((job, i) => (
         <JobCard job={job} href={url(`/jobs/${job.slug}/`)} eager={i < 6} />
@@ -98,10 +106,6 @@ const updated = new Date(generatedAt).toLocaleDateString("en-US", {
       LandingPage.astro) — the homepage reaches them through the footer nav's
       cluster pages — and the City select in the filter bar covers the same
       ground for anyone already here. */}
-
-  {/* The freshness stamp sits at the foot of the page rather than under the
-      headline: it answers a question you only ask after reading the listings. */}
-  <p class="updated">Updated {updated} · refreshed nightly</p>
 
   {/* jsonLdScript escapes <, >, & — job titles are untrusted feed content that
       could otherwise break out of these script elements. */}
