@@ -21,12 +21,10 @@ const pct = (n: number, d: number) => (d ? Math.round((n / d) * 100) : 0);
 // lib/search) rather than ?q= — "?q=Go" would have matched Google and Gong and
 // undercut the count beside it.
 //
-// "Best-paid skills" used to link with `sort=pay`, which ordered the whole
-// board by salary and pushed the 53% with no published range to the bottom.
-// The honest form of the same intent is `pay=1`: the roles for that skill that
-// state what they pay.
-const skillUrl = (name: string, priced = false) =>
-  jobsUrl(priced ? { skill: name, pay: "1" } : { skill: name });
+// Every one of these is a skill link, priced table or not: the listing has no
+// "shows pay" filter to hand off to any more, and the salary figures beside
+// the name are the answer to the pay question anyway.
+const skillUrl = (name: string) => jobsUrl({ skill: name });
 
 // The remote landing, not `?work=remote`. Both would show the same roles, but
 // the landing has the copy, the stats block and the feed — and it only exists
@@ -233,7 +231,7 @@ const maxCountry = topCountries[0]?.n ?? 1;
       <ul class="bars">
         {topPaidSkills.map((s) => (
           <li>
-            <a class="bl" href={skillUrl(s.name, true)}>{s.name}</a>
+            <a class="bl" href={skillUrl(s.name)}>{s.name}</a>
             <span class="bar"><span class="fill alt" style={`width:${(s.value / maxPaidSkill) * 100}%`}></span></span>
             <span class="bv">{k(s.value)}</span>
           </li>

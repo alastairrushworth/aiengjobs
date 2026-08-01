@@ -162,10 +162,6 @@ describe("filters", () => {
     expect(slugs(filterJobs(jobs, state({ city: "London" })))).toEqual([remote.slug, hybrid.slug]);
   });
 
-  it("filters to roles that publish pay", () => {
-    expect(slugs(filterJobs(jobs, state({ pay: true })))).toEqual([remote.slug, onsite.slug]);
-  });
-
   it("filters by age in days", () => {
     expect(slugs(filterJobs(jobs, state({ since: "7" })))).toEqual([remote.slug]);
     expect(slugs(filterJobs(jobs, state({ since: "30" })))).toEqual([remote.slug]);
@@ -188,7 +184,7 @@ describe("filters", () => {
   });
 
   it("combines every clause", () => {
-    const s = state({ work: "remote", city: "London", pay: true, level: SENIOR_PLUS });
+    const s = state({ work: "remote", city: "London", level: SENIOR_PLUS });
     expect(slugs(filterJobs(jobs, s))).toEqual([remote.slug]);
   });
 
@@ -196,7 +192,7 @@ describe("filters", () => {
     // updateCounts() in JobFilters.astro drops the clause whose key matches the
     // select's id; a rename here silently stops excluding a select's own value.
     expect(Object.keys(buildTests(EMPTY_STATE)).sort()).toEqual(
-      ["city", "country", "level", "pay", "q", "since", "skill", "work"].sort(),
+      ["city", "country", "level", "q", "since", "skill", "work"].sort(),
     );
   });
 });
@@ -210,7 +206,6 @@ describe("URL state", () => {
       city: "London",
       work: "remote",
       since: "7",
-      pay: true,
       skills: ["RAG", "Python"],
     });
     expect(parseState(toParams(s))).toEqual(s);
@@ -236,13 +231,12 @@ describe("URL state", () => {
 });
 
 describe("removing filters", () => {
-  const full = state({ q: "senior rag", work: "remote", pay: true, skills: ["RAG", "Python"] });
+  const full = state({ q: "senior rag", work: "remote", skills: ["RAG", "Python"] });
 
   it("lists each active filter separately", () => {
     expect(activeFilters(full)).toEqual([
       { key: "q", value: "senior rag" },
       { key: "work", value: "remote" },
-      { key: "pay", value: "1" },
       { key: "skill", value: "RAG" },
       { key: "skill", value: "Python" },
     ]);
