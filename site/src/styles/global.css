@@ -101,8 +101,20 @@ a { color: inherit; text-decoration: none; }
   justify-content: space-between;
   height: 60px;
 }
-.brand { font-weight: 700; font-size: 1.05rem; letter-spacing: -0.01em; }
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  font-size: 1.05rem;
+  letter-spacing: -0.01em;
+}
 .brand .dot { color: var(--accent); }
+/* The artwork occupies 22.9 of the mark's 32-unit box vertically, so a 22px
+   box draws ~16px tall — level with the wordmark's em box rather than towering
+   over it. The ring inherits the header's text colour; only the dot is accent,
+   which is the same split the favicon uses. */
+.brand-mark { width: 22px; height: 22px; flex: none; }
 .site-nav { display: flex; gap: 10px; font-size: 0.9rem; }
 .site-nav a {
   color: var(--muted);

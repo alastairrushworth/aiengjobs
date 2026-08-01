@@ -89,7 +89,23 @@ const ogImage = new URL(url("/og-default.png"), Astro.site).href;
     <a class="skip-link" href="#main">Skip to content</a>
     <header class="site-header">
       <div class="container">
-        <a class="brand" href={url("/")}>frontierroles<span class="dot">.</span>com</a>
+        <a class="brand" href={url("/")}>
+          {/* Inlined rather than <img src="/favicon.svg">: two shapes cost less
+              here than a second request would, and inlining lets the ring take
+              currentColor so it tracks the header's text colour. */}
+          <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true" focusable="false">
+            <path
+              d="M19.207 8.12 A10 10 0 1 0 19.207 23.88"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.9"
+              stroke-linecap="round"
+              opacity="0.55"
+            />
+            <circle cx="26" cy="16" r="4.4" fill="var(--accent)" />
+          </svg>
+          <span>frontierroles<span class="dot">.</span>com</span>
+        </a>
         <nav class="site-nav" aria-label="Site">
           <a href={url("/")}>Jobs</a>
           <a href={url("/stats/")}>Stats</a>
