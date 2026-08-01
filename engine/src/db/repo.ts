@@ -38,6 +38,44 @@ export function upsertSource(
   return id;
 }
 
+/**
+ * Retire every active source not in `keepIds`, closing the jobs they left
+ * behind. `closeStaleJobs` only ever touches sources that were polled this run,
+ * so a board that stops being polled would otherwise strand its open jobs on
+ * the site indefinitely — nothing else would ever close them.
+ *
+ * Returns the number of sources retired, or null if the retirement was refused
+ * because `keepIds` covers less than `minFraction` of the active sources — the
+ * signature of a truncated seed file rather than a deliberate removal.
+ */
+export function retireSourcesExcept(
+  db: DatabaseSync,
+  keepIds: string[],
+  minFraction: number,
+): number | null {
+  const { active } = db
+    .prepare(`SELECT COUNT(*) AS active FROM sources WHERE status = 'active'`)
+    .get() as unknown as { active: number };
+  if (active > 0 && keepIds.length < active * minFraction) return null;
+
+  const placeholders = keepIds.map(() => "?").join(",") || "NULL";
+  const doomed = db
+    .prepare(
+      `SELECT id FROM sources WHERE status = 'active' AND id NOT IN (${placeholders})`,
+    )
+    .all(...keepIds) as unknown as { id: string }[];
+  if (doomed.length === 0) return 0;
+
+  const ids = doomed.map((r) => r.id);
+  const marks = ids.map(() => "?").join(",");
+  db.prepare(`UPDATE sources SET status = 'retired' WHERE id IN (${marks})`).run(...ids);
+  db.prepare(
+    `UPDATE jobs SET is_closed = 1
+     WHERE is_direct = 0 AND is_closed = 0 AND source_id IN (${marks})`,
+  ).run(...ids);
+  return ids.length;
+}
+
 export interface PollTarget {
   companyId: string;
   name: string;

@@ -74,7 +74,8 @@ Peak,greenhouse,peak,peak.ai,growth
 PhysicsX,greenhouse,physicsx,physicsx.ai,growth
 PolyAI,greenhouse,polyai,poly.ai,growth
 Quantexa,ashby,quantexa,quantexa.com,late
-Robin AI,ashby,robin-ai,robinai.com,growth
+# dead 2026-08-01: ashby board 404 (no replacement board found)
+#Robin AI,ashby,robin-ai,robinai.com,growth
 Signal AI,ashby,signal-ai,signal-ai.com,growth
 Speechmatics,greenhouse,speechmatics,speechmatics.com,growth
 Tractable,ashby,tractable,tractable.ai,growth
@@ -148,7 +149,8 @@ Squarespace,greenhouse,squarespace,squarespace.com,late
 Stripe,greenhouse,stripe,stripe.com,late
 Toast,greenhouse,toast,toasttab.com,late
 Twilio,greenhouse,twilio,twilio.com,late
-Unity,greenhouse,unity3d,unity.com,late
+# dead 2026-08-01: greenhouse board 404 on both US and EU hosts
+#Unity,greenhouse,unity3d,unity.com,late
 Webflow,greenhouse,webflow,webflow.com,late
 # --- UK ---
 Deliveroo,ashby,deliveroo,deliveroo.com,late
@@ -612,7 +614,11 @@ AT&T,workday,att:wd1:ATTGeneral,att.com,late
 T-Mobile,workday,tmobile:wd1:External,t-mobile.com,late
 Zillow Group,workday,zillow:wd5:Zillow_Group_External,zillowgroup.com,late
 Wayfair,smartrecruiters,Wayfair,wayfair.com,late
-Chewy,greenhouse,chewycom,chewy.com,late
+# dead 2026-08-01, still 404 on both US and EU hosts when re-checked 2026-08-15
+#Chewy,greenhouse,chewycom,chewy.com,late
+# GoDaddy was moved to Workday on 2026-08-01, but its greenhouse board answers
+# again (200, 22 roles on 2026-08-15) — left where it is rather than migrated on
+# the strength of a fortnight-old 404.
 GoDaddy,greenhouse,godaddy,godaddy.com,late
 VeriSign,greenhouse,verisign,verisign.com,late
 The Trade Desk,greenhouse,thetradedesk,thetradedesk.com,late
@@ -625,20 +631,26 @@ Workiva,workday,workiva:wd503:careers,workiva.com,late
 # --- Eightfold (slug = host:domain) ---
 HSBC,eightfold,hsbc.eightfold.ai:hsbc.com,hsbc.com,late
 Vodafone,eightfold,vodafone.eightfold.ai:vodafone.com,vodafone.com,late
-American Express,eightfold,aexp.eightfold.ai:americanexpress.com,americanexpress.com,late
-Moody's,eightfold,careers.moodys.com:moodys.com,moodys.com,late
-MSCI,eightfold,careers.msci.com:msci.com,msci.com,late
+# dead 2026-08-01: eightfold host serves HTML, no /api/apply/v2 board
+#American Express,eightfold,aexp.eightfold.ai:americanexpress.com,americanexpress.com,late
+# dead 2026-08-01: eightfold host 301s to HTML, no /api/apply/v2 board
+#Moody's,eightfold,careers.moodys.com:moodys.com,moodys.com,late
+# dead 2026-08-01: eightfold host serves HTML, no /api/apply/v2 board
+#MSCI,eightfold,careers.msci.com:msci.com,msci.com,late
 # --- Oracle Recruiting Cloud (slug = host:siteNumber) ---
 Fortinet,oracle,edel.fa.us2.oraclecloud.com:CX_2001,fortinet.com,late
 Akamai,oracle,fa-extu-saasfaprod1.fa.ocs.oraclecloud.com:CX_1,akamai.com,late
 Verisk Analytics,oracle,fa-ewmy-saasfaprod1.fa.ocs.oraclecloud.com:CX_1,verisk.com,late
 # --- iCIMS (slug = portal subdomain) ---
-Intuit,icims,uscareers-intuit,intuit.com,late
+# dead 2026-08-01: icims board 404
+#Intuit,icims,uscareers-intuit,intuit.com,late
 Charles Schwab,icims,career-schwab,schwab.com,late
 Intercontinental Exchange,icims,careers-ice,ice.com,late
 # --- SuccessFactors (slug = host:company) ---
-Reckitt,successfactors,career2.successfactors.eu:reckittb01,reckitt.com,late
-Bentley Systems,successfactors,career4.successfactors.com:bentleyprod,bentley.com,late
+# dead 2026-08-01: successfactors search path 404
+#Reckitt,successfactors,career2.successfactors.eu:reckittb01,reckitt.com,late
+# dead 2026-08-01: successfactors search path 404
+#Bentley Systems,successfactors,career4.successfactors.com:bentleyprod,bentley.com,late
 
 # ===========================================================================
 # AI-first additions, verified 2026-07-29. Sourced from the YC directory
@@ -768,7 +780,8 @@ Meticulous,ashby,meticulous,meticulous.ai,growth
 Middesk,ashby,middesk,middesk.com,growth
 Minerva,ashby,minerva,tryminerva.ai,early
 Mintlify,ashby,mintlify,mintlify.com,growth
-Miso,ashby,miso,miso.kr,growth
+# dead 2026-08-01: ashby board 404 (no replacement board found)
+#Miso,ashby,miso,miso.kr,growth
 Moss,ashby,moss,moss.dev,early
 Normal Computing,ashby,normalcomputing,normalcomputing.ai,early
 Numeric,ashby,numeric,numeric.io,early

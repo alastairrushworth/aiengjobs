@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { openDb } from "./db/index.ts";
-import { upsertCompany, upsertSource } from "./db/repo.ts";
+import { upsertCompany, upsertSource, retireSourcesExcept } from "./db/repo.ts";
 import { getConnector } from "./connectors/index.ts";
 import { slugify } from "./util/id.ts";
 import type { AtsProvider } from "@aiengjobs/shared";
@@ -49,6 +49,7 @@ export function seed(): void {
     .filter((l) => l && !l.startsWith("#"));
 
   const db = openDb();
+  const seeded: string[] = [];
   let companies = 0;
   let skipped = 0;
   for (const line of lines) {
@@ -76,9 +77,28 @@ export function seed(): void {
       atsToken: atsSlug,
       stage: stage || undefined,
     });
-    upsertSource(db, cid, provider as AtsProvider, connector.endpoint(atsSlug));
+    seeded.push(upsertSource(db, cid, provider as AtsProvider, connector.endpoint(atsSlug)));
     companies++;
   }
+
+  // Poll targets come from the database, not from this file, so deleting a row
+  // here used to do nothing at all: the source stayed 'active' and the nightly
+  // run kept polling a board that had 404'd for months. Retire whatever the CSV
+  // no longer lists, so this file is genuinely the source of truth.
+  //
+  // Guarded, because retirement is sticky and the blast radius is the whole
+  // board: a truncated or half-written CSV would otherwise retire everything in
+  // one run. Nothing legitimate removes half the company list at once.
+  const retired = retireSourcesExcept(db, seeded, 0.5);
+  if (retired === null) {
+    console.warn(
+      `  ! refusing to retire sources: ${CSV} lists ${companies} companies, ` +
+        `less than half of what is currently active. Fix the file, or retire by hand.`,
+    );
+  } else if (retired > 0) {
+    console.log(`Retired ${retired} sources no longer listed, and closed their open jobs`);
+  }
+
   db.close();
   console.log(`Seeded ${companies} companies (${skipped} skipped) from ${CSV}`);
 }
