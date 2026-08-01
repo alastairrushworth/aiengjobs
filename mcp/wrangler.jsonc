@@ -11,6 +11,20 @@
     "FRONTIERROLES_BASE_URL": "https://frontierroles.com"
   },
 
+  // A stable URL people can paste into a client and keep. `custom_domain` makes
+  // wrangler create and own the DNS record itself, so this is the only place the
+  // hostname is configured — nothing to keep in sync by hand in the dashboard.
+  //
+  // A subdomain, deliberately: the apex serves the site from GitHub Pages
+  // (185.199.108-111.153) and nothing here touches those records. The
+  // *.workers.dev URL keeps working alongside this.
+  "routes": [
+    {
+      "pattern": "mcp.frontierroles.com",
+      "custom_domain": true
+    }
+  ],
+
   "observability": {
     "enabled": true
   }

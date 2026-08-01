@@ -61,6 +61,9 @@ currently `frontierroles-mcp`, but `@aiengjobs` is an unclaimed scope.
 The same five tools over Streamable HTTP, for clients that can't spawn a local
 process — claude.ai and ChatGPT in a browser.
 
+**`https://mcp.frontierroles.com/mcp`** — the endpoint to hand people. The
+`frontierroles-mcp.<account>.workers.dev` URL keeps working alongside it.
+
 ```sh
 npm run worker:dev -w @aiengjobs/mcp     # local, on :8787
 npm run worker:deploy -w @aiengjobs/mcp  # manual deploy
@@ -86,15 +89,18 @@ unprompted, so a stream would only hold a connection open and bill duration.
 
 Two GitHub secrets: `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`.
 
-The token needs one permission for the current setup:
+The token needs four permissions — one to deploy the script, three because
+`routes` in wrangler.jsonc makes wrangler manage the custom domain's DNS record:
 
 - **Account → Workers Scripts → Edit**
+- **Zone → Workers Routes → Edit**
+- **Zone → Zone → Read**
+- **Zone → DNS → Edit**
 
-Adding a custom domain later (`mcp.frontierroles.com`) additionally needs
-**Zone → Workers Routes → Edit**, **Zone → Zone → Read** and **Zone → DNS → Edit**,
-and the zone has to be on Cloudflare. Cloudflare's "Edit Cloudflare Workers"
-template covers all of these — scope it to the single account rather than all
-accounts.
+Cloudflare's "Edit Cloudflare Workers" template covers all four — scope it to the
+single account and zone rather than all accounts. A token missing the zone three
+deploys the script fine and then fails on the route with a 403, so the symptom is
+a half-applied deploy rather than a clean failure.
 
 ## How it gets its data
 
