@@ -51,7 +51,20 @@ echo "snapshot published to refs/heads/snapshot"
 if ! git diff --quiet -- "$META"; then
   git add "$META"
   git commit -m "data: refresh snapshot ($(date -u +%FT%TZ))"
-  git push origin HEAD:main
+  # main can move while the multi-hour ingest runs (merged PRs), making a plain
+  # push non-fast-forward. Rebase the one meta commit onto wherever main is now
+  # and retry; if main also touched the meta file, ours is the freshest (-X
+  # theirs favours the replayed commit under rebase).
+  for attempt in 1 2 3; do
+    git push origin HEAD:main && break
+    if [ "$attempt" -eq 3 ]; then
+      echo "failed to push meta after $attempt attempts" >&2
+      exit 1
+    fi
+    echo "push rejected (main moved during the run) — rebasing and retrying"
+    git fetch origin main
+    git rebase -X theirs origin/main || { git rebase --abort; exit 1; }
+  done
   echo "meta committed + pushed"
 else
   echo "meta unchanged"
