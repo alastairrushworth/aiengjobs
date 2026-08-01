@@ -39,7 +39,6 @@ const job = (over: Partial<JobEntry> & { t: string }): JobEntry => ({
   rm: "",
   sl: "",
   sn: "",
-  ro: "",
   co: "",
   ci: "",
   sk: [],
@@ -113,12 +112,11 @@ describe("searchBlob", () => {
       l: "Bengaluru, India",
       ci: "Bangalore",
       sl: "Staff",
-      ro: "AI Engineer",
       r: "Hybrid",
       sk: ["RAG"],
     });
     const blob = searchBlob(j);
-    for (const part of ["engineer", "acme", "bangalore", "staff", "ai engineer", "hybrid", "rag"]) {
+    for (const part of ["engineer", "acme", "bangalore", "staff", "hybrid", "rag"]) {
       expect(blob).toContain(part);
     }
   });
@@ -198,7 +196,7 @@ describe("filters", () => {
     // updateCounts() in JobFilters.astro drops the clause whose key matches the
     // select's id; a rename here silently stops excluding a select's own value.
     expect(Object.keys(buildTests(EMPTY_STATE)).sort()).toEqual(
-      ["city", "country", "level", "pay", "q", "role", "since", "skill", "work"].sort(),
+      ["city", "country", "level", "pay", "q", "since", "skill", "work"].sort(),
     );
   });
 });
@@ -207,7 +205,6 @@ describe("URL state", () => {
   it("round-trips", () => {
     const s = state({
       q: "senior rag",
-      role: "AI Engineer",
       level: SENIOR_PLUS,
       country: "GB",
       city: "London",

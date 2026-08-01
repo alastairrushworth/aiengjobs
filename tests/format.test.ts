@@ -5,7 +5,6 @@ import {
   postedAgo,
   safeUrl,
   salaryMidpointUsd,
-  roleType,
   type SalaryFields,
 } from "../site/src/lib/format.ts";
 import { jsonLdScript } from "../site/src/lib/jsonld.ts";
@@ -143,17 +142,5 @@ describe("postedAgo", () => {
 
   it("returns null rather than a stamp for unparseable dates", () => {
     expect(postedAgo("not-a-date", gen)).toBeNull();
-  });
-});
-
-describe("roleType", () => {
-  it("buckets titles into role families", () => {
-    expect(roleType({ title: "Senior Data Scientist", normalizedTitle: "" })).toBe(
-      "Data Scientist",
-    );
-    expect(roleType({ title: "LLM Engineer", normalizedTitle: "" })).toBe("AI Engineer");
-    expect(roleType({ title: "Site Reliability Engineer", normalizedTitle: "" })).toBe(
-      "Software Engineer",
-    );
   });
 });
