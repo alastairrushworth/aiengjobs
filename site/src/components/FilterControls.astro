@@ -14,7 +14,6 @@ interface Props extends FilterOptions {
 }
 
 const {
-  roles,
   countries,
   cities,
   seniorities,
@@ -33,62 +32,6 @@ const shows = (id: string, options: number) => !hide.includes(id) && options > 1
 ---
 
 <div class="filters">
-  <div>
-    <label for="q">Search</label>
-    <input type="search" id="q" placeholder="Title, company, skill, city…" />
-  </div>
-
-  <div class="toggles">
-    {shows("role", roles.length) && (
-      <div>
-        <label for="role">Role type</label>
-        <select id="role">
-          <option value="">Any role</option>
-          {roles.map((r) => (
-            <option value={r.label}>{r.label} ({r.count})</option>
-          ))}
-        </select>
-      </div>
-    )}
-    {shows("level", seniorities.length) && (
-      <div>
-        <label for="level">Seniority</label>
-        <select id="level">
-          <option value="">Any level</option>
-          {/* The band, above the rungs. "Senior or above" is the most common
-              thing anyone wants to say about level and the one thing a
-              one-of-eight select couldn't say. */}
-          {seniorPlus > 0 && <option value={SENIOR_PLUS}>Senior and above ({seniorPlus})</option>}
-          {seniorities.map((s) => (
-            <option value={s.id}>{s.label} ({s.count})</option>
-          ))}
-        </select>
-      </div>
-    )}
-    {shows("country", countries.length) && (
-      <div>
-        <label for="country">Country</label>
-        <select id="country">
-          <option value="">Any country</option>
-          {countries.map((c) => (
-            <option value={c.code}>{c.label} ({c.count})</option>
-          ))}
-        </select>
-      </div>
-    )}
-    {shows("city", cities.length) && (
-      <div>
-        <label for="city">City</label>
-        <select id="city">
-          <option value="">Any city</option>
-          {cities.map((c) => (
-            <option value={c.name}>{c.name} ({c.count})</option>
-          ))}
-        </select>
-      </div>
-    )}
-  </div>
-
   {/* Three things a select would answer worse. Work location is the first
       question most people ask and has three answers — as a dropdown it's an
       extra click to see options that fit on one line. Pay and freshness are
@@ -133,4 +76,61 @@ const shows = (id: string, options: number) => !hide.includes(id) && options > 1
       </div>
     )}
   </div>
+
+  {/* Everything that needs typing or a dropdown, closed by default. The pills
+      above answer in one tap and cost one row; these four cost four rows, and
+      they were spending them on top of the listing they exist to narrow. The
+      script opens this on arrival when a filter came in on the URL — a filter
+      you can't see is a page that looks like it's showing everything. */}
+  <details class="more" id="filter-disclosure">
+    <summary>Search &amp; more filters</summary>
+    <div class="more-body">
+      <div>
+        <label for="q">Search</label>
+        <input type="search" id="q" placeholder="Title, company, skill, city…" />
+      </div>
+
+      <div class="toggles">
+        {shows("level", seniorities.length) && (
+          <div>
+            <label for="level">Seniority</label>
+            <select id="level">
+              <option value="">Any level</option>
+              {/* The band, above the rungs. "Senior or above" is the most common
+                  thing anyone wants to say about level and the one thing a
+                  one-of-eight select couldn't say. */}
+              {seniorPlus > 0 && <option value={SENIOR_PLUS}>Senior and above ({seniorPlus})</option>}
+              {seniorities.map((s) => (
+                <option value={s.id}>{s.label} ({s.count})</option>
+              ))}
+            </select>
+          </div>
+        )}
+        {shows("country", countries.length) && (
+          <div>
+            <label for="country">Country</label>
+            <select id="country">
+              <option value="">Any country</option>
+              {countries.map((c) => (
+                <option value={c.code}>{c.label} ({c.count})</option>
+              ))}
+            </select>
+          </div>
+        )}
+        {shows("city", cities.length) && (
+          <div>
+            <label for="city">City</label>
+            <select id="city">
+              <option value="">Any city</option>
+              {/* Alphabetical (see lib/filterOptions): ~90 rows deep, this is a
+                  list you scan for a name you already have in mind. */}
+              {cities.map((c) => (
+                <option value={c.name}>{c.name} ({c.count})</option>
+              ))}
+            </select>
+          </div>
+        )}
+      </div>
+    </div>
+  </details>
 </div>

@@ -1,4 +1,4 @@
-import { formatSalary, postedAgo, remoteLabel, roleType, seniorityLabel } from "./format.ts";
+import { formatSalary, postedAgo, remoteLabel, seniorityLabel } from "./format.ts";
 import { logo } from "./logos.ts";
 import { openJobs, fxRates, generatedAt } from "./data.ts";
 import type { JobEntry } from "./jobEntry.ts";
@@ -39,7 +39,6 @@ export function buildJobsPayload(jobs: Job[] = openJobs): JobEntry[] {
     rm: j.remoteType ?? "",
     sl: seniorityLabel(j.seniority) ?? "",
     sn: j.seniority ?? "",
-    ro: roleType(j),
     co: j.country ?? "",
     ci: j.city ?? "",
     sk: j.skills,
