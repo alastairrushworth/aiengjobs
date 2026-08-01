@@ -1,7 +1,8 @@
 ---
 import type { Job } from "@aiengjobs/shared";
-import { formatSalary, isNewJob, remoteLabel, seniorityLabel } from "../lib/format.ts";
+import { formatSalary, postedAgo, remoteLabel, seniorityLabel } from "../lib/format.ts";
 import { generatedAt, fxRates } from "../lib/data.ts";
+import { jobsUrl } from "../lib/url.ts";
 import CompanyLogo from "./CompanyLogo.astro";
 import { CARD_CLASS as C, CARD_LOGO_PX } from "../lib/jobCardShape.ts";
 
@@ -11,30 +12,42 @@ import { CARD_CLASS as C, CARD_LOGO_PX } from "../lib/jobCardShape.ts";
    dead space below the text. Bounded by the two lines it labels, the badge row
    underneath still starts at the card's own left edge.
 
+   The badge row sits outside the anchor rather than inside it, because the
+   skills in it are links now: every card printed up to four skills and none of
+   them did anything, on a board where the skill filter already existed and was
+   only reachable from /stats. An <a> inside an <a> is invalid and unreachable
+   by keyboard, so the anchor claims the rest of the card through a stretched
+   ::after (see global.css) and the skill links sit above it.
+
    The markup below is mirrored by makeCard() in JobFilters.astro — see
    lib/jobCardShape.ts. Change the nesting here and change it there. */
 
 interface Props {
   job: Job;
   href: string;
+  /** Above-the-fold card — load its mark eagerly (see CompanyLogo). */
+  eager?: boolean;
 }
 
-const { job, href } = Astro.props;
+const { job, href, eager = false } = Astro.props;
 const salary = formatSalary(job, fxRates);
 const remote = remoteLabel(job.remoteType);
 const sen = seniorityLabel(job.seniority);
-// No "posted Xd ago" stamp on cards: nothing older than MAX_JOB_AGE_DAYS is
-// listed at all now, so the only freshness distinction worth drawing is
-// "just posted" — and the New badge already draws it. Showing both put "New"
-// and "Posted today" side by side on every card of a newest-first list.
-const isNew = isNewJob(job.postedAt, generatedAt);
+// A dated stamp rather than a "New" flag. The two used to sit side by side and
+// say the same thing, so one had to go; "New" was the one that survived. It
+// turned out to be the wrong choice for the view that matters most — the
+// default list is sorted newest-first, so every one of the 50 cards on it
+// qualified and a badge that never varies carries no information. The date
+// says strictly more ("today" vs "6d ago" is a real distinction the flag
+// flattened) and stays useful under every sort.
+const posted = postedAgo(job.postedAt, generatedAt);
 ---
 
-<li>
+<li class={C.card}>
   <a class={C.link} href={href}>
     <div class={C.top}>
       <div class={C.head}>
-        <CompanyLogo name={job.companyName} slug={job.companySlug} size={CARD_LOGO_PX} />
+        <CompanyLogo name={job.companyName} slug={job.companySlug} size={CARD_LOGO_PX} eager={eager} />
         <div class={C.headText}>
           <div class={C.title}>{job.title}</div>
           <div class={C.company}>
@@ -44,11 +57,17 @@ const isNew = isNewJob(job.postedAt, generatedAt);
       </div>
       {salary && <div class={C.salary}>{salary}</div>}
     </div>
-    <div class={C.meta}>
-      {isNew && <span class={C.badgeNew}>New</span>}
-      {remote && <span class={C.badge}>{remote}</span>}
-      {sen && <span class={C.badge}>{sen}</span>}
-      {job.skills.slice(0, 4).map((s) => <span class={C.badgeSkill}>{s}</span>)}
-    </div>
   </a>
+  <div class={C.meta}>
+    {posted && <span class={C.badgePosted}>{posted === "today" ? "Posted today" : `Posted ${posted}`}</span>}
+    {remote && <span class={C.badge}>{remote}</span>}
+    {sen && <span class={C.badge}>{sen}</span>}
+    {/* On the listing the filter script intercepts these and narrows in place;
+        everywhere else JobCard appears (a job page, a company page) they
+        navigate to the listing already filtered. Either way the badge does
+        what it looks like it does. */}
+    {job.skills.slice(0, 4).map((s) => (
+      <a class={C.badgeSkill} href={jobsUrl({ skill: s })}>{s}</a>
+    ))}
+  </div>
 </li>

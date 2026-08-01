@@ -1,7 +1,6 @@
 ---
 import Base from "../layouts/Base.astro";
-import BrowseNav from "../components/BrowseNav.astro";
-import { url } from "../lib/url.ts";
+import { jobsUrl, url } from "../lib/url.ts";
 import {
   countryName,
   kUsd as k,
@@ -9,7 +8,6 @@ import {
   salaryMidpointUsd,
   SENIORITY_OPTIONS,
 } from "../lib/format.ts";
-import { CLUSTER_PAGES } from "../lib/clusters.ts";
 import { landingBySlug } from "../lib/landings.ts";
 import { openJobs as open, fxRates, generatedAt } from "../lib/data.ts";
 import type { Job } from "@aiengjobs/shared";
@@ -17,21 +15,22 @@ import type { Job } from "@aiengjobs/shared";
 const pct = (n: number, d: number) => (d ? Math.round((n / d) * 100) : 0);
 
 // Every row here names a slice the board can already show, so every row links
-// to it. Without these the page is a cul-de-sac: you learn there are 630 senior
-// roles and then have to walk back to the listing and rebuild the filter by
-// hand. `skill` is an exact-match param (see JobFilters) rather than ?q= —
-// "?q=Go" would have matched Google and Gong and undercut the count beside it.
-// Build the trailing-slash form GitHub Pages serves rather than pointing every
-// row on this page at a redirect. url("/") already returns "/" at the domain
-// apex; under a non-root base it drops the trailing slash, hence the check.
-const homePath = url("/").endsWith("/") ? url("/") : `${url("/")}/`;
-const jobsUrl = (params: Record<string, string>) =>
-  `${homePath}?${new URLSearchParams(params)}`;
-const skillUrl = (name: string, byPay = false) =>
-  jobsUrl(byPay ? { skill: name, sort: "pay" } : { skill: name });
+// to it (see lib/url.jobsUrl). Without these the page is a cul-de-sac: you
+// learn there are 630 senior roles and then have to walk back to the listing
+// and rebuild the filter by hand. `skill` is an exact-match param (see
+// lib/search) rather than ?q= — "?q=Go" would have matched Google and Gong and
+// undercut the count beside it.
+//
+// "Best-paid skills" used to link with `sort=pay`, which ordered the whole
+// board by salary and pushed the 53% with no published range to the bottom.
+// The honest form of the same intent is `pay=1`: the roles for that skill that
+// state what they pay.
+const skillUrl = (name: string, priced = false) =>
+  jobsUrl(priced ? { skill: name, pay: "1" } : { skill: name });
 
-// Remote isn't a filter param — it has a landing of its own, which only exists
-// once enough roles clear MIN_CITY_JOBS.
+// The remote landing, not `?work=remote`. Both would show the same roles, but
+// the landing has the copy, the stats block and the feed — and it only exists
+// once enough roles clear MIN_CITY_JOBS, hence the check.
 const remoteHref = landingBySlug.has("remote-ai-jobs") ? url("/remote-ai-jobs/") : null;
 
 // Salary midpoints (annualized USD) paired with their job — used everywhere we
@@ -260,7 +259,10 @@ const maxCountry = topCountries[0]?.n ?? 1;
     </section>
 
     <section class="panel">
-      <h2>Top locations</h2>
+      {/* "Countries", not "locations" — these are country rows, and everywhere
+          else on the site "location" means a city (Browse by location, the
+          /ai-jobs-<city> pages). */}
+      <h2>Top countries</h2>
       <ul class="bars">
         {topCountries.map((c) => (
           <li>
@@ -273,13 +275,9 @@ const maxCountry = topCountries[0]?.n ?? 1;
     </section>
   </div>
 
-  <BrowseNav
-    label="Browse:"
-    links={[
-      { href: url("/"), text: "All jobs" },
-      ...CLUSTER_PAGES.map((p) => ({ href: url(`/${p.slug}/`), text: p.label })),
-    ]}
-  />
+  {/* The cluster row that sat here is gone — the footer nav carries all eight
+      on every page, and this one repeated them a few hundred pixels above it.
+      Every stat row above is already a link into the listing it describes. */}
 </Base>
 
 <style>
@@ -314,9 +312,14 @@ const maxCountry = topCountries[0]?.n ?? 1;
   .figures .lbl { color: var(--muted); font-size: 0.78rem; }
 
   /* Two-column panel grid */
+  /* align-items: start so each panel is as tall as its own contents. Grid items
+     stretch by default, which paired a 12-row list with a 6-row one and padded
+     the short panel to match — "Best-paid skills" carried ~230px of empty card
+     below its last row purely to reach the height of the panel beside it. */
   .cols {
     display: grid;
     grid-template-columns: 1fr 1fr;
+    align-items: start;
     gap: 16px;
     margin-top: 16px;
   }

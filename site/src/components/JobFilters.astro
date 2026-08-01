@@ -1,5 +1,6 @@
 ---
 import FilterControls from "./FilterControls.astro";
+import { jobsUrl } from "../lib/url.ts";
 import type { FilterOptions } from "../lib/filterOptions.ts";
 
 interface Props extends FilterOptions {
@@ -28,6 +29,8 @@ interface Props extends FilterOptions {
    * created on first filter wouldn't reliably announce.
    */
   quiet?: boolean;
+  /** Controls this page is already scoped by — see FilterControls. */
+  hide?: string[];
 }
 
 const {
@@ -40,9 +43,8 @@ const {
   collapsible = false,
   hasPager = false,
   quiet = false,
-  roles,
-  countries,
-  seniorities,
+  hide = [],
+  ...filterOptions
 } = Astro.props;
 
 const shown = Math.min(initial, total);
@@ -56,6 +58,7 @@ const showAllHidden = hasPager || total <= initial;
   data-src={src}
   data-job-base={jobBase}
   data-logo-base={logoBase}
+  data-home={jobsUrl()}
   data-initial={String(initial)}
   data-total={String(total)}
   data-noun={noun}
@@ -75,11 +78,11 @@ const showAllHidden = hasPager || total <= initial;
           <span class="sum-long">Filter these {total} roles</span>
           <span class="sum-short">Filter {total}</span>
         </summary>
-        <FilterControls roles={roles} countries={countries} seniorities={seniorities} />
+        <FilterControls hide={hide} {...filterOptions} />
       </details>
     </div>
   ) : (
-    <FilterControls roles={roles} countries={countries} seniorities={seniorities} />
+    <FilterControls hide={hide} {...filterOptions} />
   )}
 
   <div class="results-bar">
@@ -88,11 +91,17 @@ const showAllHidden = hasPager || total <= initial;
         {quiet ? "" : `Showing the ${shown} newest of ${total} ${noun}`}
       </span>
     </p>
-    {/* Skills are filtered exactly (from /stats), but there's no select for
-        them — so the active one gets a chip, or the list is narrowed by
-        something the controls don't show. */}
-    <button class="chip" id="skill-chip" hidden></button>
+    {/* One chip per active filter, each its own way out. "Clear filters" is
+        still here, but all-or-nothing was the only granularity on offer: four
+        controls deep, undoing the one that was wrong meant finding it again in
+        a panel that had scrolled away, or starting over. */}
+    <div class="chips" id="chips"></div>
     <button class="link-btn" id="clear" hidden>Clear filters</button>
+    {/* Phone-only way back to the controls. This bar is sticky at that width
+        (the panel itself is far too tall to pin), so from 8,000px down a
+        listing the filters are still one tap away instead of a scroll to the
+        top. Hidden above 700px, where the panel is the thing that sticks. */}
+    <button class="link-btn jump-filters" id="jump-filters">Filters</button>
   </div>
 
   <slot />
@@ -101,9 +110,15 @@ const showAllHidden = hasPager || total <= initial;
       and announcing both makes a zero-result filter speak twice. */}
   <div class="empty" id="empty" hidden>
     <p>No roles match those filters.</p>
+    {/* Ways out that are known to lead somewhere — every count beside them was
+        measured against the data, not promised. A dead end here used to be the
+        most common outcome of an ordinary two-word search. */}
+    <p class="suggestions" id="suggestions"></p>
     {/* The results bar carries a Clear too, but it sits above the fold of an
-        otherwise blank screen — repeat the way out where the eye already is. */}
-    <button class="btn-secondary" id="empty-clear">Clear all filters</button>
+        otherwise blank screen — repeat the way out where the eye already is.
+        Same words as that one: two labels for one action reads as two
+        different actions. */}
+    <button class="btn-secondary" id="empty-clear">Clear filters</button>
   </div>
   <div class="show-more-wrap">
     <button class="btn-secondary" id="show-all" hidden={showAllHidden}>
@@ -114,6 +129,33 @@ const showAllHidden = hasPager || total <= initial;
 
 <style>
   .results-bar { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+
+  /* Above 700px the filter panel itself is pinned (see global.css), so this bar
+     scrolls away with the list and the jump button has nothing to do. */
+  .jump-filters { display: none; }
+  @media (max-width: 700px) {
+    /* A 50-card listing is ~10,600px tall on a phone and the panel is ~150px —
+       a quarter of the fold — so the panel can't be what sticks. This line can:
+       it keeps the live count in view and carries the way back to the controls.
+       Sits directly under the 60px header. */
+    .results-bar {
+      position: sticky;
+      top: 60px;
+      z-index: 5;
+      margin: 0 -20px;
+      padding: 6px 20px;
+      background: rgba(11, 12, 16, 0.94);
+      backdrop-filter: blur(8px);
+      border-bottom: 1px solid var(--border);
+    }
+    /* One row, not two. The count and the button together needed 343px of a
+       335px content box, so the button wrapped and the sticky bar cost 72px of
+       the fold instead of 42. Letting the count line shrink (min-width:0 — a
+       flex item won't go below min-content otherwise) keeps them side by side;
+       a long status wraps inside the count instead of pushing the button off. */
+    .results-bar :global(.results-meta) { margin-bottom: 0; flex: 1 1 auto; min-width: 0; }
+    .jump-filters { display: inline; flex: none; margin-left: auto; }
+  }
 
   /* The disclosure sits beside the page's crumbs; when it's open the controls
      have to drop to their own full-width line, hence the wrap + 100% basis. */
@@ -126,7 +168,21 @@ const showAllHidden = hasPager || total <= initial;
     margin: 10px 0 4px;
   }
   .filter-head :global(.crumbs) { margin: 0; }
-  .filter-disclosure[open] { flex: 1 1 100%; }
+  /* Open, the panel needs the full row width — but the summary must not travel
+     with it. Left to `flex: 1 1 100%` alone the control jumped ~810px from the
+     right edge to the left the moment you clicked it, which reads as the page
+     having moved rather than opened.
+     text-align rather than a flex container: Chrome renders <details> content
+     through a UA shadow slot, so the panel is not itself the flex item and
+     `align-self: stretch` on it never applied — it sat at max-content width
+     (745 of 973px) against the right edge. Alignment inherits through the slot
+     where flex alignment can't, and a block-level details still gives the panel
+     the full width for free. */
+  .filter-disclosure[open] {
+    flex: 1 1 100%;
+    text-align: right;
+  }
+  .filter-disclosure[open] :global(.filters) { text-align: left; }
 
   /* Landing-page disclosure. Reads as a control, not a heading — same border
      language as the pager and the secondary buttons. */
@@ -148,66 +204,101 @@ const showAllHidden = hasPager || total <= initial;
     .filter-disclosure .sum-short { display: inline; }
     .filter-disclosure > summary { padding: 11px 12px; }
   }
-  .filter-disclosure > summary::before { content: "⌕ "; }
+  /* No glyph before the label. "⌕" is a rare codepoint that most system stacks
+     have no glyph for; it fell back to a hairline mark that read as a stray
+     character rather than an icon. The words already say what the control is. */
   .filter-disclosure > summary:hover,
   .filter-disclosure > summary:focus-visible { border-color: var(--accent); }
   .filter-disclosure[open] > summary { margin-bottom: 4px; }
   .filter-disclosure :global(.filters) { margin-top: 10px; }
 
-  /* Active skill filter, e.g. arriving from /stats. */
-  .chip {
-    font: inherit;
-    font-size: 0.8rem;
-    color: var(--text);
-    background: var(--surface-2);
-    border: 1px solid var(--border-strong);
-    border-radius: 999px;
-    padding: 4px 10px;
-    cursor: pointer;
+  /* The chips themselves are styled in global.css, not here: this block is
+     scoped, and Astro scopes it by stamping an attribute on the elements in the
+     template. These chips are built by the script at runtime, so they never
+     carry that attribute and a rule written here would silently not apply —
+     which it did, and they rendered as raw platform buttons. */
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  @media (max-width: 700px) {
+    /* Their own row in the sticky bar rather than wherever the flex line
+       happens to break. The bar costs ~30px more while filters are up, which
+       is the one time knowing what's applied is worth a row. */
+    .chips { flex: 1 1 100%; }
   }
-  .chip::after { content: " ×"; color: var(--muted); }
-  .chip:hover,
-  .chip:focus-visible { border-color: var(--accent-text); }
+  .suggestions { color: var(--muted); font-size: 0.9rem; }
+  .suggestions:empty { display: none; }
+  /* These sit inside a sentence, so they lose the button padding that would
+     otherwise push the comma and the full stop away from the words they
+     follow, and take the underline that says "link" in running text.
+     :global — the script builds them (see the note above the chips). */
+  .suggestions :global(.link-btn) {
+    padding: 0;
+    font-size: inherit;
+    text-decoration: underline;
+  }
 </style>
 
 <script>
   import { CARD_CLASS as C, CARD_LOGO_PX } from "../lib/jobCardShape.ts";
-
-  interface JobEntry {
-    slug: string; t: string; c: string; l: string; s: string; sr: number;
-    n: number; r: string; sl: string; sn: string; ro: string;
-    co: string; sk: string[]; lg: string;
-    q?: string; // lazily-built lowercase search blob
-  }
+  import type { JobEntry } from "../lib/jobEntry.ts";
+  import {
+    EMPTY_STATE,
+    QUERY_TRIM,
+    SENIOR_PLUS,
+    SENIOR_PLUS_IDS,
+    SINCE_OPTIONS,
+    WORK_OPTIONS,
+    activeFilters,
+    buildTerms,
+    buildTests,
+    filterJobs,
+    isFiltering,
+    parseState,
+    relaxations,
+    toParams,
+    without,
+    type FilterState,
+    type Relaxation,
+  } from "../lib/search.ts";
 
   const scope = document.querySelector<HTMLElement>(".filter-scope")!;
   const INITIAL = Number(scope.dataset.initial);
   const NOUN = scope.dataset.noun!;
   const hasPager = Boolean(scope.dataset.hasPager);
+  const jobBase = scope.dataset.jobBase!;
+  const logoBase = scope.dataset.logoBase!;
+  const homeHref = scope.dataset.home!;
 
-  const q = document.getElementById("q") as HTMLInputElement;
-  const role = document.getElementById("role") as HTMLSelectElement;
-  const country = document.getElementById("country") as HTMLSelectElement;
-  const level = document.getElementById("level") as HTMLSelectElement;
-  const sort = document.getElementById("sort") as HTMLSelectElement;
+  const byId = <T extends HTMLElement>(id: string) =>
+    document.getElementById(id) as T | null;
+
+  // Only the search box is unconditional. Every select and every segmented
+  // group is dropped when the page it's on has fewer than two answers for it
+  // (see FilterControls), so nothing below may assume a control exists.
+  const q = byId<HTMLInputElement>("q")!;
+  const SELECT_KEYS = ["role", "level", "country", "city"] as const;
+  type SelectKey = (typeof SELECT_KEYS)[number];
+  const selects = Object.fromEntries(
+    SELECT_KEYS.map((k) => [k, byId<HTMLSelectElement>(k)]),
+  ) as Record<SelectKey, HTMLSelectElement | null>;
+  const segs = [...scope.querySelectorAll<HTMLElement>(".seg[data-filter]")];
+
   const jobsEl = document.getElementById("jobs")!;
   const statusText = document.getElementById("status-text")!;
   const empty = document.getElementById("empty")!;
-  const clearBtn = document.getElementById("clear") as HTMLButtonElement;
-  const emptyClearBtn = document.getElementById("empty-clear") as HTMLButtonElement;
-  const showAllBtn = document.getElementById("show-all") as HTMLButtonElement;
-  const skillChip = document.getElementById("skill-chip") as HTMLButtonElement;
-  const disclosure = document.getElementById("filter-disclosure") as HTMLDetailsElement | null;
+  const suggestEl = document.getElementById("suggestions")!;
+  const chipsEl = document.getElementById("chips")!;
+  const clearBtn = byId<HTMLButtonElement>("clear")!;
+  const emptyClearBtn = byId<HTMLButtonElement>("empty-clear")!;
+  const showAllBtn = byId<HTMLButtonElement>("show-all")!;
+  const jumpBtn = byId<HTMLButtonElement>("jump-filters")!;
+  const disclosure = byId<HTMLDetailsElement>("filter-disclosure");
   // Pagination and a client-side filter describe the same roles two different
   // ways; only one of them can be right at a time.
   const pager = hasPager ? document.querySelector<HTMLElement>(".pager") : null;
 
+  let state: FilterState = { ...EMPTY_STATE };
   let showAll = false;
-  // Exact skill match, set from the URL only — /stats links every skill row
-  // here, and "?q=Go" would have matched Google and Gong too.
-  let skill = "";
 
-  const jobBase = scope.dataset.jobBase!;
   let dataPromise: Promise<JobEntry[]> | null = null;
   function loadData(): Promise<JobEntry[]> {
     return (dataPromise ??= fetch(scope.dataset.src!).then((res) => {
@@ -216,35 +307,71 @@ const showAllHidden = hasPager || total <= initial;
     }));
   }
 
-  function searchBlob(j: JobEntry): string {
-    return (j.q ??= `${j.t} ${j.c} ${j.sk.join(" ")} ${j.l}`.toLowerCase());
+  /** Option labels without the counts that get written over them. */
+  const optionLabels = new Map<string, Map<string, string>>();
+  const stripCount = (s: string) => s.replace(/\s*\(\d[\d,]*\)\s*$/, "");
+  for (const key of SELECT_KEYS) {
+    const el = selects[key];
+    if (!el) continue;
+    optionLabels.set(
+      key,
+      new Map([...el.options].map((o) => [o.value, stripCount(o.textContent!)])),
+    );
+  }
+
+  function labelFor(key: string, value: string): string {
+    switch (key) {
+      case "q":
+        return `“${value}”`;
+      case "skill":
+        return value;
+      case "pay":
+        return "Shows pay";
+      case "work":
+        return WORK_OPTIONS.find((w) => w.id === value)?.label ?? value;
+      case "since":
+        return SINCE_OPTIONS.find((o) => o.id === value)?.label ?? value;
+      default:
+        return optionLabels.get(key)?.get(value) ?? value;
+    }
+  }
+
+  function syncFromControls() {
+    state.q = q.value;
+    for (const key of SELECT_KEYS) {
+      const el = selects[key];
+      if (el) state[key] = el.value;
+    }
+  }
+
+  function syncToControls() {
+    q.value = state.q;
+    for (const key of SELECT_KEYS) {
+      const el = selects[key];
+      if (!el) continue;
+      el.value = state[key];
+      // A value this page has no option for (a shared link into a landing that
+      // doesn't carry that city) would otherwise leave the select showing "Any"
+      // while the list stayed filtered by something invisible.
+      if (el.value !== state[key]) state[key] = el.value;
+    }
+    for (const seg of segs) {
+      const key = seg.dataset.filter!;
+      for (const btn of seg.querySelectorAll<HTMLButtonElement>(".seg-btn")) {
+        const on =
+          key === "pay" ? state.pay : state[key as "work" | "since"] === btn.dataset.value;
+        btn.setAttribute("aria-pressed", on ? "true" : "false");
+        btn.classList.toggle("is-on", on);
+      }
+    }
   }
 
   /**
-   * Anchors the query to a word start. A plain substring test makes "rust"
-   * match every "Trust & Safety" and "Trustpilot" role, which reads as a broken
-   * search; anchoring still matches as you type ("engin" → "engineer") but no
-   * longer matches mid-word. Queries starting with punctuation (".net", "c++")
-   * skip the anchor, since \b before a non-word character means the opposite.
+   * Client-rendered card. Mirrors the markup in JobCard.astro node for node —
+   * see lib/jobCardShape.ts. Built with createElement/textContent only: job
+   * data is untrusted feed content and innerHTML would be an injection point.
    */
-  function buildMatcher(text: string): RegExp {
-    const escaped = text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    return new RegExp(`${/^\w/.test(text) ? "\\b" : ""}${escaped}`);
-  }
-
-  /**
-   * Skills that caused the match come first. Only four fit on a card, and a
-   * role can carry fifteen — without this, searching "rust" returns cards whose
-   * visible tags never mention Rust and the results look wrong even when right.
-   */
-  function visibleSkills(j: JobEntry, text: string): string[] {
-    const key = text || skill.toLowerCase();
-    if (!key) return j.sk.slice(0, 4);
-    const hit = (s: string) => s.toLowerCase().includes(key);
-    const matched = j.sk.filter(hit);
-    if (!matched.length) return j.sk.slice(0, 4);
-    return [...matched, ...j.sk.filter((s) => !hit(s))].slice(0, 4);
-  }
+  const cardCache = new Map<JobEntry, HTMLLIElement>();
 
   /**
    * Company mark, mirroring components/CompanyLogo.astro. The server renders
@@ -252,7 +379,6 @@ const showAllHidden = hasPager || total <= initial;
    * after a filter, so drift shows up as a visible jump the moment someone
    * types. Size comes from lib/jobCardShape so it can't diverge again.
    */
-  const logoBase = scope.dataset.logoBase!;
   function makeLogo(j: JobEntry): HTMLElement {
     if (j.lg) {
       const img = document.createElement("img");
@@ -276,20 +402,31 @@ const showAllHidden = hasPager || total <= initial;
     return span;
   }
 
-  // Client-rendered card. Mirrors the markup in JobCard.astro node for node —
-  // see lib/jobCardShape.ts. Built with createElement/textContent only: job
-  // data is untrusted feed content and innerHTML would be an injection point.
-  const cardCache = new Map<JobEntry, HTMLLIElement>();
-  function makeCard(j: JobEntry, text: string): HTMLLIElement {
+  /**
+   * Skills that caused the match come first. Only four fit on a card, and a
+   * role can carry fifteen — without this, searching "rust" returns cards whose
+   * visible tags never mention Rust and the results look wrong even when right.
+   */
+  function visibleSkills(j: JobEntry, terms: RegExp[]): string[] {
+    if (!terms.length && !state.skills.length) return j.sk.slice(0, 4);
+    const hit = (s: string) =>
+      state.skills.includes(s) || terms.some((re) => re.test(s.toLowerCase()));
+    const matched = j.sk.filter(hit);
+    if (!matched.length) return j.sk.slice(0, 4);
+    return [...matched, ...j.sk.filter((s) => !hit(s))].slice(0, 4);
+  }
+
+  function makeCard(j: JobEntry, terms: RegExp[]): HTMLLIElement {
     // Only the unfiltered list is cached: with a query the badge order depends
     // on that query, and the rendered slice is capped at INITIAL anyway, so
     // rebuilding ~50 cards a keystroke is cheaper than keying a cache by query.
-    const cacheable = !text && !skill;
+    const cacheable = !terms.length && !state.skills.length;
     if (cacheable) {
       const cached = cardCache.get(j);
       if (cached) return cached;
     }
     const li = document.createElement("li");
+    li.className = C.card;
     const a = document.createElement("a");
     a.className = C.link;
     a.href = `${jobBase}${j.slug}/`;
@@ -315,6 +452,7 @@ const showAllHidden = hasPager || total <= initial;
       salary.textContent = j.s;
       top.append(salary);
     }
+    a.append(top);
 
     const meta = document.createElement("div");
     meta.className = C.meta;
@@ -324,15 +462,157 @@ const showAllHidden = hasPager || total <= initial;
       b.textContent = text;
       meta.append(b);
     };
-    if (j.n) badge("New", C.badgeNew);
+    if (j.p) badge(j.p === "today" ? "Posted today" : `Posted ${j.p}`, C.badgePosted);
     if (j.r) badge(j.r);
     if (j.sl) badge(j.sl);
-    for (const s of visibleSkills(j, text)) badge(s, C.badgeSkill);
+    for (const s of visibleSkills(j, terms)) {
+      const link = document.createElement("a");
+      link.className = C.badgeSkill;
+      // Only ever followed on a middle-click or "open in new tab" — the click
+      // handler below narrows this list in place instead.
+      link.href = `${homeHref}?skill=${encodeURIComponent(s)}`;
+      link.textContent = s;
+      meta.append(link);
+    }
 
-    a.append(top, meta);
-    li.append(a);
+    li.append(a, meta);
     if (cacheable) cardCache.set(j, li);
     return li;
+  }
+
+  /**
+   * Option counts, recomputed against everything *except* the select they sit
+   * in. Server-rendered they're whole-scope totals, which start lying the
+   * moment anything is set: with "rust" typed the role select still offered
+   * "AI Engineer (595)" when 94 roles matched at all, so the numbers led
+   * straight into combinations that were mostly empty. Excluding a select's
+   * own value is what makes each number the answer to "and how many if I pick
+   * this one" rather than "how many ignoring what you've already chosen".
+   */
+  type CountedSelect = { el: HTMLSelectElement; key: SelectKey; field: keyof JobEntry };
+  const COUNTED_FIELD: Record<SelectKey, keyof JobEntry> = {
+    role: "ro",
+    country: "co",
+    level: "sn",
+    city: "ci",
+  };
+  const counted: CountedSelect[] = SELECT_KEYS.flatMap((key) => {
+    const el = selects[key];
+    return el ? [{ el, key, field: COUNTED_FIELD[key] }] : [];
+  });
+
+  function updateCounts(data: JobEntry[], tests: Record<string, (j: JobEntry) => boolean>) {
+    for (const { el, key, field } of counted) {
+      const others = Object.entries(tests)
+        .filter(([k]) => k !== key)
+        .map(([, fn]) => fn);
+      const tally = new Map<string, number>();
+      for (const j of data) {
+        if (!others.every((fn) => fn(j))) continue;
+        const value = String(j[field] ?? "");
+        if (value) tally.set(value, (tally.get(value) ?? 0) + 1);
+      }
+      // The grouped option spans several rungs of the ladder, so its count is
+      // their sum rather than a tally entry of its own.
+      const groupCount =
+        key === "level"
+          ? SENIOR_PLUS_IDS.reduce((n, id) => n + (tally.get(id) ?? 0), 0)
+          : 0;
+      const labels = optionLabels.get(key)!;
+      for (const opt of el.options) {
+        if (!opt.value) continue; // "Any …" — no count to give
+        const n = opt.value === SENIOR_PLUS ? groupCount : (tally.get(opt.value) ?? 0);
+        opt.textContent = `${labels.get(opt.value) ?? opt.value} (${n})`;
+        // An option that can only produce an empty list is worse than a "(0)"
+        // beside it — the number explains the dead end only after you've walked
+        // into it. Never hide what's currently selected: a select can't display
+        // a hidden option and would look as though it had reset itself.
+        opt.hidden = n === 0 && opt.value !== el.value;
+      }
+    }
+    updateSegCounts(data, tests);
+  }
+
+  /** Does a job answer this segmented button? */
+  function segTest(key: string, value: string): (j: JobEntry) => boolean {
+    if (key === "work") return (j) => j.rm === value;
+    if (key === "since") return (j) => j.ag <= Number(value);
+    return (j) => Boolean(j.s); // pay
+  }
+
+  /**
+   * The same rule as the selects, for the chips. Server-rendered these are
+   * whole-scope totals, and they start lying the moment anything else is set:
+   * with London chosen, "Remote 271" describes the board while the button it
+   * sits on would return 6. A count that describes a different set than the
+   * control acts on is worse than no count at all.
+   */
+  function updateSegCounts(data: JobEntry[], tests: Record<string, (j: JobEntry) => boolean>) {
+    for (const seg of segs) {
+      const key = seg.dataset.filter!;
+      const others = Object.entries(tests)
+        .filter(([k]) => k !== key)
+        .map(([, fn]) => fn);
+      const pool = data.filter((j) => others.every((fn) => fn(j)));
+      for (const btn of seg.querySelectorAll<HTMLButtonElement>(".seg-btn")) {
+        const n = pool.filter(segTest(key, btn.dataset.value!)).length;
+        const slot = btn.querySelector(".seg-n");
+        if (slot) slot.textContent = String(n);
+        // Disabled rather than hidden: these sit in a wrapped row, and removing
+        // one reflows the rest to different places on every keystroke. Pressed
+        // buttons stay live so there's always a way back out of a dead end.
+        btn.disabled = n === 0 && btn.getAttribute("aria-pressed") !== "true";
+      }
+    }
+  }
+
+  function renderChips() {
+    const chips = activeFilters(state).map(({ key, value }) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "chip";
+      btn.textContent = labelFor(key, value);
+      btn.setAttribute("aria-label", `Remove filter: ${btn.textContent}`);
+      btn.addEventListener("click", () => {
+        state = without(state, key, value);
+        showAll = false;
+        syncToControls();
+        apply();
+      });
+      return btn;
+    });
+    chipsEl.replaceChildren(...chips);
+  }
+
+  function suggestionLabel(r: Relaxation): string {
+    return r.key === QUERY_TRIM
+      ? `“${r.state.q}” instead`
+      : `without ${labelFor(r.key, r.value)}`;
+  }
+
+  function renderSuggestions(data: JobEntry[]) {
+    const options = relaxations(data, state).slice(0, 3);
+    if (!options.length) {
+      suggestEl.replaceChildren();
+      return;
+    }
+    const parts: Node[] = [document.createTextNode("Try ")];
+    options.forEach((r, i) => {
+      if (i) parts.push(document.createTextNode(i === options.length - 1 ? " or " : ", "));
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "link-btn";
+      btn.textContent = `${suggestionLabel(r)} (${r.count})`;
+      btn.addEventListener("click", () => {
+        state = r.state;
+        showAll = false;
+        syncToControls();
+        apply();
+      });
+      parts.push(btn);
+    });
+    parts.push(document.createTextNode("."));
+    suggestEl.replaceChildren(...parts);
   }
 
   // Guards against out-of-order renders while the data fetch is in flight
@@ -364,33 +644,17 @@ const showAllHidden = hasPager || total <= initial;
     jobsEl.classList.remove("is-loading");
     if (seq !== applySeq) return; // superseded by a newer interaction
 
-    const text = q.value.trim().toLowerCase();
-    const rol = role.value;
-    const cty = country.value;
-    const sen = level.value;
-    const byPay = sort.value === "pay";
-    const filtering = Boolean(text || rol || cty || sen || skill);
-
-    const matcher = text ? buildMatcher(text) : null;
-    let matches = data.filter(
-      (j) =>
-        (!matcher || matcher.test(searchBlob(j))) &&
-        (!rol || j.ro === rol) &&
-        (!cty || j.co === cty) &&
-        (!sen || j.sn === sen) &&
-        (!skill || j.sk.includes(skill)),
-    );
-    if (byPay) {
-      // Stable sort: pay descending, ties keep the newest-first data order.
-      matches = [...matches].sort((a, b) => b.sr - a.sr);
-    }
+    const filtering = isFiltering(state);
+    const terms = buildTerms(state.q.trim());
+    const matches = filterJobs(data, state);
+    updateCounts(data, buildTests(state));
 
     // Filtered views are capped like the unfiltered one. Rendering every match
     // put 2,382 cards and ~32k nodes into a 300,000px document for a query as
     // ordinary as "engineer" — unusable to scroll and a long jank on a phone.
     const limit = showAll ? matches.length : INITIAL;
     const visible = matches.slice(0, limit);
-    jobsEl.replaceChildren(...visible.map((j) => makeCard(j, text)));
+    jobsEl.replaceChildren(...visible.map((j) => makeCard(j, terms)));
 
     const total = data.length;
     const capped = visible.length < matches.length;
@@ -399,13 +663,13 @@ const showAllHidden = hasPager || total <= initial;
         ? `Showing ${visible.length} of ${matches.length} matching roles`
         : `${matches.length} of ${total} roles match`
       : showAll
-        ? `Showing all ${total} ${NOUN}${byPay ? ", highest salary first" : ""}`
-        : `Showing the ${Math.min(INITIAL, total)} ${byPay ? "highest-paying" : "newest"} of ${total} ${NOUN}`;
+        ? `Showing all ${total} ${NOUN}`
+        : `Showing the ${Math.min(INITIAL, total)} newest of ${total} ${NOUN}`;
 
     empty.hidden = matches.length !== 0;
+    if (!matches.length) renderSuggestions(data);
     clearBtn.hidden = !filtering;
-    skillChip.hidden = !skill;
-    skillChip.textContent = skill;
+    renderChips();
     // On a paged landing the unfiltered list is the pager's job — offering
     // "Show all 688 roles" there rebuilds the 15k-node document PAGE_SIZE
     // exists to prevent. Once a filter is up the pager is gone and this is the
@@ -419,13 +683,7 @@ const showAllHidden = hasPager || total <= initial;
     if (pager) pager.hidden = filtering || showAll;
 
     if (syncUrl) {
-      const params = new URLSearchParams();
-      if (text) params.set("q", q.value.trim());
-      if (rol) params.set("role", rol);
-      if (cty) params.set("country", cty);
-      if (sen) params.set("level", sen);
-      if (skill) params.set("skill", skill);
-      if (byPay) params.set("sort", "pay");
+      const params = toParams(state);
       if (showAll) params.set("all", "1");
       const qs = params.toString();
       history.replaceState(null, "", qs ? `?${qs}` : location.pathname);
@@ -434,53 +692,80 @@ const showAllHidden = hasPager || total <= initial;
 
   // Changing the result set retracts "show all" — it was a decision about the
   // previous set of matches, and silently carrying it into a broader query is
-  // how you end up rendering the whole board again. Re-sorting keeps it: same
-  // roles, different order.
-  q.addEventListener("input", () => {
+  // how you end up rendering the whole board again.
+  function narrowed() {
+    syncFromControls();
     showAll = false;
     apply();
-  });
-  for (const el of [role, country, level]) {
-    el.addEventListener("change", () => {
+  }
+  q.addEventListener("input", narrowed);
+  for (const key of SELECT_KEYS) selects[key]?.addEventListener("change", narrowed);
+
+  for (const seg of segs) {
+    const key = seg.dataset.filter!;
+    seg.addEventListener("click", (ev) => {
+      const btn = (ev.target as HTMLElement).closest<HTMLButtonElement>(".seg-btn");
+      if (!btn || !seg.contains(btn)) return;
+      // Every group toggles: pressing the pressed one turns it off, which is
+      // what stands in for the "Any" button these groups deliberately don't
+      // have (see FilterControls).
+      if (key === "pay") {
+        state.pay = !state.pay;
+      } else {
+        const group = key as "work" | "since";
+        const value = btn.dataset.value!;
+        state[group] = state[group] === value ? "" : value;
+      }
       showAll = false;
+      syncToControls();
       apply();
     });
   }
-  sort.addEventListener("change", () => apply());
+
+  // Skill badges are real links (see JobCard.astro) so they work on the pages
+  // that have no filter script. Here they should narrow the list in place
+  // rather than reload it — except when the visitor asked for a new tab.
+  jobsEl.addEventListener("click", (ev) => {
+    const link = (ev.target as HTMLElement).closest<HTMLAnchorElement>("a.skill");
+    if (!link || !jobsEl.contains(link)) return;
+    if (ev.metaKey || ev.ctrlKey || ev.shiftKey || ev.altKey || ev.button !== 0) return;
+    ev.preventDefault();
+    const name = link.textContent!.trim();
+    if (!state.skills.includes(name)) state.skills = [...state.skills, name];
+    showAll = false;
+    apply();
+  });
+
   showAllBtn.addEventListener("click", () => {
     showAll = true;
     apply();
   });
-  skillChip.addEventListener("click", () => {
-    skill = "";
-    showAll = false;
-    apply();
-  });
+
   function clearFilters() {
-    q.value = "";
-    role.value = "";
-    country.value = "";
-    level.value = "";
-    skill = "";
+    state = { ...EMPTY_STATE };
     showAll = false;
+    syncToControls();
     apply();
     q.focus();
   }
   clearBtn.addEventListener("click", clearFilters);
   emptyClearBtn.addEventListener("click", clearFilters);
 
+  // Phone-only (the button is display:none above 700px): open the disclosure if
+  // this page has one, bring the panel into view, then put the caret in the
+  // search box so the next keystroke goes where it was aimed.
+  jumpBtn.addEventListener("click", () => {
+    if (disclosure) disclosure.open = true;
+    q.scrollIntoView({ block: "center" });
+    q.focus({ preventScroll: true });
+  });
+
   // Hydrate state from the URL so filtered views are shareable + back-button safe.
   const params = new URLSearchParams(location.search);
-  q.value = params.get("q") ?? "";
-  role.value = params.get("role") ?? "";
-  country.value = params.get("country") ?? "";
-  level.value = params.get("level") ?? "";
-  skill = params.get("skill") ?? "";
-  sort.value = params.get("sort") === "pay" ? "pay" : "new";
+  state = parseState(params);
   showAll = params.get("all") === "1";
-  const active =
-    q.value || role.value || country.value || level.value || skill || sort.value === "pay" || showAll;
-  if (active) {
+  syncToControls();
+  if (isFiltering(state) || showAll) {
     // A filter that arrived in the URL has to be visible, or the page looks
     // like it's showing everything and quietly isn't.
     if (disclosure) disclosure.open = true;

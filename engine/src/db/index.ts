@@ -8,7 +8,7 @@ import { slugify } from "../util/id.ts";
 const here = dirname(fileURLToPath(import.meta.url));
 
 // DB lives outside the repo by default (engine/data/ is gitignored). Override
-// with AIENGJOBS_DB on the droplet (e.g. /var/lib/aiengjobs/aiengjobs.db).
+// with AIENGJOBS_DB — the nightly workflow points it at the runner workspace.
 export const DB_PATH =
   process.env.AIENGJOBS_DB ?? join(here, "..", "..", "data", "aiengjobs.db");
 

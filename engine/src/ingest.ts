@@ -21,15 +21,84 @@ import { jobId, jobSlug } from "./util/id.ts";
 import { mapPool } from "./util/concurrency.ts";
 
 const SLEEP_MS = Number(process.env.INGEST_DELAY_MS ?? 400); // polite to feeds (Lever crawl-delay)
-// Classification is now local and CPU-bound rather than a network round-trip, so
-// this bounds cores in use, not in-flight requests. One session per posting at
-// one thread each; oversubscribing just thrashes.
-const CONCURRENCY = Number(process.env.INGEST_CONCURRENCY ?? 4);
+// This does NOT parallelise classification: ORT serialises concurrent run()
+// calls on the shared session, so raising it only queues adverts deeper in the
+// runtime. Cores are put to work inside the graph instead (ENCODER_THREADS).
+// 2 is enough to overlap the JS-side work — tokenising, hashing, the upsert —
+// with the native inference of the advert in front of it, which is all the
+// posting-level pool can buy here.
+const CONCURRENCY = Number(process.env.INGEST_CONCURRENCY ?? 2);
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 // Apply links come from third-party feeds and end up as hrefs on the site —
 // only plain web URLs are acceptable (a javascript: link would be an XSS).
 const isHttpUrl = (u: string) => /^https?:\/\//i.test(u);
+
+/**
+ * Per-source funnel. `invalid + unchanged + filtered + inferred` accounts for
+ * every posting a feed returned, so it is obvious where the volume — and the
+ * time — went. (`errored` overlaps rather than partitioning: a posting that
+ * fails in the upsert has already been counted as filtered or inferred.)
+ *
+ * `inferred` is the one that costs: it is the number of encoder runs, which the
+ * log used to leave implicit. "N postings, M in-scope" says nothing about how
+ * many adverts the model actually read, and M understates it several-fold.
+ */
+interface Tally {
+  fetched: number;
+  invalid: number; // no usable title/apply URL — dropped before classification
+  unchanged: number; // content hash matched a stored job, so never reclassified
+  filtered: number; // title heuristic said OUT, so inference was skipped
+  inferred: number; // encoder ran on the advert
+  listed: number; // classified in-scope
+  written: number; // upserted (in or out)
+  errored: number;
+  fetchMs: number;
+  workMs: number;
+}
+
+const newTally = (): Tally => ({
+  fetched: 0,
+  invalid: 0,
+  unchanged: 0,
+  filtered: 0,
+  inferred: 0,
+  listed: 0,
+  written: 0,
+  errored: 0,
+  fetchMs: 0,
+  workMs: 0,
+});
+
+/**
+ * One line per source: the whole funnel, plus where its wall clock went. The
+ * funnel fields are always present so the ~740 lines stay a scannable column of
+ * the same shape; the two fault counters appear only when non-zero, so a source
+ * that starts erroring stands out instead of blending into a wall of `=0`.
+ */
+function describe(t: Tally): string {
+  const parts = [
+    `fetched=${t.fetched}`,
+    `unchanged=${t.unchanged}`,
+    `filtered=${t.filtered}`,
+    `inferred=${t.inferred}`,
+    `in-scope=${t.listed}`,
+  ];
+  if (t.invalid) parts.push(`invalid=${t.invalid}`);
+  if (t.errored) parts.push(`errored=${t.errored}`);
+  parts.push(`fetch=${dur(t.fetchMs)}`, `process=${dur(t.workMs)}`);
+  return parts.join(" ");
+}
+
+/** Compact duration: 840ms / 3.2s / 6m14s / 3h46m. */
+function dur(ms: number): string {
+  if (ms < 1000) return `${Math.round(ms)}ms`;
+  const secs = Math.round(ms / 1000);
+  if (secs < 60) return `${(ms / 1000).toFixed(1)}s`;
+  const mins = Math.floor(secs / 60);
+  if (mins < 60) return `${mins}m${String(secs % 60).padStart(2, "0")}s`;
+  return `${Math.floor(mins / 60)}h${String(mins % 60).padStart(2, "0")}m`;
+}
 
 // Connectors use undefined for "absent"; the description parser uses null.
 interface PayFields {
@@ -91,18 +160,18 @@ export async function ingest(): Promise<void> {
   console.log(`Ingest: ${targets.length} sources. Classifier: local ONNX encoder.`);
 
   const runStart = new Date().toISOString();
+  const runStartedMs = Date.now();
   const polledSourceIds: string[] = [];
-  let fetched = 0;
-  let processed = 0;
-  let skipped = 0;
-  let listed = 0;
+  // Keyed by sourceId so the closure counts can be joined back on by name.
+  const tallies = new Map<string, { name: string; tally: Tally }>();
   let failed = 0;
-  let errored = 0;
 
   for (const t of targets) {
     const connector = getConnector(t.atsProvider);
     if (!connector) continue;
 
+    const tally = newTally();
+    const fetchStart = Date.now();
     let postings;
     try {
       postings = await connector.fetchPostings(t.atsToken);
@@ -112,16 +181,21 @@ export async function ingest(): Promise<void> {
       await sleep(SLEEP_MS);
       continue;
     }
+    tally.fetchMs = Date.now() - fetchStart;
     polledSourceIds.push(t.sourceId);
-    fetched += postings.length;
+    tallies.set(t.sourceId, { name: t.name, tally });
+    tally.fetched = postings.length;
 
-    let inThisCompany = 0;
+    const workStart = Date.now();
     // Each posting is isolated: one bad payload logs and skips rather than
     // killing the run (which would also skip closeStaleJobs and leave the
     // board full of ghost jobs).
     await mapPool(postings, CONCURRENCY, async (raw) => {
       try {
-        if (!raw.applyUrl || !raw.title || !isHttpUrl(raw.applyUrl)) return;
+        if (!raw.applyUrl || !raw.title || !isHttpUrl(raw.applyUrl)) {
+          tally.invalid++;
+          return;
+        }
         const id = jobId(t.slug, raw.externalId);
         const hash = contentHash([
           raw.title,
@@ -134,7 +208,7 @@ export async function ingest(): Promise<void> {
         const existing = getExistingJob(db, id);
         if (existing && existing.contentHash === hash && existing.isClosed === 0) {
           markSeen(db, id, runStart); // unchanged → skip reprocessing (skips inference)
-          skipped++;
+          tally.unchanged++;
           return;
         }
 
@@ -151,9 +225,11 @@ export async function ingest(): Promise<void> {
         // is missing or inference fails, which fails the run — deliberately.
         let cls: ClassifyResult;
         if (heuristicClass?.classification === "out") {
+          tally.filtered++;
           cls = heuristicClass;
         } else {
           const p = await encoderScore(id, raw.title, t.name, raw.locationRaw ?? "", text);
+          tally.inferred++;
           if (heuristicClass?.classification === "in") {
             // Title looks IN. The model read the description, so let it veto an
             // over-broad title match (e.g. "Support Agent" caught by /agent/)
@@ -217,25 +293,63 @@ export async function ingest(): Promise<void> {
           lastSeenAt: runStart,
         });
         setJobSkills(db, id, skills);
-        processed++;
-        if (cls.classification === "in") {
-          listed++;
-          inThisCompany++;
-        }
+        tally.written++;
+        if (cls.classification === "in") tally.listed++;
       } catch (e) {
-        errored++;
+        tally.errored++;
         console.warn(
           `  ! ${t.name}: posting "${raw.title ?? raw.externalId}" failed: ${(e as Error).message}`,
         );
       }
     });
-    console.log(`  ✓ ${t.name}: ${postings.length} postings, ${inThisCompany} in-scope`);
+    tally.workMs = Date.now() - workStart;
+    console.log(`  ✓ ${t.name}: ${describe(tally)}`);
     await sleep(SLEEP_MS);
   }
 
-  const closed = closeStaleJobs(db, runStart, polledSourceIds);
+  const closedBySource = closeStaleJobs(db, runStart, polledSourceIds);
   db.close();
+
+  const all = [...tallies.values()];
+  const sum = (pick: (t: Tally) => number) =>
+    all.reduce((n, { tally }) => n + pick(tally), 0);
+  const closed = [...closedBySource.values()].reduce((n, c) => n + c, 0);
+
+  // `processed` is kept under its old name so runs stay comparable with older
+  // logs; `filtered` + `inferred` are the new breakdown of what it cost.
   console.log(
-    `\nIngest complete. fetched=${fetched} processed=${processed} unchanged=${skipped} in-scope=${listed} closed=${closed} feeds_failed=${failed} postings_errored=${errored}`,
+    `\nIngest complete. fetched=${sum((t) => t.fetched)} unchanged=${sum((t) => t.unchanged)}` +
+      ` invalid=${sum((t) => t.invalid)} filtered=${sum((t) => t.filtered)}` +
+      ` inferred=${sum((t) => t.inferred)} processed=${sum((t) => t.written)}` +
+      ` in-scope=${sum((t) => t.listed)} closed=${closed} feeds_polled=${all.length}` +
+      ` feeds_failed=${failed} postings_errored=${sum((t) => t.errored)}` +
+      ` elapsed=${dur(Date.now() - runStartedMs)}`,
   );
+
+  // Inference dominates the run — it is the only per-posting step that costs
+  // seconds — so name the sources that spent the time. Without this the only
+  // way to find them is to diff timestamps across a few thousand log lines.
+  const slowest = all
+    .map(({ name, tally }) => ({ name, tally, ms: tally.fetchMs + tally.workMs }))
+    .sort((a, b) => b.ms - a.ms)
+    .slice(0, 10);
+  if (slowest.length > 0 && slowest[0]!.ms >= 1000) {
+    console.log(`\nSlowest sources (of ${all.length} polled):`);
+    for (const { name, tally, ms } of slowest) {
+      console.log(
+        `  ${dur(ms).padStart(7)}  ${name} — ${tally.inferred} inferred, ${tally.fetched} fetched`,
+      );
+    }
+  }
+
+  // A source closing most of its board is usually a broken feed, not a hiring
+  // freeze, and it is invisible in a single run-wide total.
+  if (closedBySource.size > 0) {
+    const top = [...closedBySource]
+      .map(([sourceId, n]) => ({ name: tallies.get(sourceId)?.name ?? sourceId, n }))
+      .sort((a, b) => b.n - a.n)
+      .slice(0, 10);
+    console.log(`\nClosures: ${closed} across ${closedBySource.size} sources:`);
+    for (const { name, n } of top) console.log(`  ${String(n).padStart(5)}  ${name}`);
+  }
 }

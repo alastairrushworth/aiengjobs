@@ -1,6 +1,6 @@
 ---
 name: audit-code
-description: Run a thorough, deep-thinking code-quality audit of the whole aiengjobs codebase — correctness, security, type safety, simplicity, duplication, readability, modernness/idiom, error handling, testing, dependencies, performance, architecture, and tooling/CI hygiene. Use when the user asks to audit, review, or sanity-check the code (as opposed to the rendered site) — "review the code", "code quality audit", "is this codebase well written", "security review of the engine", or a deep pass over a subsystem. Covers all source in the repo: engine/ (connectors, pipeline, db, export, notify), shared/, site/src/ as source, tests/, scripts/, deploy/, and .github/workflows/. Rendered-output concerns (SEO, structured data, a11y, responsive layout, on-page UX copy) belong to the audit-site skill, not this one. For a full sweep across source, rendered output and UI together, use audit-all instead. Produces a prioritized findings report; read-only by default (does not edit files unless asked).
+description: Run a thorough, deep-thinking code-quality audit of the whole aiengjobs codebase — correctness, security, type safety, simplicity, duplication, readability, modernness/idiom, error handling, testing, dependencies, performance, architecture, tooling/CI hygiene, and the health of recent GitHub Actions runs. Use when the user asks to audit, review, or sanity-check the code (as opposed to the rendered site) — "review the code", "code quality audit", "is this codebase well written", "security review of the engine", "how is CI doing", "are the nightly runs healthy", or a deep pass over a subsystem. Covers all source in the repo: engine/ (connectors, pipeline, db, export, notify), shared/, site/src/ as source, tests/, scripts/, ml/, and .github/workflows/ — both as files and as their actual run history on GitHub. Rendered-output concerns (SEO, structured data, a11y, responsive layout, on-page UX copy) belong to the audit-site skill, not this one. For a full sweep across source, rendered output and UI together, use audit-all instead. Produces a prioritized findings report; read-only by default (does not edit files unless asked).
 ---
 
 # Code Audit — aiengjobs
@@ -34,8 +34,9 @@ This skill owns **every line of source in the repo**, judged as code:
   page front-matter logic, component structure, inline `<script>` blocks,
   `global.css` organisation
 - `tests/` — the vitest suite: what it covers, how well, and what it misses
-- `scripts/droplet-refresh.sh`, `deploy/` (systemd units, README)
-- `.github/workflows/` — deploy, and the two Claude workflows
+- `scripts/refresh.sh` — the nightly ingest/export/push script
+- `.github/workflows/` — refresh, deploy, and the two Claude workflows, judged
+  both as files **and as their recent runs on GitHub** (§13)
 - Workspace plumbing: root/`site`/`engine`/`shared` `package.json`,
   `tsconfig.json`s, `.gitignore`, `astro.config.mjs`
 
@@ -75,15 +76,25 @@ npm test                             # vitest run
 npm run build -w @aiengjobs/site     # catches template + import errors
 ```
 
+Then find out what **CI** already knows — the same toolchain, run for real:
+
+```bash
+gh run list --limit 40 \
+  --json databaseId,workflowName,event,status,conclusion,headBranch,createdAt,startedAt,updatedAt
+gh workflow list --all
+```
+
 Notes:
 - The site build needs the snapshot — see Prerequisites in the shared
   conventions. Say so in the report if you couldn't build.
 - Treat **every** warning as a candidate finding, not noise.
 - Record the numbers you'll reason about later: build time, test count, source
-  line counts per area, largest files.
+  line counts per area, largest files, and per-workflow pass rate and duration.
 - Check the working tree: `git status`, and `git log --oneline -20` for recent
   direction. Uncommitted work in progress changes what's fair to flag — mention
   it rather than reviewing half-finished code as if it shipped.
+- If `gh` is missing or unauthenticated (`gh auth status`), skip §13 and say so
+  in the report — don't guess at run health from the workflow files.
 
 ## Review dimensions
 
@@ -165,7 +176,7 @@ into a database, an LLM, a published snapshot, and a public site.**
   everywhere they must be, and that `safeUrl` actually rejects `javascript:` and
   `data:`. (Correctness of the *guards* is yours; whether the resulting page is
   SEO-valid is audit-site's.)
-- **Shell and ops.** `scripts/droplet-refresh.sh`: unquoted expansions, `eval`,
+- **Shell and ops.** `scripts/refresh.sh`: unquoted expansions, `eval`,
   `set -euo pipefail` (present) vs the `|| true` escapes that intentionally
   bypass it — is each one deliberate and safe? The `git push --force` to
   `refs/heads/snapshot` — can it ever target the wrong ref?
@@ -274,8 +285,8 @@ Modern where it buys something — not novelty for its own sake.
 
 ### 7. Error handling, resilience & observability
 
-The engine runs **unattended nightly on a droplet** — nobody is watching the
-terminal. That framing decides most calls in this section.
+The engine runs **unattended nightly on a GitHub Actions runner** — nobody is
+watching the log. That framing decides most calls in this section.
 
 - **Failure taxonomy.** For each stage, what's fatal vs. recoverable? One dead
   ATS feed must not kill the run; a corrupt DB write should. Check that the code
@@ -293,9 +304,10 @@ terminal. That framing decides most calls in this section.
   which URL, which stage), no secrets, no unbounded dumps of feed bodies,
   consistent prefixes, sensible `console.warn` vs `.error` vs `.log`. Is there a
   run summary — counts in/out/new/closed/errors?
-- **Exit codes.** Does `cli.ts` exit non-zero on real failure so systemd marks
-  the unit failed? Trace `refresh` and `notify` through `droplet-refresh.sh` and
-  check the exit status survives the pipe/`||` chain.
+- **Exit codes.** Does `cli.ts` exit non-zero on real failure so the workflow
+  step is marked failed? Trace `refresh` and `notify` through `refresh.sh` and
+  check the exit status survives the pipe/`||` chain. Watch for steps guarded by
+  `if: success()` — publishing the DB on a failed run poisons every later one.
 - **Retries and rate limits.** `fetchRetry` handles 429 + timeouts; check
   `Retry-After` is respected, that per-host concurrency won't get the bot
   blocked, and that the LLM path has comparable protection.
@@ -336,9 +348,10 @@ terminal. That framing decides most calls in this section.
 - **Version discipline.** `^` ranges vs the committed lockfile; CI uses
   `npm ci` (good) — confirm the lockfile is committed and in sync
   (`npm ci` failing on drift is the canonical symptom).
-- **Node version.** CI pins Node 24; the droplet's version is set by whatever
-  was installed there. Flag the absence of a shared pin (`engines`, `.nvmrc`) if
-  it's a genuine drift risk given `node:sqlite`'s stability status.
+- **Node version.** CI pins Node 24 in each workflow independently, and a local
+  clone uses whatever the developer has. Flag the absence of a shared pin
+  (`engines`, `.nvmrc`) if it's a genuine drift risk given `node:sqlite`'s
+  stability status.
 - **Workspace wiring.** `shared` is consumed as a source-only package via
   `exports` with no build step. Verify each export path resolves for *both* tsx
   (engine) and Astro (site), and that nothing imports across a workspace
@@ -382,12 +395,13 @@ Correctness first, but this pipeline grows monotonically.
 - **Configuration vs. code.** Tuning knobs (thresholds, patterns, model name)
   centralized in `config.ts` and overridable by env — is that consistent, and is
   anything hardcoded that operationally needs to change without a deploy?
-- **The ops story.** systemd timer → `droplet-refresh.sh` → engine → git push →
-  Pages build. Where are the single points of failure, what's the manual
-  recovery path, and is it documented well enough to follow at 2am?
+- **The ops story.** `refresh.yml` cron → `refresh.sh` → engine → git push →
+  Pages build, with the DB carried between runs by the Actions cache and the
+  `db-latest` release asset. Where are the single points of failure, what's the
+  manual recovery path, and is it documented well enough to follow at 2am?
 - **Scale-out thinking.** What structurally breaks at 10× companies — not
-  performance (§10) but *design*: the single-DB-on-one-droplet model, the
-  full-snapshot-every-night model, the no-queue model.
+  performance (§10) but *design*: the one-SQLite-file model and its 6-hour job
+  timeout, the full-snapshot-every-night model, the no-queue model.
 
 ### 12. Tooling, CI & deploy hygiene
 
@@ -401,10 +415,103 @@ Correctness first, but this pipeline grows monotonically.
   alone? Try the documented path (`npm ci`, `npm run snapshot:fetch`,
   `npm run build`) and report where it diverges from the docs.
 - **Scripts.** Root and per-workspace `package.json` scripts: any missing
-  (`lint`? `format`?), any broken, any that only work on the droplet.
-- **Docs as code.** `README.md`, `spec.md`, `deploy/README.md`,
+  (`lint`? `format`?), any broken, any that only work in CI.
+- **Docs as code.** `README.md`, `spec.md`, `ml/README.md`,
   `engine/.env.example` — are they still accurate? Documentation that lies is
   worse than none; call out specific stale claims with a line reference.
+
+### 13. Live CI health — recent workflow runs
+
+§12 reads the workflow *files*. This reads what actually happened when they ran.
+It is the only dimension that can catch the failure mode this project is most
+exposed to: **the nightly refresh quietly stops working and nobody notices**,
+because nobody is watching a 03:30 UTC cron on a runner.
+
+**Read-only, always.** Inspect runs; never change them. Do not
+`gh run rerun`/`cancel`/`delete`, `gh workflow enable`/`disable`/`run`,
+`gh cache delete`, or `gh release delete` — not even to "test a theory". If a
+re-run would settle a question, say so as a recommendation and let the user do
+it.
+
+Cover roughly the last **30 runs or 14 days**, whichever is wider. The tools:
+
+```bash
+gh run list --limit 40 --json databaseId,workflowName,event,status,conclusion,headBranch,createdAt,startedAt,updatedAt
+gh run list --workflow "Nightly refresh" --limit 20 --json databaseId,event,conclusion,startedAt,updatedAt
+gh run view <id> --json jobs -q '.jobs[] | {name, conclusion, startedAt, completedAt, steps: [.steps[] | select(.conclusion == "failure") | .name]}'
+gh run view <id> --log-failed | tail -80        # the actual error, not a guess
+gh api repos/{owner}/{repo}/actions/runs/<id>/timing
+gh cache list --limit 20                        # 10GB repo budget, 7-day eviction
+gh release view db-latest --json assets,publishedAt
+gh api repos/{owner}/{repo}/actions/workflows -q '.workflows[] | [.name, .state, .path] | @tsv'
+```
+
+Work through:
+
+- **Pass rate per workflow.** Group the runs and give each an honest rate
+  (`Nightly refresh: 4/9`). A workflow that fails a third of the time is broken
+  even if the last run was green — intermittent failure that self-heals still
+  means missed nights of ingest.
+- **Did the cron actually fire?** `refresh.yml` is `cron: "30 3 * * *"`. Count
+  the `event: schedule` runs over the window: 14 days should mean ~14 runs.
+  GitHub delays and silently **drops** scheduled runs on public repos under
+  load, and disables the schedule entirely after 60 days of repo inactivity.
+  Compare `createdAt` against 03:30 UTC — a consistent 20-minute drift is
+  normal; a missing day is a finding. Note that `workflow_dispatch` runs are
+  manual repairs, not evidence the schedule works.
+- **Triage every failure to a step, from the log.** For each failed run, name
+  the job, the step, and the real error (`--log-failed`). Then classify:
+  transient (a feed 5xx, a rate limit, a runner hiccup) versus a genuine
+  regression. **The same step failing repeatedly is a finding regardless of
+  which bucket it lands in** — recurring "transient" failure is an unhandled
+  case in `fetchRetry` or `refresh.sh`, not bad luck.
+- **Duration and the timeout.** `refresh` has `timeout-minutes: 300`. Chart
+  wall-clock (`startedAt` → `updatedAt`) across runs: is it trending up as
+  `companies.csv` grows, and what fraction of the budget does the worst run use?
+  A run that burns hours and *then* fails is the expensive shape — it holds the
+  `refresh` concurrency group the whole time. Cross-reference §10.
+- **Green-but-empty runs.** A `success` conclusion proves nothing if the work
+  was skipped. Check for jobs that succeeded with every meaningful step skipped,
+  `conclusion: skipped` runs treated as passes, and — most important here —
+  whether `deploy` actually ran. `deploy` is `needs: refresh`, so a failed
+  refresh skips the publish: the site keeps serving the last snapshot with no
+  red X anywhere on `main`. Tie this to the snapshot-freshness check in the
+  shared conventions: if `generatedAt` is stale, the run history says why.
+- **Warnings on green runs.** `refresh.yml` emits
+  `::warning::no database found — initialising a fresh one. Every job will look
+  new.` — a run can be green while having thrown away all the state. Scan
+  successful runs for annotations (`gh run view <id> --log | grep -E '::(warning|error)'`),
+  and treat that particular one as 🔴 if it ever fired.
+- **Cancellations and the queue.** `concurrency: {group: refresh,
+  cancel-in-progress: false}` exists because a cancelled run can leave the DB
+  half-mutated. Look for `cancelled` conclusions, and for runs that sat queued
+  behind a long one — overlapping nightlies mean the schedule is slower than its
+  period.
+- **The state carried between runs.** `db-latest`'s asset size and
+  `publishedAt` should advance on every successful refresh; a flat or shrinking
+  size means ingest is producing nothing. In `gh cache list`, confirm the
+  `aiengjobs-db-` and `encoder-` entries exist and are being refreshed — the DB
+  cache evicting after 7 days is the designed fallback path to the release, so
+  check the "Download database from release" step is exercised and works.
+- **Registered vs. committed workflows.** Compare `gh workflow list --all` to
+  the files on `main`. An `active` workflow with no file — typically a temporary
+  one merged from a feature branch and never cleaned up — still holds
+  permissions and can still be dispatched. Likewise flag `disabled_manually`
+  workflows nobody meant to leave off, and files on `main` that have never run.
+- **Runner labels and cost.** `refresh.yml` warns that larger runner labels are
+  billed even on public repos. Confirm every job actually ran on
+  `ubuntu-latest`, and sanity-check overall consumption if
+  `gh api .../actions/runs/<id>/timing` reports non-zero billable ms.
+- **Bot workflow behaviour.** `claude.yml` and `claude-code-review.yml` run on PR
+  and comment events. Check they aren't firing on every push in a loop, aren't
+  running on fork PRs with write permissions, and aren't quietly failing (a
+  review bot that errors on every PR is dead weight the team stops noticing).
+
+Findings here are about the *code and config that produced the runs* — a missing
+guard, an unbounded retry, a step ordering that publishes bad state. If the fix
+is in a workflow file or in `scripts/refresh.sh`, it belongs to this audit.
+Purely operational one-offs ("re-run the failed job") are a recommendation, not
+a finding.
 
 ## Output — the report
 
@@ -419,6 +526,7 @@ recurring themes, and the single most important fix.>
 
 ## Baseline
 typecheck: <pass/fail>  ·  tests: <n passed>  ·  build: <pass/fail, time>
+CI (last <n> runs): <per-workflow pass rate>  ·  last nightly: <date, conclusion>
 <one line on anything that couldn't be run, and why.>
 
 ## Health by area
@@ -431,7 +539,8 @@ typecheck: <pass/fail>  ·  tests: <n passed>  ·  build: <pass/fail, time>
 | site/src (as code)| | |
 | tests/            | | |
 | scripts + deploy  | | |
-| CI                | | |
+| CI (workflow files)| | |
+| CI (recent runs)  | | pass rate, cron reliability, duration trend |
 
 ## 🔴 Critical   (data corruption, security, silent failure in production)
 ## 🟠 High       (real correctness/maintenance risk; fix soon)
@@ -457,8 +566,11 @@ one-liners, offer to fix or save — never write files unasked). Specific to thi
 audit:
 
 - Tag each finding with its dimension number so themes are visible.
-- Runtime behaviour you couldn't exercise — droplet ops, live feeds, LLM
-  responses — gets "needs verification" rather than a confident claim.
+- Runtime behaviour you couldn't exercise — live feeds, classifier output on
+  real adverts — gets "needs verification" rather than a confident claim. Past
+  nightly runs are an exception: §13 gives you the real logs, so cite the run
+  (`run <id>, <date>`) and state what failed rather than hedging. What you still
+  can't know is whether *tonight's* run will behave differently.
 - Save target: `audits/audit-code-<date>.md`.
 
 Parallel `Explore` fan-out is available for broad location-gathering ("every

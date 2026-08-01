@@ -75,21 +75,37 @@ const ogImage = new URL(url("/og-default.png"), Astro.site).href;
     <meta name="twitter:description" content={description} />
     <meta name="twitter:image" content={ogImage} />
     <!-- Google Analytics (gtag.js) — last in head so it never delays SEO tags -->
-    <script async is:inline src="https://www.googletagmanager.com/gtag/js?id=G-Y8XLWX2T51"></script>
+    <script async is:inline src="https://www.googletagmanager.com/gtag/js?id=G-F8NGE6G65G"></script>
     <script is:inline>
       window.dataLayer = window.dataLayer || [];
       function gtag() {
         dataLayer.push(arguments);
       }
       gtag("js", new Date());
-      gtag("config", "G-Y8XLWX2T51");
+      gtag("config", "G-F8NGE6G65G");
     </script>
   </head>
   <body>
     <a class="skip-link" href="#main">Skip to content</a>
     <header class="site-header">
       <div class="container">
-        <a class="brand" href={url("/")}>frontierroles<span class="dot">.</span>com</a>
+        <a class="brand" href={url("/")}>
+          {/* Inlined rather than <img src="/favicon.svg">: two shapes cost less
+              here than a second request would, and inlining lets the ring take
+              currentColor so it tracks the header's text colour. */}
+          <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true" focusable="false">
+            <path
+              d="M19.207 8.12 A10 10 0 1 0 19.207 23.88"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.9"
+              stroke-linecap="round"
+              opacity="0.55"
+            />
+            <circle cx="26" cy="16" r="4.4" fill="var(--accent)" />
+          </svg>
+          <span>frontierroles<span class="dot">.</span>com</span>
+        </a>
         <nav class="site-nav" aria-label="Site">
           <a href={url("/")}>Jobs</a>
           <a href={url("/stats/")}>Stats</a>
@@ -101,6 +117,11 @@ const ogImage = new URL(url("/og-default.png"), Astro.site).href;
     </main>
     <footer class="site-footer">
       <div class="container">
+        {/* Every cluster page is linked from here, on every page. This is now
+            the site-wide route to them: the "Browse by stack" rows that used to
+            carry them are gone, and MLOps and Core ML were missing from this
+            list — dropping those rows without adding them here would have left
+            two landing pages with no internal links at all. */}
         <nav class="footer-nav" aria-label="Browse">
           <a href={url("/")}>All jobs</a>
           <a href={url("/stats/")}>Stats</a>
@@ -110,6 +131,8 @@ const ogImage = new URL(url("/og-default.png"), Astro.site).href;
           <a href={url("/ai-eval-jobs/")}>Eval jobs</a>
           <a href={url("/inference-engineer-jobs/")}>Inference jobs</a>
           <a href={url("/fine-tuning-jobs/")}>Fine-tuning jobs</a>
+          <a href={url("/mlops-engineer-jobs/")}>MLOps jobs</a>
+          <a href={url("/machine-learning-engineer-jobs/")}>Core ML jobs</a>
           <a href={url("/remote-ai-jobs/")}>Remote AI jobs</a>
           <a href={url("/rss.xml")}>RSS</a>
         </nav>
