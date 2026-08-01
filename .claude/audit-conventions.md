@@ -120,9 +120,12 @@ credibility.
 - **One shared `og-default.png`** across all pages — a known tradeoff. Flag the
   cost if relevant; don't report it as an oversight.
 - **The local ONNX encoder** in the engine (`pipeline/encoder.ts`) — replacing
-  the GPT-5.4-nano call was a deliberate cost and accuracy choice, and the
-  int8 quantisation and 1024-token window are both measured tradeoffs recorded
-  in `ml/README.md`. Its *consequences* are fair game; the choice is settled.
+  the GPT-5.4-nano call was a deliberate cost and accuracy choice, and shipping
+  **fp32 rather than int8** and the 1024-token window are both measured
+  tradeoffs recorded in `ml/README.md`. Its *consequences* are fair game; the
+  choice is settled. Do not propose int8 quantisation as a size or speed win:
+  it was tried and reverted, because `VPMADDUBSW` saturates on x86-64 without
+  VNNI and collapsed accuracy from 0.9992 to 0.6583 on a GitHub runner.
 - **There is no linter or formatter configured** (no ESLint/Biome/Prettier).
   Only recommend adding one if you can point at real defects it would have
   caught. Don't recommend tooling for its own sake.
