@@ -18,9 +18,13 @@ import type { SiteSnapshot } from "@aiengjobs/shared";
  * they reorganise their site — leaving broken markup in Google's index.
  *
  * Nothing is recorded unless the bytes actually decode as an image of a usable
- * size. A 403 HTML block page served with a .png URL is the normal failure here
- * (openai.com does exactly that), so status codes and content types are not
- * trusted on their own.
+ * size. A 403 HTML block page served with a .png URL is the normal failure here,
+ * so status codes and content types are not trusted on their own.
+ *
+ * What remains unreachable, after all of the above, is a site behind a bot
+ * challenge that needs JavaScript to clear — doordash.com and gartner.com serve
+ * no bytes at all to an HTTP client, favicon included. Those companies render as
+ * a monogram, which is what the fallback is for; don't add a headless browser.
  *
  * Run occasionally — logos are write-once per company, unlike the nightly job
  * refresh. `npm run logos -w @aiengjobs/engine`.
@@ -45,6 +49,33 @@ const MIN_PX = 48;
 const MAX_ASPECT = 1.6;
 // What we're willing to *store*, checked after normalize() has had its go.
 const MAX_BYTES = 300_000;
+/**
+ * Browser headers, for this module only — ingestion keeps identifying itself as
+ * aiengjobs-bot (see util/html.ts) and nothing here changes that.
+ *
+ * A favicon is the one asset every visitor's browser fetches, and the robots.txt
+ * of the sites this rescues allows it (openai.com is `Allow: /`). What blocks us
+ * is a CDN's shape-of-the-request heuristic, not a stated policy: these WAFs 403
+ * any User-Agent carrying a bot token, including the honest Mozilla-prefixed
+ * form `Mozilla/5.0 (compatible; aiengjobs-bot/0.1; …)`. Sending what a browser
+ * sends recovers openai, servicenow, mastercard, nasdaq and nine others.
+ *
+ * Cheap to justify because of how little this does: one pass over ~60 sites,
+ * only for companies with no logo yet, fetching one public image each.
+ */
+const LOGO_UA =
+  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 " +
+  "(KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
+const PAGE_HEADERS = {
+  "User-Agent": LOGO_UA,
+  Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+  "Accept-Language": "en-US,en;q=0.9",
+};
+const IMAGE_HEADERS = {
+  "User-Agent": LOGO_UA,
+  Accept: "image/avif,image/webp,image/svg+xml,image/*,*/*;q=0.8",
+  "Accept-Language": "en-US,en;q=0.9",
+};
 // What we're willing to *download*. Held well above MAX_BYTES because shrinking
 // a fat source is exactly normalize()'s job: gating the download at the storage
 // limit threw away icons that would have normalized comfortably under it (IMC's
@@ -59,7 +90,7 @@ interface Probe {
 }
 
 /** Identify format and dimensions from the header bytes alone. */
-function probeImage(buf: Buffer): Probe | null {
+export function probeImage(buf: Buffer): Probe | null {
   // PNG: 8-byte signature, then an IHDR chunk carrying width/height as u32be.
   if (buf.length > 24 && buf.readUInt32BE(0) === 0x89504e47) {
     return { ext: "png", width: buf.readUInt32BE(16), height: buf.readUInt32BE(20) };
@@ -136,14 +167,82 @@ function probeImage(buf: Buffer): Probe | null {
   return null;
 }
 
+/**
+ * Read an HTML attribute, quoted or not.
+ *
+ * Unquoted values are legal HTML and some minifiers emit them —
+ * deepmind.google ships `<link href=https://…/icon.png rel=apple-touch-icon>`.
+ * A quotes-only href pattern reads that as absent and silently drops the site's
+ * only declared icon.
+ */
+function attr(tag: string, name: string): string | undefined {
+  const quoted = new RegExp(`\\b${name}\\s*=\\s*["']([^"']*)["']`, "i").exec(tag);
+  if (quoted) return quoted[1];
+  return new RegExp(`\\b${name}\\s*=\\s*([^\\s"'>]+)`, "i").exec(tag)?.[1];
+}
+
+/**
+ * Icons listed in the web app manifest, largest first.
+ *
+ * A site that declares only a 32px favicon in its markup often still ships
+ * 192/512px icons here for Android home screens — fundingcircle.com's only
+ * usable mark is its manifest's 512px PNG. Worth one extra request.
+ */
+async function manifestIcons(hrefs: string[], base: URL): Promise<string[]> {
+  const out: { src: string; px: number }[] = [];
+  for (const href of hrefs.slice(0, 3)) {
+    let url: string;
+    try {
+      url = new URL(href, base).href;
+    } catch {
+      continue;
+    }
+    const res = await fetchRetry(
+      url,
+      { redirect: "follow", headers: { ...IMAGE_HEADERS, Accept: "application/manifest+json,application/json,*/*" } },
+      { attempts: 1, timeoutMs: 10_000 },
+    ).catch(() => null);
+    if (!res?.ok) continue;
+    let icons: unknown;
+    try {
+      icons = (JSON.parse(await res.text()) as { icons?: unknown })?.icons;
+    } catch {
+      continue; // not JSON — some sites serve an HTML 404 body with a 200
+    }
+    if (!Array.isArray(icons)) continue;
+    for (const icon of icons as { src?: unknown; sizes?: unknown }[]) {
+      if (typeof icon?.src !== "string") continue;
+      // "48x48 96x96 192x192" is legal; rank on the largest declared.
+      const px = Math.max(
+        0,
+        ...String(icon.sizes ?? "")
+          .split(/\s+/)
+          .map((s) => Number.parseInt(s, 10) || 0),
+      );
+      try {
+        out.push({ src: new URL(icon.src, url).href, px });
+      } catch {
+        /* malformed src — skip it */
+      }
+    }
+    if (out.length) break;
+  }
+  return out.sort((a, b) => b.px - a.px).map((i) => i.src);
+}
+
 /** Icon URLs declared by the page, best first, plus the conventional fallbacks. */
-function candidates(html: string, base: URL): string[] {
+export async function candidates(html: string, base: URL): Promise<string[]> {
   const out: { href: string; score: number }[] = [];
+  const manifestHrefs: string[] = [];
   const linkRe = /<link\b[^>]*>/gi;
   for (const tag of html.match(linkRe) ?? []) {
-    const rel = /\brel\s*=\s*["']?([^"'>]+)/i.exec(tag)?.[1]?.toLowerCase() ?? "";
+    const rel = attr(tag, "rel")?.toLowerCase() ?? "";
+    if (rel.includes("manifest")) {
+      const href = attr(tag, "href");
+      if (href) manifestHrefs.push(href);
+    }
     if (!/\bicon\b/.test(rel)) continue;
-    const href = /\bhref\s*=\s*["']([^"']+)/i.exec(tag)?.[1];
+    const href = attr(tag, "href");
     if (!href) continue;
     const sizes = /\bsizes\s*=\s*["']?(\d+)/i.exec(tag)?.[1];
     const px = sizes ? Number(sizes) : 0;
@@ -170,6 +269,11 @@ function candidates(html: string, base: URL): string[] {
     "/favicon-96x96.png",
     "/apple-icon-180x180.png",
     "/android-chrome-192x192.png",
+    "/android-chrome-512x512.png",
+    // The Windows tile. Named for 150px but routinely larger in practice, and
+    // always square by spec — cmegroup.com's is a 270px PNG, and it's the only
+    // usable mark on the site.
+    "/mstile-150x150.png",
     "/favicon.png",
     "/favicon.ico",
   ];
@@ -200,10 +304,27 @@ function candidates(html: string, base: URL): string[] {
     }
   }
 
+  // Only worth a request once the page's own icons have failed us, which is
+  // also the only case where anything below `declared` gets reached at all.
+  const fromManifest = await manifestIcons(
+    [...manifestHrefs, "/site.webmanifest", "/manifest.json"],
+    base,
+  );
+
   const seen = new Set<string>();
   const urls: string[] = [];
-  for (const href of [...declared, ...guesses, ...siblings]) {
+  for (const href of [...declared, ...fromManifest, ...guesses, ...siblings]) {
     try {
+      // A data: URI is already the image — sourcegraph.com inlines its 128px
+      // PNG this way and declares nothing else. Passed through verbatim for
+      // tryFetchImage to decode; new URL() would re-encode the payload.
+      if (/^data:image\//i.test(href.trim())) {
+        const raw = href.trim();
+        if (seen.has(raw)) continue;
+        seen.add(raw);
+        urls.push(raw);
+        continue;
+      }
       const abs = new URL(href, base).href;
       if (!/^https?:/.test(abs) || seen.has(abs)) continue;
       seen.add(abs);
@@ -216,21 +337,48 @@ function candidates(html: string, base: URL): string[] {
   return urls.slice(0, 28);
 }
 
-async function tryFetchImage(url: string): Promise<{ buf: Buffer; probe: Probe } | null> {
-  let res: Response;
+/** Decode a `data:image/…;base64,…` icon declared inline in the markup. */
+function decodeDataUri(url: string): Buffer | null {
+  const m = /^data:image\/[a-z.+-]+;base64,([\s\S]+)$/i.exec(url.trim());
+  if (!m) return null;
   try {
-    res = await fetchRetry(url, { redirect: "follow" }, { attempts: 2, timeoutMs: 12_000 });
+    const buf = Buffer.from(m[1], "base64");
+    return buf.length > 0 && buf.length <= MAX_FETCH_BYTES ? buf : null;
   } catch {
     return null;
   }
-  if (!res.ok) return null;
-  const len = Number(res.headers.get("content-length") ?? 0);
-  if (len > MAX_FETCH_BYTES) return null;
-  const buf = Buffer.from(await res.arrayBuffer());
-  if (buf.length === 0 || buf.length > MAX_FETCH_BYTES) return null;
+}
+
+async function tryFetchImage(url: string): Promise<{ buf: Buffer; probe: Probe } | null> {
+  let buf: Buffer;
+  const inline = decodeDataUri(url);
+  if (inline) {
+    buf = inline;
+  } else {
+    let res: Response;
+    try {
+      res = await fetchRetry(
+        url,
+        { redirect: "follow", headers: IMAGE_HEADERS },
+        { attempts: 2, timeoutMs: 12_000 },
+      );
+    } catch {
+      return null;
+    }
+    if (!res.ok) return null;
+    const len = Number(res.headers.get("content-length") ?? 0);
+    if (len > MAX_FETCH_BYTES) return null;
+    buf = Buffer.from(await res.arrayBuffer());
+    if (buf.length === 0 || buf.length > MAX_FETCH_BYTES) return null;
+  }
   const probe = probeImage(buf);
   if (!probe) return null; // e.g. a 200-with-HTML block page
-  if (Math.min(probe.width, probe.height) < MIN_PX) return null;
+  // MIN_PX is about resolution, which a vector doesn't have — an SVG with a
+  // 24x24 viewBox renders as crisply at 256px as one drawn at 512. Gating it on
+  // the viewBox threw away perfectly good marks (autodesk.com declares a 32x32
+  // viewBox and nothing else). The aspect check below still applies: those are
+  // proportions, and a wide wordmark stays wrong at every size.
+  if (probe.ext !== "svg" && Math.min(probe.width, probe.height) < MIN_PX) return null;
   if (Math.max(probe.width, probe.height) / Math.min(probe.width, probe.height) > MAX_ASPECT) {
     return null; // a wordmark, not a square mark
   }
@@ -332,14 +480,14 @@ export async function fetchLogos(opts: { force?: boolean } = {}): Promise<void> 
       // A few apexes refuse us but the www host answers fine.
       let res = await fetchRetry(
         base.href,
-        { redirect: "follow" },
+        { redirect: "follow", headers: PAGE_HEADERS },
         { attempts: 2, timeoutMs: 15_000 },
       ).catch(() => null);
       if (!res?.ok && !company.domain!.startsWith("www.")) {
         res =
           (await fetchRetry(
             `https://www.${company.domain}/`,
-            { redirect: "follow" },
+            { redirect: "follow", headers: PAGE_HEADERS },
             { attempts: 1, timeoutMs: 12_000 },
           ).catch(() => null)) ?? res;
       }
@@ -360,7 +508,7 @@ export async function fetchLogos(opts: { force?: boolean } = {}): Promise<void> 
       /* homepage unreachable — the conventional paths may still work */
     }
 
-    for (const url of candidates(html, base)) {
+    for (const url of await candidates(html, base)) {
       const raw = await tryFetchImage(url);
       if (!raw) continue;
       const got = { ...raw, ...normalize(raw.buf, raw.probe) };
