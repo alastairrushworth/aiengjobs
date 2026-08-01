@@ -121,11 +121,22 @@ export const ENCODER_DIR =
 // the 961MB droplet that forced quantisation is gone. Runners have 16GB.
 export const ENCODER_FILE = process.env.AIENGJOBS_ENCODER_FILE ?? "model.onnx";
 
-// Measured on the labelled corpus: 3072 tokens covers 99.2% of adverts whole,
-// but 1024 scores identically on the held-out split (92.4% vs 91.9% F1) at a
-// quarter the attention memory. The gain from a longer window is not worth
-// quadrupling the footprint on a shared runner.
-export const ENCODER_WINDOW = Number(process.env.AIENGJOBS_ENCODER_WINDOW ?? 1024);
+// MUST equal MAX_TOKENS in ml/train_encoder.py. The model was fine-tuned on
+// adverts truncated at that length, so serving it a shorter window scores every
+// longer advert off-distribution — on a question the cut text often answers.
+// tests/trainInferenceParity.test.ts fails the build if the two drift apart.
+// Read ml/TRAINING_INFERENCE_PARITY.md before touching this line.
+//
+// Deliberately NOT env-overridable. This is not a tuning knob: it is one half of
+// a contract with the training run, and the other half is a committed constant.
+//
+// It was 1024 for the 961MB droplet, which could not hold the quadratic
+// attention mask at 3072. That machine is gone and the runner has 16GB (this
+// peaks at 2.5GB). 1024 truncated 70% of live adverts to ~80% of their text,
+// and that silently moved decisions: one sampled advert scored 0.148 truncated
+// against 0.971 whole — OUT and IN across the same 0.70 threshold. Honouring the
+// training window costs 1.78x per advert on a representative sample.
+export const ENCODER_WINDOW = 3072;
 
 // Chosen from the held-out precision/recall curve, which knees here. Measured
 // through the Node runtime at 0.70: 94.6% precision / 86.9% recall (92.0%
