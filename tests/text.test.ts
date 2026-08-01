@@ -13,6 +13,21 @@ describe("decodeEntities", () => {
   it("leaves unknown entities untouched", () => {
     expect(decodeEntities("&notarealentity;")).toBe("&notarealentity;");
   });
+
+  it("leaves out-of-range code points alone rather than throwing", () => {
+    // fromCodePoint throws above 0x10FFFF. An advert carrying one of these
+    // must not be able to take down the ingest or the snapshot export.
+    expect(decodeEntities("&#x110000;")).toBe("&#x110000;");
+    expect(decodeEntities("&#1114112;")).toBe("&#1114112;");
+    expect(decodeEntities("&#99999999;")).toBe("&#99999999;");
+    expect(stripHtml("<p>Great role &#x110000; apply now</p>")).toBe(
+      "Great role &#x110000; apply now",
+    );
+  });
+
+  it("still decodes the largest valid code point", () => {
+    expect(decodeEntities("&#x10FFFF;")).toBe(String.fromCodePoint(0x10ffff));
+  });
 });
 
 describe("stripHtml", () => {

@@ -1,5 +1,6 @@
 import type { APIRoute, GetStaticPaths } from "astro";
 import { companies, generatedAt } from "../../lib/data.ts";
+import { url } from "../../lib/url.ts";
 import { mcpJobs, toMcpJob } from "../mcp-index.json.ts";
 import type { Job } from "@aiengjobs/shared";
 
@@ -20,7 +21,7 @@ export const getStaticPaths = (() =>
     props: { job },
   }))) satisfies GetStaticPaths;
 
-export const GET: APIRoute = ({ props }) => {
+export const GET: APIRoute = ({ props, site }) => {
   const { job } = props as { job: Job };
   const company = companyBySlug.get(job.companySlug);
 
@@ -38,7 +39,9 @@ export const GET: APIRoute = ({ props }) => {
       companyDomain: company?.domain ?? null,
       companyDescription: company?.description ?? null,
       // Where a human would read the same role, so an agent can cite it.
-      jobUrl: `https://frontierroles.com/jobs/${job.slug}`,
+      // Trailing slash and derived from `site`, not hardcoded: the slash-less
+      // form 301s on Pages, and this is a URL agents hand straight to users.
+      jobUrl: new URL(url(`/jobs/${job.slug}/`), site).href,
     }),
     {
       headers: {

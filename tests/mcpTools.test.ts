@@ -236,6 +236,14 @@ describe("getCompany", () => {
   it("returns null rather than an empty result for an unknown company", () => {
     expect(getCompany(b, "nosuchco")).toBeNull();
   });
+
+  it("returns null for an empty needle rather than the whole board", () => {
+    // "".includes("") is true for every job, so without a guard the substring
+    // fallback reports the entire board as whichever company sorts first —
+    // which an agent would then state as fact.
+    expect(getCompany(b, "")).toBeNull();
+    expect(getCompany(b, "   ")).toBeNull();
+  });
 });
 
 describe("trimDescription", () => {

@@ -26,7 +26,12 @@ export function decodeEntities(s: string): string {
           e[1] === "x" || e[1] === "X"
             ? parseInt(e.slice(2), 16)
             : parseInt(e.slice(1), 10);
-        return Number.isFinite(code) ? String.fromCodePoint(code) : m;
+        // Finite isn't enough: fromCodePoint throws a RangeError above the
+        // Unicode maximum, and an advert is untrusted input. Leave anything
+        // out of range as the literal entity rather than killing the parse.
+        return Number.isFinite(code) && code >= 0 && code <= 0x10ffff
+          ? String.fromCodePoint(code)
+          : m;
       }
       return NAMED_ENTITIES[e] ?? m;
     })

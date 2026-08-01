@@ -24,7 +24,7 @@ interface Props {
 
 const {
   title,
-  description = "The job board for AI developers — RAG, agents, evals, inference. Salary-transparent, no ghost jobs.",
+  description = "The job board for AI developers — RAG, agents, evals, inference. First-party roles pulled nightly from company career sites.",
   noBrandSuffix = false,
   noindex = false,
   prev,
@@ -107,7 +107,8 @@ const ogImage = new URL(url("/og-default.png"), Astro.site).href;
           <span>frontierroles<span class="dot">.</span>com</span>
         </a>
         <nav class="site-nav" aria-label="Site">
-          <a href={url("/")}>Jobs</a>
+          {/* No "Jobs" tab: the brand to its left already goes there, and two
+              links to the same page next to each other read as two places. */}
           <a href={url("/stats/")}>Stats</a>
           <a href={url("/mcp/")}>MCP</a>
         </nav>
@@ -139,8 +140,8 @@ const ogImage = new URL(url("/og-default.png"), Astro.site).href;
           <a href={url("/rss.xml")}>RSS</a>
         </nav>
         <p>
-          AI Engineering Jobs · first-party ATS listings, salary-transparent, no ghost jobs.
-          Listings are pulled nightly from company career sites — never scraped aggregators.
+          frontierroles.com · AI engineering roles pulled nightly from company career sites —
+          first-party postings, never scraped aggregators.
         </p>
       </div>
     </footer>

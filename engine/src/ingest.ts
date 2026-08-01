@@ -20,14 +20,17 @@ import { ENCODER_DIR, ENCODER_THRESHOLD, ENCODER_VETO_CONFIDENCE } from "./confi
 import { jobId, jobSlug } from "./util/id.ts";
 import { mapPool } from "./util/concurrency.ts";
 
-const SLEEP_MS = Number(process.env.INGEST_DELAY_MS ?? 400); // polite to feeds (Lever crawl-delay)
+// `||` not `??`: an unset var is one thing, but an empty or malformed one
+// (Number("") === 0, Number("abc") === NaN) must not silently become a zero
+// delay — or, for CONCURRENCY below, a pool that processes nothing at all.
+const SLEEP_MS = Number(process.env.INGEST_DELAY_MS) || 400; // polite to feeds (Lever crawl-delay)
 // This does NOT parallelise classification: ORT serialises concurrent run()
 // calls on the shared session, so raising it only queues adverts deeper in the
 // runtime. Cores are put to work inside the graph instead (ENCODER_THREADS).
 // 2 is enough to overlap the JS-side work — tokenising, hashing, the upsert —
 // with the native inference of the advert in front of it, which is all the
 // posting-level pool can buy here.
-const CONCURRENCY = Number(process.env.INGEST_CONCURRENCY ?? 2);
+const CONCURRENCY = Number(process.env.INGEST_CONCURRENCY) || 2;
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 // Apply links come from third-party feeds and end up as hrefs on the site —
@@ -182,7 +185,16 @@ export async function ingest(): Promise<void> {
       continue;
     }
     tally.fetchMs = Date.now() - fetchStart;
-    polledSourceIds.push(t.sourceId);
+    // Only a feed that returned something counts as polled. A 200 with an empty
+    // array is indistinguishable from a renamed board, an expired token, or a
+    // response shape that changed under us — and marking it polled would let
+    // closeStaleJobs close every open role at this company on that evidence.
+    // A genuinely empty board just keeps yesterday's roles until they age out.
+    if (postings.length > 0) {
+      polledSourceIds.push(t.sourceId);
+    } else {
+      console.warn(`  ! ${t.name} (${t.atsProvider}:${t.atsToken}): returned 0 postings, not closing its roles`);
+    }
     tallies.set(t.sourceId, { name: t.name, tally });
     tally.fetched = postings.length;
 

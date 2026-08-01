@@ -10,6 +10,13 @@ on:
     #   - "src/**/*.js"
     #   - "src/**/*.jsx"
 
+# One review per PR at a time. `synchronize` fires on every push, so without
+# this a branch pushed four times in an hour runs four full reviews — all but
+# the last reviewing a diff that no longer exists.
+concurrency:
+  group: claude-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
 jobs:
   claude-review:
     # Optional: Filter by PR author
