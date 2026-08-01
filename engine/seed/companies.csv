@@ -3,7 +3,7 @@
 # name,ats_provider,ats_slug,domain,stage
 Anthropic,greenhouse,anthropic,anthropic.com,late
 OpenAI,ashby,openai,openai.com,late
-Mistral AI,lever,mistral,mistral.ai,growth
+Mistral AI,ashby,mistral.ai,mistral.ai,growth
 Cohere,ashby,cohere,cohere.com,late
 Together AI,greenhouse,togetherai,together.ai,growth
 Fireworks AI,ashby,fireworksai,fireworks.ai,growth
@@ -537,7 +537,7 @@ Informa,smartrecruiters,InformaGroupPlc,informa.com,late
 WPP,greenhouse,wpp,wpp.com,late
 Rightmove,greenhouse,rightmovecareers,rightmove.co.uk,late
 Auto Trader,greenhouse,autotrader,autotrader.co.uk,late
-Ocado Group,workday,ocado:wd3:OcadoGroupCareers,ocadogroup.com,late
+Ocado Group,greenhouse,ocadogroup,ocadogroup.com,late
 Trustpilot,greenhouse,trustpilot,trustpilot.com,late
 Moneysupermarket Group,workday,msfg:wd3:Careers,moneysupermarketgroup.com,late
 Kainos,workday,kainos:wd3:Kainos,kainos.com,late
@@ -613,7 +613,7 @@ T-Mobile,workday,tmobile:wd1:External,t-mobile.com,late
 Zillow Group,workday,zillow:wd5:Zillow_Group_External,zillowgroup.com,late
 Wayfair,smartrecruiters,Wayfair,wayfair.com,late
 Chewy,greenhouse,chewycom,chewy.com,late
-GoDaddy,workday,godaddy:wd1:GoDaddy_careers_events,godaddy.com,late
+GoDaddy,greenhouse,godaddy,godaddy.com,late
 VeriSign,greenhouse,verisign,verisign.com,late
 The Trade Desk,greenhouse,thetradedesk,thetradedesk.com,late
 Workiva,workday,workiva:wd503:careers,workiva.com,late
@@ -842,3 +842,127 @@ Regal,lever,regal.ai,regal.ai,growth
 Superannotate,lever,superannotate,superannotate.com,growth
 Waabi,lever,waabi,waabi.ai,growth
 Zuma,lever,getzuma,getzuma.com,growth
+
+# ===========================================================================
+# AI-first additions, verified 2026-08-01. Second sweep of the YC directory
+# (yc-oss API, Active + hiring + AI-tagged), the Forbes AI 50 2026 and 2026
+# unicorn lists, and a UK/European pass (Sifted, Antler, EF, agentic-AI
+# round-ups). Every board was confirmed live via its public API, then
+# identity-checked three ways: the company careers page must link the board,
+# or its domain must appear in the board content, or the board page must name
+# the company. That caught the usual impostors -- greenhouse:beam is still a
+# maths nonprofit, greenhouse:essential is an anaesthesia group, lever:unusual
+# is the VC, ashby:ultra sells pouches. 16 such collisions were dropped.
+# All had an AI/ML role posted at time of adding.
+# ===========================================================================
+# --- greenhouse (2026-08 AI additions) ---
+Arcee AI,greenhouse,arceeai,arcee.ai,early
+Armada,greenhouse,armada,armada.ai,growth
+Axle,greenhouse,axle,axle.insure,early
+Carbon Robotics,greenhouse,carbonrobotics,carbonrobotics.com,growth
+Chainguard,greenhouse,chainguard,chainguard.dev,growth
+Chaos Industries,greenhouse,chaosindustries,chaosindustries.com,growth
+Cognite,greenhouse,cognite,cognite.com,growth
+ComplyAdvantage,greenhouse,complyadvantage,complyadvantage.com,growth
+Diligent Robotics,greenhouse,diligentrobotics,diligentrobots.com,early
+Eve,greenhouse,eve,eve.legal,growth
+Goodfire,greenhouse,goodfire,goodfire.ai,growth
+HiddenLayer,greenhouse,hiddenlayer,hiddenlayer.com,early
+Hume AI,greenhouse,humeai,hume.ai,early
+Isar Aerospace,greenhouse,isaraerospace,isaraerospace.com,growth
+Konux,greenhouse,konux,konux.com,early
+Lightning AI,greenhouse,lightningai,lightning.ai,growth
+Lila Sciences,greenhouse,lilasciences,lila.ai,growth
+Mirakl,greenhouse,mirakl,mirakl.com,early
+RADAR,greenhouse,radar,goradar.com,growth
+Recycleye,greenhouse,recycleye,recycleye.com,early
+Scout AI,greenhouse,scoutai,scoutai.com,growth
+SmarterDx,greenhouse,smarterdx,smarterdx.com,early
+Swayable,greenhouse,swayable,swayable.com,growth
+Torq,greenhouse,torq,torq.io,growth
+You.com,greenhouse,youcom,you.com,early
+# --- ashby (2026-08 AI additions) ---
+Arcade AI,ashby,arcadeai,arcade.dev,early
+Attio,ashby,attio,attio.com,growth
+Aveni,ashby,aveni,aveni.ai,early
+Basecamp Research,ashby,basecamp-research,basecamp-research.com,early
+Beacon AI,ashby,beaconai,beacon.ai,growth
+Blissway,ashby,blissway,blissway.com,early
+Bolna AI,ashby,bolna,bolna.ai,early
+Broccoli AI,ashby,broccoli,broccoli.com,growth
+Clay,ashby,claylabs,clay.com,growth
+Comand AI,ashby,comand-ai,comand.ai,growth
+Composio,ashby,composio,composio.dev,growth
+Datalab,ashby,datalab,datalab.to,early
+Dex,ashby,dex,joindex.com,early
+Domu Technology Inc.,ashby,domu,domu.ai,growth
+Elicit,ashby,elicit,elicit.com,early
+EliseAI,ashby,eliseai,eliseai.com,growth
+Ello,ashby,ello,ello.com,growth
+Empirical Health,ashby,empirical,empirical.health,early
+Enpal,ashby,enpal,enpal.de,growth
+Extend,ashby,extend,extend.app,early
+FINNY AI,ashby,finny,finny.com,growth
+Genmo,ashby,genmo,genmo.ai,early
+Handshake AI,ashby,handshake,handshake.ai,growth
+Harmonic AI,ashby,harmonic,harmonic.fun,early
+Hinge Health,ashby,hinge-health,hingehealth.com,growth
+Ideogram,ashby,ideogram,ideogram.ai,early
+Interfere,ashby,interfere,interfere.com,early
+Krea,ashby,krea,krea.ai,early
+Latent,ashby,latent,latenthealth.com,growth
+Legion Health,ashby,legionhealth,legionhealth.com,early
+Letta,ashby,letta,letta.com,early
+Linkup,ashby,linkup,linkup.so,early
+Listen Labs,ashby,listenlabs,listenlabs.ai,growth
+LiteLLM,ashby,litellm,litellm.ai,early
+Mach Industries,ashby,mach,machindustries.com,growth
+Mach9,ashby,mach9,mach9.ai,growth
+Midjourney,ashby,midjourney,midjourney.com,growth
+Monumental,ashby,monumental,monumental.co,growth
+Multiverse,ashby,multiverse,multiverse.io,growth
+Mutiny,ashby,mutiny,mutinyhq.com,early
+Novita AI,ashby,novita-ai,novita.ai,early
+Oneleet,ashby,oneleet,oneleet.com,growth
+Onyx,ashby,onyx,onyx.app,early
+Output Biosciences,ashby,output,outputbio.com,early
+Parallel Web Systems,ashby,parallel,parallel.ai,growth
+Periodic Labs,ashby,periodic-labs,periodic.com,growth
+Phonic,ashby,phonic,phonic.ai,early
+Prime Intellect,ashby,primeintellect,primeintellect.ai,growth
+Probably Genetic,ashby,probablygenetic,probablygenetic.com,early
+Promise,ashby,promise,promise-pay.com,growth
+ProRata,ashby,prorata,prorata.ai,early
+Rad AI,ashby,radai,radai.com,growth
+RobCo,ashby,robco,robco.de,growth
+Sesame AI,ashby,sesame,sesame.com,growth
+Socket,ashby,socket,socket.dev,growth
+Sola,ashby,sola,sola-solutions.com,early
+Spade,ashby,spade,spade.com,growth
+StackOne,ashby,stackone,stackone.com,early
+Tacto,ashby,tacto,tacto.ai,growth
+Telli,ashby,telli,telli.com,growth
+The Bot Company,ashby,thebotcompany,thebotcompany.com,early
+Thought Machine,ashby,thought-machine,thoughtmachine.net,growth
+Two Dots,ashby,two-dots,twodots.com,growth
+Ultralytics,ashby,ultralytics,ultralytics.com,growth
+Vertice,ashby,vertice,vertice.one,growth
+voize,ashby,voize,voize.de,growth
+Weekend (fmr. Volley),ashby,weekend,weekend.com,growth
+Wordsmith,ashby,wordsmith,wordsmith.ai,growth
+Xapien,ashby,xapien,xapien.com,growth
+Zensors,ashby,zensors,zensors.com,early
+# --- lever (2026-08 AI additions) ---
+Apollo Research,lever,apolloresearch,apolloresearch.ai,early
+Bright Machines,lever,brightmachines,brightmachines.com,early
+Chef Robotics,lever,ChefRobotics,chefrobotics.ai,early
+Epoch AI,lever,epoch-ai,epoch.ai,early
+Filevine,lever,filevine,filevine.com,growth
+Pigment,lever,pigment,pigment.com,growth
+Skyways,lever,skyways,skyways.com,growth
+# --- workable (2026-08 AI additions) ---
+CrewAI,workable,crewai,crewai.com,early
+Unitary,workable,unitary,unitary.ai,early
+# --- recruitee (2026-08 AI additions) ---
+CausaLens,recruitee,causalens,causalens.com,early
+Greyparrot,recruitee,greyparrotai,greyparrot.ai,early
