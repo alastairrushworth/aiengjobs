@@ -185,6 +185,10 @@ export async function ingest(): Promise<void> {
   const polledSourceIds: string[] = [];
   // Keyed by sourceId so the closure counts can be joined back on by name.
   const tallies = new Map<string, { name: string; tally: Tally }>();
+  // Feed failures are logged as they happen, but a run prints thousands of
+  // lines over several hours — a board that has been dead for a fortnight looks
+  // identical to a blip unless the failures are gathered back up at the end.
+  const feedFailures: string[] = [];
   let failed = 0;
 
   let skippedForBudget = 0;
@@ -214,7 +218,9 @@ export async function ingest(): Promise<void> {
       partial = Array.isArray(result) ? false : result.partial === true;
     } catch (e) {
       failed++;
-      console.warn(`  ! ${t.name} (${t.atsProvider}:${t.atsToken}): ${(e as Error).message}`);
+      const line = `${t.name} (${t.atsProvider}:${t.atsToken}): ${(e as Error).message}`;
+      feedFailures.push(line);
+      console.warn(`  ! ${line}`);
       await sleep(SLEEP_MS);
       continue;
     }
@@ -382,6 +388,13 @@ export async function ingest(): Promise<void> {
   const sum = (pick: (t: Tally) => number) =>
     all.reduce((n, { tally }) => n + pick(tally), 0);
   const closed = [...closedBySource.values()].reduce((n, c) => n + c, 0);
+
+  // Gathered back up before the totals line, so a fortnight-dead board reads as
+  // a dead board rather than as one more warning lost in four hours of log.
+  if (feedFailures.length > 0) {
+    console.log(`\nFeeds that returned nothing (${feedFailures.length}/${targets.length}):`);
+    for (const f of feedFailures) console.log(`  ! ${f}`);
+  }
 
   // `processed` is kept under its old name so runs stay comparable with older
   // logs; `filtered` + `inferred` are the new breakdown of what it cost.
