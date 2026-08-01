@@ -20,7 +20,6 @@ const {
   seniorPlus,
   works,
   sinces,
-  paid,
   hide = [],
 } = Astro.props;
 
@@ -48,17 +47,16 @@ const hasSelects =
     <input type="search" id="q" placeholder="Title, company, skill, city…" />
   </div>
 
-  {/* Three things a select would answer worse. Work location is the first
+  {/* Two things a select would answer worse. Work location is the first
       question most people ask and has three answers — as a dropdown it's an
-      extra click to see options that fit on one line. Pay and freshness are
-      one-bit questions; a select for a boolean is a control that has to be
-      opened to find out it only says yes or no.
+      extra click to see options that fit on one line. Freshness is two answers
+      and the same argument.
 
-      No "Any" button in any group: each of these toggles off when you press the
-      one that's on, and every active filter also carries a removable chip above
-      the listing. An explicit "Any" would be a fourth control per group saying
-      what the absence of a pressed one already says — three extra buttons, and
-      on a 390px phone each row of them is a row of the fold. */}
+      No "Any" button in either group: each toggles off when you press the one
+      that's on, and every active filter also carries a removable chip above the
+      listing. An explicit "Any" would be a third control per group saying what
+      the absence of a pressed one already says — and on a 390px phone a row of
+      them is a row of the fold. */}
   <div class="quick">
     {shows("work", works.length) && (
       <div class="seg" role="group" aria-label="Work location" data-filter="work">
@@ -78,17 +76,6 @@ const hasSelects =
             {o.label} <span class="seg-n">{o.count}</span>
           </button>
         ))}
-      </div>
-    )}
-    {/* Replaces the "Highest salary" sort. That control ranked the 53% of roles
-        with no published range at zero and buried them under a line claiming to
-        show the highest-paying of all of them; what it was really being asked
-        was this question, which it can now be asked directly. */}
-    {paid > 0 && (
-      <div class="seg" role="group" aria-label="Pay" data-filter="pay">
-        <button type="button" class="seg-btn" data-value="1" aria-pressed="false">
-          Shows pay <span class="seg-n">{paid}</span>
-        </button>
       </div>
     )}
   </div>

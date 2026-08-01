@@ -248,8 +248,6 @@ const showAllHidden = hasPager || total <= initial;
         return `“${value}”`;
       case "skill":
         return value;
-      case "pay":
-        return "Shows pay";
       case "work":
         return WORK_OPTIONS.find((w) => w.id === value)?.label ?? value;
       case "since":
@@ -281,8 +279,7 @@ const showAllHidden = hasPager || total <= initial;
     for (const seg of segs) {
       const key = seg.dataset.filter!;
       for (const btn of seg.querySelectorAll<HTMLButtonElement>(".seg-btn")) {
-        const on =
-          key === "pay" ? state.pay : state[key as "work" | "since"] === btn.dataset.value;
+        const on = state[key as "work" | "since"] === btn.dataset.value;
         btn.setAttribute("aria-pressed", on ? "true" : "false");
         btn.classList.toggle("is-on", on);
       }
@@ -458,8 +455,7 @@ const showAllHidden = hasPager || total <= initial;
   /** Does a job answer this segmented button? */
   function segTest(key: string, value: string): (j: JobEntry) => boolean {
     if (key === "work") return (j) => j.rm === value;
-    if (key === "since") return (j) => j.ag <= Number(value);
-    return (j) => Boolean(j.s); // pay
+    return (j) => j.ag <= Number(value); // since
   }
 
   /**
@@ -631,13 +627,9 @@ const showAllHidden = hasPager || total <= initial;
       // Every group toggles: pressing the pressed one turns it off, which is
       // what stands in for the "Any" button these groups deliberately don't
       // have (see FilterControls).
-      if (key === "pay") {
-        state.pay = !state.pay;
-      } else {
-        const group = key as "work" | "since";
-        const value = btn.dataset.value!;
-        state[group] = state[group] === value ? "" : value;
-      }
+      const group = key as "work" | "since";
+      const value = btn.dataset.value!;
+      state[group] = state[group] === value ? "" : value;
       showAll = false;
       syncToControls();
       apply();

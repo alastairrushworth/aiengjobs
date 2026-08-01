@@ -1,6 +1,6 @@
 import type { Job } from "@aiengjobs/shared";
-import { countryName, salaryMidpointUsd, SENIORITY_OPTIONS } from "./format.ts";
-import { fxRates, generatedAt } from "./data.ts";
+import { countryName, SENIORITY_OPTIONS } from "./format.ts";
+import { generatedAt } from "./data.ts";
 import { SENIOR_PLUS_IDS, SINCE_OPTIONS, WORK_OPTIONS } from "./search.ts";
 
 /**
@@ -21,8 +21,6 @@ export interface FilterOptions {
   seniorPlus: number;
   works: { id: string; label: string; count: number }[];
   sinces: { id: string; label: string; count: number }[];
-  /** Roles that publish a usable pay range. */
-  paid: number;
 }
 
 /**
@@ -89,9 +87,5 @@ export function buildFilterOptions(jobs: Job[]): FilterOptions {
     }).length,
   })).filter((o) => o.count > 0);
 
-  // Same gate as the card, the sort that used to exist and the stats page: a
-  // role is priced everywhere or nowhere (see format.salaryMidpointUsd).
-  const paid = jobs.filter((j) => salaryMidpointUsd(j, fxRates) !== null).length;
-
-  return { countries, cities, seniorities, seniorPlus, works, sinces, paid };
+  return { countries, cities, seniorities, seniorPlus, works, sinces };
 }
