@@ -94,7 +94,7 @@ export async function submitIndexNow(urls: string[]): Promise<boolean> {
 
 /**
  * Diff two snapshots and announce what changed. Wired into the nightly refresh
- * (see scripts/droplet-refresh.sh), which hands over its pre-refresh copy.
+ * (see scripts/refresh.sh), which hands over its pre-refresh copy.
  */
 export async function notify(prevPath: string, nextPath: string): Promise<void> {
   const { added, removed } = diffSnapshots(prevPath, nextPath);
