@@ -34,6 +34,9 @@ export interface McpJob {
 }
 
 export interface JobDetail extends McpJob {
+  /** Snapshot date, carried on the per-job file too so a detail response can
+   *  date itself without a second fetch of the index. */
+  generatedAt: string;
   description: string | null;
   companyDomain: string | null;
   companyDescription: string | null;
