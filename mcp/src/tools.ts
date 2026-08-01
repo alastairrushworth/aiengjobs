@@ -191,6 +191,9 @@ export interface CompanyResult {
  *  search result shouldn't have to know the slug is "anthropic". */
 export function getCompany(board: Board, nameOrSlug: string): CompanyResult | null {
   const needle = lower(nameOrSlug).trim();
+  // An empty needle would match every company via the contains fallback below
+  // ("".includes("") is true), and report the whole board as one employer.
+  if (!needle) return null;
   const jobs = board.jobs.filter(
     (j) => lower(j.companySlug) === needle || lower(j.company) === needle,
   );

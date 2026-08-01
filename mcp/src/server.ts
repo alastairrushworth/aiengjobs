@@ -192,7 +192,10 @@ export function createServer(): McpServer {
       title: "Get a company's open roles",
       description: "Every open role at one company. Accepts a company slug or display name.",
       inputSchema: {
-        company: z.string().describe("Company slug or name, e.g. 'anthropic' or 'Shield AI'."),
+        company: z
+          .string()
+          .min(1)
+          .describe("Company slug or name, e.g. 'anthropic' or 'Shield AI'."),
       },
       annotations: { readOnlyHint: true, openWorldHint: true },
     },
