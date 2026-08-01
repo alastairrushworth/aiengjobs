@@ -491,8 +491,8 @@
  },
  "cmegroup-wd1-cme-careers": {
   "file": "cmegroup-wd1-cme-careers.png",
-  "w": 270,
-  "h": 270
+  "w": 48,
+  "h": 48
  },
  "cognition": {
   "file": "cognition.png",
@@ -520,9 +520,9 @@
   "h": 256
  },
  "comcast-wd5-comcast-careers": {
-  "file": "comcast-wd5-comcast-careers.png",
-  "w": 46080,
-  "h": 46088
+  "file": "comcast-wd5-comcast-careers.svg",
+  "w": 700,
+  "h": 700
  },
  "comena": {
   "file": "comena.png",
