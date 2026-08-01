@@ -3,15 +3,9 @@ import Base from "../layouts/Base.astro";
 import JobCard from "../components/JobCard.astro";
 import JobFilters from "../components/JobFilters.astro";
 import { url } from "../lib/url.ts";
-import { salaryMidpointUsd } from "../lib/format.ts";
 import { buildFilterOptions } from "../lib/filterOptions.ts";
-import { openJobs, generatedAt, fxRates } from "../lib/data.ts";
+import { openJobs, generatedAt } from "../lib/data.ts";
 import { jsonLdScript } from "../lib/jsonld.ts";
-import { LOCATION_LANDINGS } from "../lib/landings.ts";
-
-// The location pages need real internal links, not just sitemap entries — the
-// biggest dozen, which is also the set a visitor is most likely to want.
-const topLocations = LOCATION_LANDINGS.slice(0, 12);
 
 const jobs = openJobs; // newest first (see lib/data)
 
@@ -20,15 +14,6 @@ const jobs = openJobs; // newest first (see lib/data)
 // interaction. Keeps the HTML small without hiding ~1,000 rendered cards.
 const INITIAL = 50;
 const initialJobs = jobs.slice(0, INITIAL);
-
-// Share of the board that publishes a range, so the hero can state the number
-// rather than claim blanket transparency — /stats already reports the same
-// figure, and a promise the listings only half keep costs more trust than the
-// number does. Uses the same gate as every other pay decision (see format.ts).
-const pricedPct = Math.round(
-  (jobs.filter((j) => salaryMidpointUsd(j, fxRates) !== null).length / Math.max(1, jobs.length)) *
-    100,
-);
 
 // Filter options counted against the whole board (see lib/filterOptions) —
 // every landing builds the same lists against its own roles.
@@ -51,7 +36,7 @@ const jsonLd = [
     name: "frontierroles.com",
     url: homeUrl,
     description:
-      "The job board for AI engineers — RAG, agents, evals, inference. Salary-transparent, no ghost jobs.",
+      "The job board for AI developers — RAG, agents, evals, inference. Salary-transparent, no ghost jobs.",
   },
   {
     "@context": "https://schema.org",
@@ -78,12 +63,11 @@ const updated = new Date(generatedAt).toLocaleDateString("en-US", {
 
 <Base title="AI Engineering Jobs — RAG, agents, evals, inference" noBrandSuffix>
   <section class="hero">
-    <h1>The job board for AI engineers</h1>
+    <h1>The job board for AI developers</h1>
     <p>
-      RAG, agents, evals, inference — browse <span class="count">{jobs.length}</span>
-      first-party roles. <span class="count">{pricedPct}%</span> publish pay. No ghost jobs.
+      Browse <span class="count">{jobs.length}</span> first-party roles in AI research,
+      agents, evals and inference.
     </p>
-    <p class="updated">Updated {updated} · refreshed nightly</p>
   </section>
 
   {/* The "Browse by stack" rail used to sit here. It cost a row of the fold on
@@ -109,15 +93,15 @@ const updated = new Date(generatedAt).toLocaleDateString("en-US", {
     </ul>
   </JobFilters>
 
-  {/* Below the first results, not above them. Stack + location together cost
-      more of the fold than the whole stats block on a landing page, and someone
-      who wants a city can reach one from here or from the filter bar. */}
-  <nav class="browse" aria-label="Browse by location">
-    <span class="browse-label">Browse by location:</span>
-    {topLocations.map((l) => (
-      <a href={url(`/${l.slug}/`)}>{l.label} <span class="loc-n">{l.jobs.length}</span></a>
-    ))}
-  </nav>
+  {/* The location row that sat here is gone. City landings keep their internal
+      links from the cross-link row at the foot of every landing page (see
+      LandingPage.astro) — the homepage reaches them through the footer nav's
+      cluster pages — and the City select in the filter bar covers the same
+      ground for anyone already here. */}
+
+  {/* The freshness stamp sits at the foot of the page rather than under the
+      headline: it answers a question you only ask after reading the listings. */}
+  <p class="updated">Updated {updated} · refreshed nightly</p>
 
   {/* jsonLdScript escapes <, >, & — job titles are untrusted feed content that
       could otherwise break out of these script elements. */}

@@ -1,5 +1,5 @@
 import type { Job } from "@aiengjobs/shared";
-import { countryName, roleType, salaryMidpointUsd, SENIORITY_OPTIONS } from "./format.ts";
+import { countryName, salaryMidpointUsd, SENIORITY_OPTIONS } from "./format.ts";
 import { fxRates, generatedAt } from "./data.ts";
 import { SENIOR_PLUS_IDS, SINCE_OPTIONS, WORK_OPTIONS } from "./search.ts";
 
@@ -14,7 +14,6 @@ import { SENIOR_PLUS_IDS, SINCE_OPTIONS, WORK_OPTIONS } from "./search.ts";
  */
 
 export interface FilterOptions {
-  roles: { label: string; count: number }[];
   countries: { code: string; label: string; count: number }[];
   cities: { name: string; count: number }[];
   seniorities: { id: string; label: string; count: number }[];
@@ -37,16 +36,6 @@ export interface FilterOptions {
 export const MIN_CITY_OPTION = 5;
 
 export function buildFilterOptions(jobs: Job[]): FilterOptions {
-  // Role-type options, most common first, catch-all "Other" pinned last.
-  const roleCounts = new Map<string, number>();
-  for (const j of jobs) {
-    const r = roleType(j);
-    roleCounts.set(r, (roleCounts.get(r) ?? 0) + 1);
-  }
-  const roles = [...roleCounts.entries()]
-    .sort((a, b) => (a[0] === "Other" ? 1 : b[0] === "Other" ? -1 : b[1] - a[1]))
-    .map(([label, count]) => ({ label, count }));
-
   const countryCounts = new Map<string, number>();
   for (const j of jobs) {
     if (j.country) countryCounts.set(j.country, (countryCounts.get(j.country) ?? 0) + 1);
@@ -61,15 +50,16 @@ export function buildFilterOptions(jobs: Job[]): FilterOptions {
 
   // Cities are already canonicalized on read (see lib/data), so "New York",
   // "New York City" and "New York Office" are one option rather than three.
-  // Count order, like countries: the head is most of the board (the top 20
-  // cities carry about half of it), so the useful rows sit at the top.
+  // Alphabetical, unlike countries: this list runs to ~90 rows, and someone
+  // opening it has a city in mind — scanning for a known name is what the
+  // ordering has to serve, not ranking the board by size.
   const cityCounts = new Map<string, number>();
   for (const j of jobs) {
     if (j.city) cityCounts.set(j.city, (cityCounts.get(j.city) ?? 0) + 1);
   }
   const cities = [...cityCounts.entries()]
     .filter(([, count]) => count >= MIN_CITY_OPTION)
-    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    .sort((a, b) => a[0].localeCompare(b[0]))
     .map(([name, count]) => ({ name, count }));
 
   const seniorities = SENIORITY_OPTIONS.map((s) => ({
@@ -103,5 +93,5 @@ export function buildFilterOptions(jobs: Job[]): FilterOptions {
   // role is priced everywhere or nowhere (see format.salaryMidpointUsd).
   const paid = jobs.filter((j) => salaryMidpointUsd(j, fxRates) !== null).length;
 
-  return { roles, countries, cities, seniorities, seniorPlus, works, sinces, paid };
+  return { countries, cities, seniorities, seniorPlus, works, sinces, paid };
 }

@@ -8,7 +8,6 @@ import {
   formatSalary,
   postedAgo,
   remoteLabel,
-  roleType,
   safeUrl,
   seniorityLabel,
 } from "../../lib/format.ts";
@@ -38,16 +37,16 @@ export function getStaticPaths() {
       .slice(0, 3);
     const elsewhere = (j: Job) => j.companySlug !== job.companySlug && j.slug !== job.slug;
     // Shared cluster is the good match, but 343 open roles (8%) carry no
-    // cluster at all, and for those this returned nothing — leaving the page
-    // with "More at <company>" as its only way onward, which is a dead end for
-    // anyone who isn't sold on the company. Role family is the weaker signal
-    // and only gets used when the strong one has nothing to say.
+    // cluster at all, and for those this returns nothing — which would leave
+    // the page with "More at <company>" as its only way onward, a dead end for
+    // anyone who isn't sold on the company. The newest roles elsewhere are the
+    // weaker signal and only get used when the strong one has nothing to say.
+    // (Role family used to fill this gap; it went with the Role type filter.)
     const byCluster = openJobs.filter(
       (j) => elsewhere(j) && j.clusters.some((c) => job.clusters.includes(c)),
     );
-    const family = roleType(job);
     const similar = (
-      byCluster.length > 0 ? byCluster : openJobs.filter((j) => elsewhere(j) && roleType(j) === family)
+      byCluster.length > 0 ? byCluster : openJobs.filter(elsewhere)
     ).slice(0, 3);
     return { atCompany, similar };
   };
@@ -71,7 +70,6 @@ type Props = InferGetStaticPropsType<typeof getStaticPaths>;
 const { job, closed, pageTitle, atCompany, similar } = Astro.props as Props;
 
 const salary = formatSalary(job, fxRates);
-const role = roleType(job);
 const applyHref = safeUrl(job.applyUrl);
 const posted = postedAgo(job.postedAt, generatedAt);
 
@@ -97,7 +95,6 @@ const facts: { label: string; value: string; muted?: boolean }[] = [
     label: "Level",
     value: seniorityLabel(job.seniority)!,
   },
-  role && role !== "Other" && { label: "Role", value: role },
   posted && { label: "Posted", value: posted },
 ].filter(Boolean) as { label: string; value: string; muted?: boolean }[];
 
