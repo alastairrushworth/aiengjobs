@@ -15,6 +15,7 @@ export const GET: APIRoute = ({ site }) => {
   const entries: { loc: string; lastmod?: string }[] = [
     { loc: abs("/"), lastmod: day(generatedAt) },
     { loc: abs("/stats"), lastmod: day(generatedAt) },
+    { loc: abs("/mcp"), lastmod: day(generatedAt) },
   ];
   // Every listing page — clusters and locations alike — is paginated; list each
   // slice so the roles past page 1 stay discoverable (pages/[topic]/[...page]).

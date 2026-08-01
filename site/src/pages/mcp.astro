@@ -255,8 +255,11 @@ const PROMPTS = [
   .facts { padding-left: 20px; margin: 0 0 12px; }
   .facts li { margin-bottom: 10px; max-width: 68ch; }
 
-  .table-wrap { overflow-x: auto; }
-  table { border-collapse: collapse; width: 100%; min-width: 460px; }
+  /* min-width:0 so the wrapper can shrink below the table's intrinsic width —
+     without it the table's floor propagates out and scrolls the whole page,
+     which is exactly what the pre-wrap rule above exists to prevent. */
+  .table-wrap { overflow-x: auto; min-width: 0; }
+  table { border-collapse: collapse; width: 100%; }
   th, td {
     text-align: left;
     padding: 10px 12px;
