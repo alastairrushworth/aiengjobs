@@ -36,14 +36,19 @@ export function getStaticPaths() {
     const atCompany = openJobs
       .filter((j) => j.companySlug === job.companySlug && j.slug !== job.slug)
       .slice(0, 3);
-    const similar = openJobs
-      .filter(
-        (j) =>
-          j.companySlug !== job.companySlug &&
-          j.slug !== job.slug &&
-          j.clusters.some((c) => job.clusters.includes(c)),
-      )
-      .slice(0, 3);
+    const elsewhere = (j: Job) => j.companySlug !== job.companySlug && j.slug !== job.slug;
+    // Shared cluster is the good match, but 343 open roles (8%) carry no
+    // cluster at all, and for those this returned nothing — leaving the page
+    // with "More at <company>" as its only way onward, which is a dead end for
+    // anyone who isn't sold on the company. Role family is the weaker signal
+    // and only gets used when the strong one has nothing to say.
+    const byCluster = openJobs.filter(
+      (j) => elsewhere(j) && j.clusters.some((c) => job.clusters.includes(c)),
+    );
+    const family = roleType(job);
+    const similar = (
+      byCluster.length > 0 ? byCluster : openJobs.filter((j) => elsewhere(j) && roleType(j) === family)
+    ).slice(0, 3);
     return { atCompany, similar };
   };
 
@@ -369,7 +374,11 @@ const metaDescription = `${descBits.join(" — ")}.`.slice(0, 300);
 </Base>
 
 <style>
-  .job-detail { max-width: 720px; padding: 32px 0 0; }
+  /* Centred in the 1040px container rather than pinned left. Left-aligned, the
+     720px column left ~300px of empty page down the right-hand side for the
+     full height of every job page, which grows to ~740px of asymmetry at 1920
+     and reads as a layout that lost its second column. */
+  .job-detail { max-width: 720px; margin-inline: auto; padding: 32px 0 0; }
   .job-detail h1 {
     font-size: 1.8rem;
     letter-spacing: -0.02em;
@@ -422,6 +431,12 @@ const metaDescription = `${descBits.join(" — ")}.`.slice(0, 300);
   .job-detail .skills { margin-top: 16px; }
   .badge.more { color: var(--muted); }
   .desc { margin-top: 28px; color: var(--text); line-height: 1.7; }
+  /* The description is the longest prose on the site. At the column's full
+     720px it set ~88 characters a line, well past the ~65–75 the eye tracks
+     comfortably; ch units hold the measure whatever the font does. The facts
+     grid and the apply button keep the full width — only running text needs
+     the shorter line. */
+  .desc p, .desc li { max-width: 66ch; }
   .desc.no-desc { color: var(--muted); }
   .desc p { margin: 0 0 14px; }
   .desc ul { margin: 0 0 14px; padding-left: 1.25rem; }
@@ -439,6 +454,6 @@ const metaDescription = `${descBits.join(" — ")}.`.slice(0, 300);
     font-weight: 600;
   }
   .apply:hover { filter: brightness(1.12); }
-  .related { max-width: 720px; margin-top: 40px; }
+  .related { max-width: 720px; margin-inline: auto; margin-top: 40px; }
   .related h2 { font-size: 1.1rem; margin: 24px 0 12px; }
 </style>

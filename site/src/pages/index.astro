@@ -7,7 +7,6 @@ import { salaryMidpointUsd } from "../lib/format.ts";
 import { buildFilterOptions } from "../lib/filterOptions.ts";
 import { openJobs, generatedAt, fxRates } from "../lib/data.ts";
 import { jsonLdScript } from "../lib/jsonld.ts";
-import { CLUSTER_PAGES } from "../lib/clusters.ts";
 import { LOCATION_LANDINGS } from "../lib/landings.ts";
 
 // The location pages need real internal links, not just sitemap entries — the
@@ -87,14 +86,12 @@ const updated = new Date(generatedAt).toLocaleDateString("en-US", {
     <p class="updated">Updated {updated} · refreshed nightly</p>
   </section>
 
-  {/* One row, scrolling sideways on a phone rather than wrapping to three.
-      Wrapped, this nav plus the hero and the filter bar filled the entire
-      723px fold and pushed every job card off it — the board's own listing
-      pages showed three cards in the same space because they carry neither. */}
-  <nav class="browse browse-rail" aria-label="Browse by stack">
-    <span class="browse-label">Browse by stack:</span>
-    {CLUSTER_PAGES.map((p) => <a href={url(`/${p.slug}/`)}>{p.label}</a>)}
-  </nav>
+  {/* The "Browse by stack" rail used to sit here. It cost a row of the fold on
+      every device, and on a phone it was a sideways scroller with no visible
+      affordance — six of the eight cluster links were off-screen and nothing
+      said so, which is a poor way to expose the pages search traffic lands on.
+      All eight now live in the footer nav, on every page, wrapping normally.
+      The role-type select covers the same ground for anyone already here. */}
 
   <JobFilters
     src={url("/jobs-data.json")}
@@ -106,8 +103,8 @@ const updated = new Date(generatedAt).toLocaleDateString("en-US", {
     {...filterOptions}
   >
     <ul class="jobs" id="jobs">
-      {initialJobs.map((job) => (
-        <JobCard job={job} href={url(`/jobs/${job.slug}/`)} />
+      {initialJobs.map((job, i) => (
+        <JobCard job={job} href={url(`/jobs/${job.slug}/`)} eager={i < 6} />
       ))}
     </ul>
   </JobFilters>

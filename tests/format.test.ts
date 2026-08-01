@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
   formatSalary,
-  isNewJob,
   median,
   postedAgo,
   safeUrl,
@@ -135,7 +134,7 @@ describe("median", () => {
   });
 });
 
-describe("postedAgo / isNewJob", () => {
+describe("postedAgo", () => {
   const gen = "2026-07-01T00:00:00Z";
   it("renders relative stamps", () => {
     expect(postedAgo("2026-07-01T00:00:00Z", gen)).toBe("today");
@@ -146,10 +145,14 @@ describe("postedAgo / isNewJob", () => {
     expect(postedAgo(undefined, gen)).toBeNull();
   });
 
-  it("marks jobs new within 7 days of posting", () => {
-    expect(isNewJob("2026-06-28T00:00:00Z", gen)).toBe(true);
-    expect(isNewJob("2026-06-01T00:00:00Z", gen)).toBe(false);
-    expect(isNewJob(undefined, gen)).toBe(false);
+  // Cards render this straight into a badge, so a future date (an ATS posting
+  // dated ahead of the nightly export) has to read as "today", never "-2d ago".
+  it("floors future postings at today", () => {
+    expect(postedAgo("2026-07-05T00:00:00Z", gen)).toBe("today");
+  });
+
+  it("returns null rather than a stamp for unparseable dates", () => {
+    expect(postedAgo("not-a-date", gen)).toBeNull();
   });
 });
 

@@ -93,6 +93,11 @@ const showAllHidden = hasPager || total <= initial;
         something the controls don't show. */}
     <button class="chip" id="skill-chip" hidden></button>
     <button class="link-btn" id="clear" hidden>Clear filters</button>
+    {/* Phone-only way back to the controls. This bar is sticky at that width
+        (the panel itself is far too tall to pin), so from 8,000px down a
+        listing the filters are still one tap away instead of a scroll to the
+        top. Hidden above 700px, where the panel is the thing that sticks. */}
+    <button class="link-btn jump-filters" id="jump-filters">Filters</button>
   </div>
 
   <slot />
@@ -102,8 +107,10 @@ const showAllHidden = hasPager || total <= initial;
   <div class="empty" id="empty" hidden>
     <p>No roles match those filters.</p>
     {/* The results bar carries a Clear too, but it sits above the fold of an
-        otherwise blank screen — repeat the way out where the eye already is. */}
-    <button class="btn-secondary" id="empty-clear">Clear all filters</button>
+        otherwise blank screen — repeat the way out where the eye already is.
+        Same words as that one: two labels for one action reads as two
+        different actions. */}
+    <button class="btn-secondary" id="empty-clear">Clear filters</button>
   </div>
   <div class="show-more-wrap">
     <button class="btn-secondary" id="show-all" hidden={showAllHidden}>
@@ -114,6 +121,33 @@ const showAllHidden = hasPager || total <= initial;
 
 <style>
   .results-bar { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+
+  /* Above 700px the filter panel itself is pinned (see global.css), so this bar
+     scrolls away with the list and the jump button has nothing to do. */
+  .jump-filters { display: none; }
+  @media (max-width: 700px) {
+    /* A 50-card listing is ~10,600px tall on a phone and the panel is ~150px —
+       a quarter of the fold — so the panel can't be what sticks. This line can:
+       it keeps the live count in view and carries the way back to the controls.
+       Sits directly under the 60px header. */
+    .results-bar {
+      position: sticky;
+      top: 60px;
+      z-index: 5;
+      margin: 0 -20px;
+      padding: 6px 20px;
+      background: rgba(11, 12, 16, 0.94);
+      backdrop-filter: blur(8px);
+      border-bottom: 1px solid var(--border);
+    }
+    /* One row, not two. The count and the button together needed 343px of a
+       335px content box, so the button wrapped and the sticky bar cost 72px of
+       the fold instead of 42. Letting the count line shrink (min-width:0 — a
+       flex item won't go below min-content otherwise) keeps them side by side;
+       a long status wraps inside the count instead of pushing the button off. */
+    .results-bar :global(.results-meta) { margin-bottom: 0; flex: 1 1 auto; min-width: 0; }
+    .jump-filters { display: inline; flex: none; margin-left: auto; }
+  }
 
   /* The disclosure sits beside the page's crumbs; when it's open the controls
      have to drop to their own full-width line, hence the wrap + 100% basis. */
@@ -126,7 +160,21 @@ const showAllHidden = hasPager || total <= initial;
     margin: 10px 0 4px;
   }
   .filter-head :global(.crumbs) { margin: 0; }
-  .filter-disclosure[open] { flex: 1 1 100%; }
+  /* Open, the panel needs the full row width — but the summary must not travel
+     with it. Left to `flex: 1 1 100%` alone the control jumped ~810px from the
+     right edge to the left the moment you clicked it, which reads as the page
+     having moved rather than opened.
+     text-align rather than a flex container: Chrome renders <details> content
+     through a UA shadow slot, so the panel is not itself the flex item and
+     `align-self: stretch` on it never applied — it sat at max-content width
+     (745 of 973px) against the right edge. Alignment inherits through the slot
+     where flex alignment can't, and a block-level details still gives the panel
+     the full width for free. */
+  .filter-disclosure[open] {
+    flex: 1 1 100%;
+    text-align: right;
+  }
+  .filter-disclosure[open] :global(.filters) { text-align: left; }
 
   /* Landing-page disclosure. Reads as a control, not a heading — same border
      language as the pager and the secondary buttons. */
@@ -148,7 +196,9 @@ const showAllHidden = hasPager || total <= initial;
     .filter-disclosure .sum-short { display: inline; }
     .filter-disclosure > summary { padding: 11px 12px; }
   }
-  .filter-disclosure > summary::before { content: "⌕ "; }
+  /* No glyph before the label. "⌕" is a rare codepoint that most system stacks
+     have no glyph for; it fell back to a hairline mark that read as a stray
+     character rather than an icon. The words already say what the control is. */
   .filter-disclosure > summary:hover,
   .filter-disclosure > summary:focus-visible { border-color: var(--accent); }
   .filter-disclosure[open] > summary { margin-bottom: 4px; }
@@ -175,7 +225,7 @@ const showAllHidden = hasPager || total <= initial;
 
   interface JobEntry {
     slug: string; t: string; c: string; l: string; s: string; sr: number;
-    n: number; r: string; sl: string; sn: string; ro: string;
+    p: string; r: string; sl: string; sn: string; ro: string;
     co: string; sk: string[]; lg: string;
     q?: string; // lazily-built lowercase search blob
   }
@@ -197,6 +247,7 @@ const showAllHidden = hasPager || total <= initial;
   const emptyClearBtn = document.getElementById("empty-clear") as HTMLButtonElement;
   const showAllBtn = document.getElementById("show-all") as HTMLButtonElement;
   const skillChip = document.getElementById("skill-chip") as HTMLButtonElement;
+  const jumpBtn = document.getElementById("jump-filters") as HTMLButtonElement;
   const disclosure = document.getElementById("filter-disclosure") as HTMLDetailsElement | null;
   // Pagination and a client-side filter describe the same roles two different
   // ways; only one of them can be right at a time.
@@ -324,7 +375,7 @@ const showAllHidden = hasPager || total <= initial;
       b.textContent = text;
       meta.append(b);
     };
-    if (j.n) badge("New", C.badgeNew);
+    if (j.p) badge(j.p === "today" ? "Posted today" : `Posted ${j.p}`, C.badgePosted);
     if (j.r) badge(j.r);
     if (j.sl) badge(j.sl);
     for (const s of visibleSkills(j, text)) badge(s, C.badgeSkill);
@@ -333,6 +384,46 @@ const showAllHidden = hasPager || total <= initial;
     li.append(a);
     if (cacheable) cardCache.set(j, li);
     return li;
+  }
+
+  /**
+   * Option counts, recomputed against everything *except* the select they sit
+   * in. Server-rendered they're whole-scope totals, which start lying the
+   * moment anything is set: with "rust" typed the role select still offered
+   * "AI Engineer (595)" when 94 roles matched at all, so the numbers led
+   * straight into combinations that were mostly empty. Excluding a select's
+   * own value is what makes each number the answer to "and how many if I pick
+   * this one" rather than "how many ignoring what you've already chosen".
+   */
+  type CountedSelect = { el: HTMLSelectElement; field: keyof JobEntry; base: Map<string, string> };
+  const counted: CountedSelect[] = [
+    { el: role, field: "ro", base: new Map() },
+    { el: country, field: "co", base: new Map() },
+    { el: level, field: "sn", base: new Map() },
+  ];
+  // Snapshot the labels without their baked-in counts, once, before any rewrite.
+  for (const c of counted) {
+    for (const opt of c.el.options) {
+      c.base.set(opt.value, opt.textContent!.replace(/\s*\(\d[\d,]*\)\s*$/, ""));
+    }
+  }
+
+  function updateCounts(data: JobEntry[], tests: Record<string, (j: JobEntry) => boolean>) {
+    for (const { el, field, base } of counted) {
+      const others = Object.entries(tests)
+        .filter(([k]) => k !== el.id)
+        .map(([, fn]) => fn);
+      const tally = new Map<string, number>();
+      for (const j of data) {
+        if (!others.every((fn) => fn(j))) continue;
+        const key = String(j[field] ?? "");
+        if (key) tally.set(key, (tally.get(key) ?? 0) + 1);
+      }
+      for (const opt of el.options) {
+        if (!opt.value) continue; // "Any …" — no count to give
+        opt.textContent = `${base.get(opt.value) ?? opt.textContent}${` (${tally.get(opt.value) ?? 0})`}`;
+      }
+    }
   }
 
   // Guards against out-of-order renders while the data fetch is in flight
@@ -371,15 +462,19 @@ const showAllHidden = hasPager || total <= initial;
     const byPay = sort.value === "pay";
     const filtering = Boolean(text || rol || cty || sen || skill);
 
+    // One definition of "does this job pass", keyed by the control that owns
+    // each clause — the list uses all of them, updateCounts drops one at a time.
     const matcher = text ? buildMatcher(text) : null;
-    let matches = data.filter(
-      (j) =>
-        (!matcher || matcher.test(searchBlob(j))) &&
-        (!rol || j.ro === rol) &&
-        (!cty || j.co === cty) &&
-        (!sen || j.sn === sen) &&
-        (!skill || j.sk.includes(skill)),
-    );
+    const tests: Record<string, (j: JobEntry) => boolean> = {
+      q: (j) => !matcher || matcher.test(searchBlob(j)),
+      role: (j) => !rol || j.ro === rol,
+      country: (j) => !cty || j.co === cty,
+      level: (j) => !sen || j.sn === sen,
+      skill: (j) => !skill || j.sk.includes(skill),
+    };
+    const all = Object.values(tests);
+    let matches = data.filter((j) => all.every((fn) => fn(j)));
+    updateCounts(data, tests);
     if (byPay) {
       // Stable sort: pay descending, ties keep the newest-first data order.
       matches = [...matches].sort((a, b) => b.sr - a.sr);
@@ -468,6 +563,14 @@ const showAllHidden = hasPager || total <= initial;
   }
   clearBtn.addEventListener("click", clearFilters);
   emptyClearBtn.addEventListener("click", clearFilters);
+  // Phone-only (the button is display:none above 700px): open the disclosure if
+  // this page has one, bring the panel into view, then put the caret in the
+  // search box so the next keystroke goes where it was aimed.
+  jumpBtn.addEventListener("click", () => {
+    if (disclosure) disclosure.open = true;
+    q.scrollIntoView({ block: "center" });
+    q.focus({ preventScroll: true });
+  });
 
   // Hydrate state from the URL so filtered views are shareable + back-button safe.
   const params = new URLSearchParams(location.search);

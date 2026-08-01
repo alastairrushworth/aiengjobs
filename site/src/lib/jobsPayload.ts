@@ -1,6 +1,6 @@
 import {
   formatSalary,
-  isNewJob,
+  postedAgo,
   remoteLabel,
   roleType,
   salaryRank,
@@ -20,7 +20,7 @@ export interface JobPayloadEntry {
   l: string; // raw location
   s: string; // formatted salary ("" when unpublished)
   sr: number; // salary sort rank (annualized USD, 0 = unranked)
-  n: 0 | 1; // new-this-week badge (cards carry no posted-date stamp — see JobCard)
+  p: string; // relative posted stamp, "today" / "3d ago" ("" when undated)
   r: string; // remote label
   sl: string; // seniority label
   sn: string; // seniority id (filter value)
@@ -47,7 +47,7 @@ export function buildJobsPayload(jobs: Job[] = openJobs): JobPayloadEntry[] {
     l: j.locationRaw ?? "",
     s: formatSalary(j, fxRates) ?? "",
     sr: salaryRank(j, fxRates),
-    n: isNewJob(j.postedAt, generatedAt) ? 1 : 0,
+    p: postedAgo(j.postedAt, generatedAt) ?? "",
     r: remoteLabel(j.remoteType) ?? "",
     sl: seniorityLabel(j.seniority) ?? "",
     sn: j.seniority ?? "",
