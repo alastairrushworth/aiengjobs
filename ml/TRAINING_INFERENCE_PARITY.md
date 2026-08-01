@@ -79,6 +79,14 @@ It puts the title in front of the body, which is the strongest single feature.
 `serialiseAdvert()` and demands byte equality — a hand-written fixture would just
 get edited to match whatever the code now does.
 
+The corpus is 38MB of third-party advert text and is gitignored, so CI has none
+of it. `tests/fixtures/serialised-advert.txt` is one real corpus entry with its
+body clipped — the same bytes the template produced — and is round-tripped the
+same way, so the layout guard runs everywhere. The full ~50-file sweep across the
+corpus runs only where the corpus exists, and reports as skipped elsewhere. If
+the serialisation ever legitimately changes, regenerate that fixture from a real
+`ml/ads/*.txt` file; do not hand-edit it into agreement.
+
 Note that `verbatim, untruncated` is a literal part of the trained prompt, not a
 claim about what the model receives. It stays even when the advert is truncated,
 because it was there during training.
