@@ -2,6 +2,7 @@
 import type { Job } from "@aiengjobs/shared";
 import { formatSalary, postedAgo, remoteLabel, seniorityLabel } from "../lib/format.ts";
 import { generatedAt, fxRates } from "../lib/data.ts";
+import { jobsUrl } from "../lib/url.ts";
 import CompanyLogo from "./CompanyLogo.astro";
 import { CARD_CLASS as C, CARD_LOGO_PX } from "../lib/jobCardShape.ts";
 
@@ -10,6 +11,13 @@ import { CARD_CLASS as C, CARD_LOGO_PX } from "../lib/jobCardShape.ts";
    and so ran a column past the badge row too, which left it floating against
    dead space below the text. Bounded by the two lines it labels, the badge row
    underneath still starts at the card's own left edge.
+
+   The badge row sits outside the anchor rather than inside it, because the
+   skills in it are links now: every card printed up to four skills and none of
+   them did anything, on a board where the skill filter already existed and was
+   only reachable from /stats. An <a> inside an <a> is invalid and unreachable
+   by keyboard, so the anchor claims the rest of the card through a stretched
+   ::after (see global.css) and the skill links sit above it.
 
    The markup below is mirrored by makeCard() in JobFilters.astro — see
    lib/jobCardShape.ts. Change the nesting here and change it there. */
@@ -35,7 +43,7 @@ const sen = seniorityLabel(job.seniority);
 const posted = postedAgo(job.postedAt, generatedAt);
 ---
 
-<li>
+<li class={C.card}>
   <a class={C.link} href={href}>
     <div class={C.top}>
       <div class={C.head}>
@@ -49,11 +57,17 @@ const posted = postedAgo(job.postedAt, generatedAt);
       </div>
       {salary && <div class={C.salary}>{salary}</div>}
     </div>
-    <div class={C.meta}>
-      {posted && <span class={C.badgePosted}>{posted === "today" ? "Posted today" : `Posted ${posted}`}</span>}
-      {remote && <span class={C.badge}>{remote}</span>}
-      {sen && <span class={C.badge}>{sen}</span>}
-      {job.skills.slice(0, 4).map((s) => <span class={C.badgeSkill}>{s}</span>)}
-    </div>
   </a>
+  <div class={C.meta}>
+    {posted && <span class={C.badgePosted}>{posted === "today" ? "Posted today" : `Posted ${posted}`}</span>}
+    {remote && <span class={C.badge}>{remote}</span>}
+    {sen && <span class={C.badge}>{sen}</span>}
+    {/* On the listing the filter script intercepts these and narrows in place;
+        everywhere else JobCard appears (a job page, a company page) they
+        navigate to the listing already filtered. Either way the badge does
+        what it looks like it does. */}
+    {job.skills.slice(0, 4).map((s) => (
+      <a class={C.badgeSkill} href={jobsUrl({ skill: s })}>{s}</a>
+    ))}
+  </div>
 </li>

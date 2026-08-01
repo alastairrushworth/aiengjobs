@@ -93,6 +93,19 @@ const pageNumbers = paged ? pageWindow(page.currentPage, page.lastPage) : [];
 // would be a worse answer than no filter bar.
 const filterOptions = page.currentPage === 1 ? buildFilterOptions(landing.jobs) : null;
 
+// Don't offer to narrow what the page has already narrowed. /ai-jobs-london
+// spent a row of the panel on a Country select whose honest answer was "United
+// Kingdom (117)" — and on a City select offering London — while /remote-ai-jobs
+// offered a work-location filter on a list that is entirely remote by
+// construction. A control that can only return the list you're already looking
+// at reads as a filter that doesn't work.
+const hide =
+  landing.kind === "city"
+    ? ["city", "country"]
+    : landing.kind === "remote"
+      ? ["work"]
+      : [];
+
 const feedHref = url(`/${landing.slug}/rss.xml`);
 const description = `${landing.intro} ${page.total} open role${page.total === 1 ? "" : "s"} right now.${
   page.currentPage > 1 ? ` Page ${page.currentPage} of ${page.lastPage}.` : ""
@@ -125,6 +138,7 @@ const description = `${landing.intro} ${page.total} open role${page.total === 1 
       collapsible
       quiet
       hasPager={paged}
+      hide={hide}
       {...filterOptions}
     >
       <p class="crumbs" slot="crumbs">

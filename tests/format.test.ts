@@ -5,7 +5,6 @@ import {
   postedAgo,
   safeUrl,
   salaryMidpointUsd,
-  salaryRank,
   roleType,
   type SalaryFields,
 } from "../site/src/lib/format.ts";
@@ -78,9 +77,9 @@ describe("formatSalary", () => {
 });
 
 describe("salary gate consistency", () => {
-  // Regression: formatSalary/salaryRank used to gate on salaryMax while
+  // Regression: formatSalary used to gate on salaryMax while
   // salaryMidpointUsd gated on the midpoint, so a role could be listed (and
-  // top-ranked) on "Roles with published pay" while rendering no pay at all.
+  // selected) on "Roles with published pay" while rendering no pay at all.
   const cases: SalaryFields[] = [
     { salaryMin: 131_975, salaryMax: 197_966, salaryCurrency: "CZK", salaryPeriod: "month" },
     { salaryMin: 100_000, salaryMax: 3_500_000 },
@@ -90,11 +89,10 @@ describe("salary gate consistency", () => {
     { salaryCurrency: "USD" },
   ];
 
-  it("agrees across display, rank and midpoint", () => {
+  it("agrees across display and midpoint", () => {
     for (const job of cases) {
       const priced = salaryMidpointUsd(job, {}) !== null;
       expect(formatSalary(job, {}) !== null).toBe(priced);
-      expect(salaryRank(job, {}) > 0).toBe(priced);
     }
   });
 });
@@ -115,14 +113,6 @@ describe("salaryMidpointUsd", () => {
 
   it("rejects outliers", () => {
     expect(salaryMidpointUsd({ salaryMin: 34_500_000 })).toBeNull();
-  });
-});
-
-describe("salaryRank", () => {
-  it("sinks outliers and missing salaries to zero", () => {
-    expect(salaryRank({})).toBe(0);
-    expect(salaryRank({ salaryMin: 34_500_000 })).toBe(0);
-    expect(salaryRank({ salaryMin: 200_000 })).toBe(200_000);
   });
 });
 
