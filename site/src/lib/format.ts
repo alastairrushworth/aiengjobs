@@ -180,35 +180,8 @@ export const SENIORITY_OPTIONS = SENIORITIES.map((id) => ({
   label: SENIORITY_LABELS[id],
 }));
 
-/**
- * Bucket a job into a generic, browsable role family (AI Engineer, Software
- * Engineer, Research, …) by inspecting its title. Order matters — the more
- * specific families are tested first so e.g. "data scientist" never falls
- * through to the generic scientist → Research rule.
- */
-export function roleType(job: Pick<Job, "title" | "normalizedTitle">): string {
-  const t = ` ${(job.normalizedTitle || job.title || "").toLowerCase()} `;
-  if (/data scien/.test(t)) return "Data Scientist";
-  if (/data engineer|analytics engineer/.test(t)) return "Data Engineer";
-  if (
-    /research scien|research engineer|\bresearcher\b|applied scientist|\bscientist\b|member of (technical staff|engineering)|pre.?training|post.?training/.test(
-      t,
-    )
-  )
-    return "Research";
-  if (/machine learning|\bml\b|mlops|deep learning|\bnlp\b/.test(t)) return "ML Engineer";
-  if (
-    /\bai engineer|applied ai|forward deployed|solutions? engineer|solutions? architect|ai architect|deployed engineer|genai|generative ai|\bagent|\bllm|\bgpt\b|prompt/.test(
-      t,
-    )
-  )
-    return "AI Engineer";
-  if (
-    /software engineer|\bswe\b|backend|frontend|full.?stack|infrastructure|platform engineer|\bsre\b|site reliability|devops|production engineer/.test(
-      t,
-    )
-  )
-    return "Software Engineer";
-  if (/\bmanager\b|\blead\b|head of|\bdirector\b|\bvp\b|strateg/.test(t)) return "Management";
-  return "Other";
-}
+/* The role-family bucketer that used to live here is gone with the Role type
+   filter it existed to feed: title-regex families were a guess the clusters
+   already answer better, and the job page, the payload and the search blob all
+   carried the guess forward. Clusters (job.clusters) are the browsable grouping
+   now — see lib/landings. */

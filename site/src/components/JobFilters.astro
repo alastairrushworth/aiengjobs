@@ -14,12 +14,6 @@ interface Props extends FilterOptions {
   initial: number;
   /** Plural noun for the results line ("open roles", "roles"). */
   noun?: string;
-  /**
-   * Collapse the controls behind a disclosure. Landings arrive already
-   * filtered — the bar is a refinement there, and open by default it costs the
-   * whole phone fold that the listing itself should be occupying.
-   */
-  collapsible?: boolean;
   /** The page renders a pager the client has to stand down while filtering. */
   hasPager?: boolean;
   /**
@@ -40,7 +34,6 @@ const {
   total,
   initial,
   noun = "open roles",
-  collapsible = false,
   hasPager = false,
   quiet = false,
   hide = [],
@@ -64,26 +57,11 @@ const showAllHidden = hasPager || total <= initial;
   data-noun={noun}
   data-has-pager={hasPager ? "1" : ""}
 >
-  {collapsible ? (
-    /* Shares a row with whatever the page puts in `crumbs` — on a phone this
-       control has to cost a row it was already spending, not a new one. */
-    <div class="filter-head">
-      <slot name="crumbs" />
-      <details class="filter-disclosure" id="filter-disclosure">
-        {/* Two phrasings of one label: at 390px the full sentence plus the
-            crumbs beside it needs ~400px of a 350px row, so the pair stacked
-            and cost a second row. The short form keeps the count — the number
-            is the useful part — and fits on the row already being spent. */}
-        <summary>
-          <span class="sum-long">Filter these {total} roles</span>
-          <span class="sum-short">Filter {total}</span>
-        </summary>
-        <FilterControls hide={hide} {...filterOptions} />
-      </details>
-    </div>
-  ) : (
-    <FilterControls hide={hide} {...filterOptions} />
-  )}
+  {/* The page's own crumbs row, where it has one. The disclosure that used to
+      sit beside it is gone — FilterControls carries one of its own now, on
+      every page, so a landing and the homepage present the same bar. */}
+  <slot name="crumbs" />
+  <FilterControls hide={hide} {...filterOptions} />
 
   <div class="results-bar">
     <p class="results-meta" role="status">
@@ -157,61 +135,6 @@ const showAllHidden = hasPager || total <= initial;
     .jump-filters { display: inline; flex: none; margin-left: auto; }
   }
 
-  /* The disclosure sits beside the page's crumbs; when it's open the controls
-     have to drop to their own full-width line, hence the wrap + 100% basis. */
-  .filter-head {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px 16px;
-    margin: 10px 0 4px;
-  }
-  .filter-head :global(.crumbs) { margin: 0; }
-  /* Open, the panel needs the full row width — but the summary must not travel
-     with it. Left to `flex: 1 1 100%` alone the control jumped ~810px from the
-     right edge to the left the moment you clicked it, which reads as the page
-     having moved rather than opened.
-     text-align rather than a flex container: Chrome renders <details> content
-     through a UA shadow slot, so the panel is not itself the flex item and
-     `align-self: stretch` on it never applied — it sat at max-content width
-     (745 of 973px) against the right edge. Alignment inherits through the slot
-     where flex alignment can't, and a block-level details still gives the panel
-     the full width for free. */
-  .filter-disclosure[open] {
-    flex: 1 1 100%;
-    text-align: right;
-  }
-  .filter-disclosure[open] :global(.filters) { text-align: left; }
-
-  /* Landing-page disclosure. Reads as a control, not a heading — same border
-     language as the pager and the secondary buttons. */
-  .filter-disclosure { margin: 0; }
-  .filter-disclosure > summary {
-    display: inline-block;
-    cursor: pointer;
-    color: var(--accent-text);
-    font-size: 0.9rem;
-    border: 1px solid var(--border-strong);
-    border-radius: 10px;
-    padding: 11px 16px;
-    list-style: none;
-  }
-  .filter-disclosure > summary::-webkit-details-marker { display: none; }
-  .filter-disclosure .sum-short { display: none; }
-  @media (max-width: 560px) {
-    .filter-disclosure .sum-long { display: none; }
-    .filter-disclosure .sum-short { display: inline; }
-    .filter-disclosure > summary { padding: 11px 12px; }
-  }
-  /* No glyph before the label. "⌕" is a rare codepoint that most system stacks
-     have no glyph for; it fell back to a hairline mark that read as a stray
-     character rather than an icon. The words already say what the control is. */
-  .filter-disclosure > summary:hover,
-  .filter-disclosure > summary:focus-visible { border-color: var(--accent); }
-  .filter-disclosure[open] > summary { margin-bottom: 4px; }
-  .filter-disclosure :global(.filters) { margin-top: 10px; }
-
   /* The chips themselves are styled in global.css, not here: this block is
      scoped, and Astro scopes it by stamping an attribute on the elements in the
      template. These chips are built by the script at runtime, so they never
@@ -275,7 +198,7 @@ const showAllHidden = hasPager || total <= initial;
   // group is dropped when the page it's on has fewer than two answers for it
   // (see FilterControls), so nothing below may assume a control exists.
   const q = byId<HTMLInputElement>("q")!;
-  const SELECT_KEYS = ["role", "level", "country", "city"] as const;
+  const SELECT_KEYS = ["level", "country", "city"] as const;
   type SelectKey = (typeof SELECT_KEYS)[number];
   const selects = Object.fromEntries(
     SELECT_KEYS.map((k) => [k, byId<HTMLSelectElement>(k)]),
@@ -483,15 +406,14 @@ const showAllHidden = hasPager || total <= initial;
   /**
    * Option counts, recomputed against everything *except* the select they sit
    * in. Server-rendered they're whole-scope totals, which start lying the
-   * moment anything is set: with "rust" typed the role select still offered
-   * "AI Engineer (595)" when 94 roles matched at all, so the numbers led
+   * moment anything is set: with "rust" typed the country select still offered
+   * "United States (1,204)" when 94 roles matched at all, so the numbers led
    * straight into combinations that were mostly empty. Excluding a select's
    * own value is what makes each number the answer to "and how many if I pick
    * this one" rather than "how many ignoring what you've already chosen".
    */
   type CountedSelect = { el: HTMLSelectElement; key: SelectKey; field: keyof JobEntry };
   const COUNTED_FIELD: Record<SelectKey, keyof JobEntry> = {
-    role: "ro",
     country: "co",
     level: "sn",
     city: "ci",
@@ -746,7 +668,10 @@ const showAllHidden = hasPager || total <= initial;
     showAll = false;
     syncToControls();
     apply();
-    q.focus();
+    // Only when the box is actually on screen: the search input lives inside a
+    // disclosure that starts closed, and focusing a control in a closed
+    // <details> either does nothing or drags the page somewhere unasked.
+    if (!disclosure || disclosure.open) q.focus();
   }
   clearBtn.addEventListener("click", clearFilters);
   emptyClearBtn.addEventListener("click", clearFilters);

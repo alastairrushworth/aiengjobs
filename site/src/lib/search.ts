@@ -112,14 +112,13 @@ export function buildTerms(query: string): RegExp[] {
 /**
  * The text a query is tested against, built once per job and cached on it.
  *
- * Wider than it was: city, seniority label, role family and work-type label are
- * in here now, so "senior", "research engineer", "hybrid" and "bangalore" are
- * things you can simply type. The description is not — it's on 99.9% of roles
- * and would multiply the payload by an order of magnitude for a fetch that
- * already blocks the first keystroke.
+ * Wider than it was: city, seniority label and work-type label are in here now,
+ * so "senior", "hybrid" and "bangalore" are things you can simply type. The
+ * description is not — it's on 99.9% of roles and would multiply the payload by
+ * an order of magnitude for a fetch that already blocks the first keystroke.
  */
 export function searchBlob(j: JobEntry): string {
-  return (j.q ??= [j.t, j.c, j.sk.join(" "), j.l, j.ci, j.sl, j.ro, j.r]
+  return (j.q ??= [j.t, j.c, j.sk.join(" "), j.l, j.ci, j.sl, j.r]
     .filter(Boolean)
     .join(" ")
     .toLowerCase());
@@ -146,7 +145,6 @@ export function relevance(j: JobEntry, terms: RegExp[]): number {
 
 export interface FilterState {
   q: string;
-  role: string;
   level: string;
   country: string;
   city: string;
@@ -159,7 +157,6 @@ export interface FilterState {
 
 export const EMPTY_STATE: FilterState = {
   q: "",
-  role: "",
   level: "",
   country: "",
   city: "",
@@ -172,7 +169,6 @@ export const EMPTY_STATE: FilterState = {
 export function isFiltering(s: FilterState): boolean {
   return Boolean(
     s.q.trim() ||
-      s.role ||
       s.level ||
       s.country ||
       s.city ||
@@ -196,7 +192,6 @@ export function buildTests(s: FilterState): Record<string, (j: JobEntry) => bool
   const days = Number(s.since) || 0;
   return {
     q: (j) => terms.every((re) => re.test(searchBlob(j))),
-    role: (j) => !s.role || j.ro === s.role,
     country: (j) => !s.country || j.co === s.country,
     city: (j) => !s.city || j.ci === s.city,
     level: (j) => !levels.length || levels.includes(j.sn),
@@ -228,7 +223,7 @@ export const QUERY_TRIM = "q-trim";
 export function activeFilters(s: FilterState): { key: string; value: string }[] {
   const out: { key: string; value: string }[] = [];
   if (s.q.trim()) out.push({ key: "q", value: s.q.trim() });
-  for (const key of ["role", "level", "country", "city", "work", "since"] as const) {
+  for (const key of ["level", "country", "city", "work", "since"] as const) {
     if (s[key]) out.push({ key, value: s[key] });
   }
   if (s.pay) out.push({ key: "pay", value: "1" });
@@ -249,7 +244,6 @@ export function without(s: FilterState, key: string, value = ""): FilterState {
       return { ...s, skills: s.skills.filter((x) => x !== value) };
     case "pay":
       return { ...s, pay: false };
-    case "role":
     case "level":
     case "country":
     case "city":
@@ -315,7 +309,6 @@ export function parseState(params: URLSearchParams): FilterState {
   };
   return {
     q: params.get("q") ?? "",
-    role: params.get("role") ?? "",
     country: params.get("country") ?? "",
     city: params.get("city") ?? "",
     level: one("level", isLevel),
@@ -333,7 +326,6 @@ export function parseState(params: URLSearchParams): FilterState {
 export function toParams(s: FilterState): URLSearchParams {
   const p = new URLSearchParams();
   if (s.q.trim()) p.set("q", s.q.trim());
-  if (s.role) p.set("role", s.role);
   if (s.level) p.set("level", s.level);
   if (s.country) p.set("country", s.country);
   if (s.city) p.set("city", s.city);

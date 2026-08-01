@@ -26,7 +26,6 @@ export interface JobEntry {
   rm: string; // work-type id, the filter value ("remote")
   sl: string; // seniority label ("Senior")
   sn: string; // seniority id, the filter value ("senior")
-  ro: string; // role-type family (filter value)
   co: string; // country code (filter value)
   ci: string; // canonical city ("" when the feed gave none)
   sk: string[]; // canonical skills

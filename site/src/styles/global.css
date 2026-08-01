@@ -159,7 +159,9 @@ a { color: inherit; text-decoration: none; }
 }
 .hero p { color: var(--muted); max-width: 620px; margin: 0 auto; font-size: 1.05rem; }
 .hero .count { color: var(--accent-2); font-weight: 600; }
-.hero .updated { font-size: 0.85rem; color: var(--muted); margin-top: 8px; }
+
+/* Freshness stamp — last thing on the page, just above the footer rule. */
+.updated { font-size: 0.85rem; color: var(--muted); text-align: center; margin: 32px 0 0; }
 
 /* A phone's whole fold is 723px. At the desktop rhythm the hero alone took 210
    of it before the nav and the filter bar had their turn, and the first job
@@ -170,7 +172,6 @@ a { color: inherit; text-decoration: none; }
   .hero { padding: 24px 0 12px; }
   .hero h1 { font-size: clamp(1.55rem, 6vw, 2rem); }
   .hero p { font-size: 1rem; }
-  .hero .updated { margin-top: 6px; }
 }
 
 /* Filters — full-width search with labelled toggles beneath it */
@@ -215,6 +216,30 @@ a { color: inherit; text-decoration: none; }
   }
 }
 .filters .toggles { display: flex; flex-wrap: wrap; gap: 10px; }
+
+/* The search box and the selects, behind a disclosure that starts closed. The
+   summary reads as a control rather than a heading — same border language as
+   the pager and the secondary buttons — and keeps its own row so opening it
+   pushes the listing down instead of reflowing the pill row above it. */
+.filters .more { margin: 0; }
+.filters .more > summary {
+  display: inline-block;
+  cursor: pointer;
+  color: var(--accent-text);
+  font-size: 0.85rem;
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  padding: 8px 14px;
+  list-style: none;
+}
+/* No glyph before the label: "⌕" is a rare codepoint most system stacks have no
+   glyph for, and it fell back to a hairline mark that read as a stray
+   character. The words already say what the control is. */
+.filters .more > summary::-webkit-details-marker { display: none; }
+.filters .more > summary:hover,
+.filters .more > summary:focus-visible { border-color: var(--accent); }
+.filters .more[open] > summary { margin-bottom: 10px; }
+.filters .more-body { display: flex; flex-direction: column; gap: 10px; }
 
 /* Work location, freshness and pay. Three questions a select answers worse:
    their answers fit on one line, so a dropdown only adds a click to see them,
@@ -270,6 +295,8 @@ a { color: inherit; text-decoration: none; }
   .filters .quick { gap: 8px 10px; }
   .seg { gap: 5px; }
   .seg-btn { padding: 11px 10px; font-size: 0.82rem; }
+  /* Same thumb target as the pills it sits under (WCAG 2.5.5 asks 44px). */
+  .filters .more > summary { padding: 11px 12px; font-size: 0.82rem; }
 }
 /* min-width:0 or the flex basis is a lie: a flex item's default min-width is
    min-content, and a select's min-content is its longest option ("Hong Kong SAR
