@@ -150,7 +150,6 @@ export interface FilterState {
   city: string;
   work: string;
   since: string;
-  pay: boolean;
   /** Exact skill matches, ANDed. Set from card badges, /stats and landings. */
   skills: string[];
 }
@@ -162,7 +161,6 @@ export const EMPTY_STATE: FilterState = {
   city: "",
   work: "",
   since: "",
-  pay: false,
   skills: [],
 };
 
@@ -174,7 +172,6 @@ export function isFiltering(s: FilterState): boolean {
       s.city ||
       s.work ||
       s.since ||
-      s.pay ||
       s.skills.length,
   );
 }
@@ -197,7 +194,6 @@ export function buildTests(s: FilterState): Record<string, (j: JobEntry) => bool
     level: (j) => !levels.length || levels.includes(j.sn),
     work: (j) => !s.work || j.rm === s.work,
     since: (j) => !days || j.ag <= days,
-    pay: (j) => !s.pay || Boolean(j.s),
     skill: (j) => s.skills.every((sk) => j.sk.includes(sk)),
   };
 }
@@ -226,7 +222,6 @@ export function activeFilters(s: FilterState): { key: string; value: string }[] 
   for (const key of ["level", "country", "city", "work", "since"] as const) {
     if (s[key]) out.push({ key, value: s[key] });
   }
-  if (s.pay) out.push({ key: "pay", value: "1" });
   for (const sk of s.skills) out.push({ key: "skill", value: sk });
   return out;
 }
@@ -242,8 +237,6 @@ export function without(s: FilterState, key: string, value = ""): FilterState {
     }
     case "skill":
       return { ...s, skills: s.skills.filter((x) => x !== value) };
-    case "pay":
-      return { ...s, pay: false };
     case "level":
     case "country":
     case "city":
@@ -296,11 +289,11 @@ const isLevel = (v: string) =>
  * carried: `?work=wherever` would otherwise match no job at all and present as
  * an empty board rather than a bad link.
  *
- * `?sort=pay` is deliberately not read. It used to order by salary, which was
- * only ever an approximation of "show me the roles that publish it" — 53% of
- * the board doesn't, and they all sorted to the bottom under a heading that
- * claimed to be showing the highest-paying of *all* of them. `?pay=1` says the
- * true thing; old links degrade to an unfiltered board.
+ * Neither `?sort=pay` nor `?pay=1` is read. The first ordered the board by
+ * salary and sank the 53% with no published range; the second replaced it with
+ * an honest "shows pay" toggle, which has since gone too — pay is on the cards
+ * and reported on /stats, and it was the least-used control in the bar. Old
+ * links carrying either param degrade to an unfiltered board.
  */
 export function parseState(params: URLSearchParams): FilterState {
   const one = (k: string, ok?: (v: string) => boolean) => {
@@ -314,7 +307,6 @@ export function parseState(params: URLSearchParams): FilterState {
     level: one("level", isLevel),
     work: one("work", isWork),
     since: one("since", isSince),
-    pay: params.get("pay") === "1",
     skills: (params.get("skill") ?? "")
       .split(",")
       .map((x) => x.trim())
@@ -331,7 +323,6 @@ export function toParams(s: FilterState): URLSearchParams {
   if (s.city) p.set("city", s.city);
   if (s.work) p.set("work", s.work);
   if (s.since) p.set("since", s.since);
-  if (s.pay) p.set("pay", "1");
   if (s.skills.length) p.set("skill", s.skills.join(","));
   return p;
 }
