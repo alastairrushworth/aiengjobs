@@ -31,3 +31,6 @@ __pycache__/
 
 .DS_Store
 *.log
+
+# wrangler dev's local miniflare state (caches, observability traces)
+.wrangler/
