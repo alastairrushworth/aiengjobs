@@ -1,0 +1,17 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "frontierroles-mcp",
+  "main": "src/worker.ts",
+  "compatibility_date": "2026-07-01",
+
+  // The Worker holds no data — it reads the board from the site's published
+  // JSON on every cold isolate, then caches it in memory. Nothing to deploy
+  // when the board changes; the nightly site build is the update mechanism.
+  "vars": {
+    "FRONTIERROLES_BASE_URL": "https://frontierroles.com"
+  },
+
+  "observability": {
+    "enabled": true
+  }
+}
