@@ -1,3 +1,4 @@
+import { availableParallelism } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -132,6 +133,30 @@ export const ENCODER_WINDOW = Number(process.env.AIENGJOBS_ENCODER_WINDOW ?? 102
 // ~1pp more precision for 13 more missed roles out of 183 — a bad exchange.
 // Raise it if the board should be stricter still.
 export const ENCODER_THRESHOLD = Number(process.env.AIENGJOBS_ENCODER_THRESHOLD ?? 0.7);
+
+// Threads ONNX Runtime may use inside a single graph.
+//
+// This used to be pinned to 1, on the reasoning that the nightly run is a queue
+// of independent adverts so parallelism belonged at the posting level. That
+// premise does not hold: onnxruntime-node serialises concurrent run() calls on
+// a session, so posting-level concurrency does not parallelise inference at all
+// (measured: 8 adverts took 27.6s sequentially and 27.6s under Promise.all —
+// 1.00x). Pinning to 1 therefore gave up intra-graph parallelism without buying
+// anything, and left the 4-vCPU runner classifying on one core.
+//
+// Intra-op threads do scale, near-linearly, on a 1024-token advert:
+//   1 thread 3.44s   2 threads 1.80s   4 threads 0.94s   8 threads 0.58s
+//
+// availableParallelism() honours the cgroup/affinity limits a runner or
+// container imposes, so this tracks the cores actually granted rather than the
+// cores the host happens to have.
+//
+// `||` rather than `??` because the value reaches a native API: a non-numeric
+// or zero override falls back to the default instead of passing NaN into ORT.
+export const ENCODER_THREADS = Math.max(
+  1,
+  Math.trunc(Number(process.env.AIENGJOBS_ENCODER_THREADS) || availableParallelism()),
+);
 
 // A heuristic IN title is only overturned when the model is at least this sure
 // the role is OUT. Set conservatively so a stray "out" can't suppress a clear
