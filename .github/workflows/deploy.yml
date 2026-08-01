@@ -39,6 +39,8 @@ jobs:
         run: npm run typecheck -w @aiengjobs/engine
       - name: Check site
         run: npm run check -w @aiengjobs/site
+      - name: Typecheck MCP server
+        run: npm run typecheck -w @aiengjobs/mcp
       - name: Run tests
         run: npm test
 

@@ -1,0 +1,52 @@
+name: Deploy MCP worker
+
+# Only on changes to the worker itself. The Worker holds no data — it reads the
+# board from the site's published JSON at runtime — so the nightly refresh
+# updates what it serves without any deploy here. Deploying on a data change
+# would be pure noise.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "mcp/**"
+      - ".github/workflows/deploy-mcp.yml"
+  workflow_dispatch:
+
+# One deploy at a time. Two concurrent `wrangler deploy` runs race on which
+# version ends up live, and the loser wins silently.
+concurrency:
+  group: mcp-worker
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # The tools are shared with the stdio server and covered by the root
+      # suite, so a broken worker is usually a broken tool layer. Cheaper to
+      # find out here than in production.
+      - name: Typecheck
+        run: npm run typecheck -w @aiengjobs/mcp
+
+      - name: Test
+        run: npx vitest run tests/mcpTools.test.ts
+
+      - name: Deploy
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: mcp
