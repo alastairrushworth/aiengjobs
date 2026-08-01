@@ -1,0 +1,289 @@
+---
+import Base from "../layouts/Base.astro";
+import { url } from "../lib/url.ts";
+import { generatedAt } from "../lib/data.ts";
+import { mcpJobs } from "./mcp-index.json.ts";
+
+// Counted from the same array the MCP index is built from, so the number on
+// this page can never drift from the number the server actually serves.
+const roleCount = mcpJobs.length;
+const companyCount = new Set(mcpJobs.map((j) => j.companySlug)).size;
+const updated = new Date(generatedAt).toLocaleDateString("en-GB", {
+  day: "numeric",
+  month: "long",
+  year: "numeric",
+});
+
+const ENDPOINT = "https://mcp.frontierroles.com/mcp";
+
+// Interpolated rather than written inline: braces in Astro markup are template
+// expressions, so a literal JSON block has to arrive as a string.
+const jsonConfig = `{
+  "mcpServers": {
+    "frontierroles": {
+      "url": "${ENDPOINT}"
+    }
+  }
+}`;
+
+const TOOLS = [
+  {
+    name: "search_jobs",
+    what: "Find roles by free text, skill, cluster, seniority, location, pay floor or how recently they were posted.",
+  },
+  {
+    name: "get_job",
+    what: "One role in full, including the advert text and the link to apply.",
+  },
+  {
+    name: "get_company",
+    what: "Every open role at one company.",
+  },
+  {
+    name: "board_stats",
+    what: "Counts and median pay across the whole board, grouped by skill, cluster, seniority, country, city, company or work type. Takes the same filters as search.",
+  },
+  {
+    name: "list_skills",
+    what: "The skill and cluster names the filters accept, so a question doesn't quietly match nothing.",
+  },
+];
+
+const PROMPTS = [
+  "Find senior RAG engineering roles in Europe that publish a salary.",
+  "What do staff-level AI engineering roles pay in the UK compared to the US?",
+  "Which skills show up most often in roles paying over $200k?",
+  "Show me everything Anthropic has open right now.",
+  "I know Python and PyTorch but not much about agents. What's out there for me, and what would I need to learn?",
+];
+---
+
+<Base
+  title="MCP server"
+  description={`Use ${roleCount} first-party AI engineering roles directly from Claude, Cursor or any MCP client. Free, no account, no API key.`}
+>
+  <section class="hero">
+    <h1>Use the board from your AI assistant</h1>
+    <p class="lede">
+      frontierroles runs a free <a href="https://modelcontextprotocol.io" rel="noopener">MCP</a>
+      server. Connect it once and Claude can search {roleCount.toLocaleString()} open AI
+      engineering roles from {companyCount.toLocaleString()} companies, read full adverts, and
+      answer questions about the market — without you leaving the conversation.
+    </p>
+    <p class="endpoint-line">
+      <span class="note">Endpoint</span>
+      <code class="endpoint">{ENDPOINT}</code>
+    </p>
+    <p class="note">
+      No account, no API key, no rate card. Every role links straight to the employer's own
+      application page.
+    </p>
+  </section>
+
+  <section>
+    <h2>Add it</h2>
+
+    <div class="steps">
+      <div class="step">
+        <h3>Claude (web, desktop or mobile)</h3>
+        <ol>
+          <li>Open <strong>Settings → Connectors</strong></li>
+          <li>Choose <strong>Add custom connector</strong></li>
+          <li>Paste the endpoint above and save</li>
+        </ol>
+        <p class="note">Leave authentication blank — the server doesn't use any.</p>
+      </div>
+
+      <div class="step">
+        <h3>Claude Code</h3>
+        <pre><code>claude mcp add --transport http frontierroles {ENDPOINT}</code></pre>
+      </div>
+
+      <div class="step">
+        <h3>Cursor, Windsurf and others</h3>
+        <p class="note">Add the server to your client's MCP config file:</p>
+        <pre><code>{jsonConfig}</code></pre>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Things to ask it</h2>
+    <ul class="prompts">
+      {PROMPTS.map((p) => <li>{p}</li>)}
+    </ul>
+    <p class="note">
+      The last one is the point, really. A board can filter; an assistant that can see the whole
+      board can tell you what the filters would have hidden.
+    </p>
+  </section>
+
+  <section>
+    <h2>What it can do</h2>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Tool</th><th>What it does</th></tr>
+        </thead>
+        <tbody>
+          {
+            TOOLS.map((t) => (
+              <tr>
+                <td><code>{t.name}</code></td>
+                <td>{t.what}</td>
+              </tr>
+            ))
+          }
+        </tbody>
+      </table>
+    </div>
+    <p class="note">
+      Every tool is read-only. Nothing it can do changes anything, here or anywhere else.
+    </p>
+  </section>
+
+  <section>
+    <h2>About the data</h2>
+    <ul class="facts">
+      <li>
+        <strong>First-party only.</strong> Every posting comes from the employer's own applicant
+        tracking system — Greenhouse, Lever, Ashby, Workday and a dozen others. No recruiter
+        reposts, no scraped aggregators, no sponsored placement.
+      </li>
+      <li>
+        <strong>Rebuilt nightly.</strong> Last updated {updated}. Roles drop off when they close
+        or pass 90 days old, so the board doesn't accumulate ghost jobs.
+      </li>
+      <li>
+        <strong>Deduplicated.</strong> Employers often open one requisition per office for the
+        same role. The server returns one.
+      </li>
+      <li>
+        <strong>Dated, not live.</strong> Every response carries the snapshot date, so an
+        assistant can tell you how fresh its answer is instead of implying it's real-time.
+      </li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Just want the data?</h2>
+    <p>
+      The MCP server reads two ordinary JSON files. You're welcome to read them too — no key, no
+      sign-up.
+    </p>
+    <ul class="facts">
+      <li>
+        <a href={url("/mcp-index.json")}><code>/mcp-index.json</code></a> — every open role
+        without its advert text, plus the skill taxonomy and currency rates.
+      </li>
+      <li>
+        <code>/mcp-jobs/&lt;slug&gt;.json</code> — one role, with its full advert.
+      </li>
+    </ul>
+    <p class="note">
+      There's also an <a href={url("/rss.xml")}>RSS feed</a> if you'd rather just watch for new
+      roles.
+    </p>
+  </section>
+
+  <section>
+    <h2>Privacy</h2>
+    <p>
+      The server stores nothing. It takes no account, sets no cookie, and keeps no record of what
+      was asked or who asked it. Requests are served from public job data that is already on this
+      site.
+    </p>
+    <p class="note">
+      Questions or a problem to report: <a href="https://github.com/alastairrushworth/aiengjobs/issues"
+        >open an issue on GitHub</a
+      >.
+    </p>
+  </section>
+</Base>
+
+<style>
+  .hero { margin-bottom: 8px; }
+  .lede { font-size: 1.05rem; max-width: 64ch; }
+  section { margin-bottom: 40px; }
+  h2 {
+    font-size: 1.15rem;
+    margin: 0 0 14px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  h3 { font-size: 0.95rem; margin: 0 0 10px; }
+  p { max-width: 68ch; }
+
+  .endpoint-line {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin: 18px 0 8px;
+  }
+  .endpoint {
+    background: var(--surface-2);
+    border: 1px solid var(--border-strong);
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 0.95rem;
+    /* Long enough to wrap awkwardly on a phone; break rather than overflow. */
+    word-break: break-all;
+  }
+
+  .steps {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 16px;
+  }
+  .step {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+  }
+  .step ol { margin: 0 0 10px; padding-left: 20px; }
+  .step li { margin-bottom: 4px; }
+
+  pre {
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px;
+    margin: 0;
+    /* Wrap rather than scroll. Every block here contains the endpoint URL, and
+       in a 300px-wide card that URL is exactly what a horizontal scrollbar
+       hides — the one string the reader came for, one gesture out of sight.
+       `anywhere` because a URL has no spaces to break at. */
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+  code { font-size: 0.85rem; }
+
+  .prompts { padding-left: 0; list-style: none; margin: 0 0 14px; }
+  .prompts li {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+    border-radius: 8px;
+    padding: 10px 14px;
+    margin-bottom: 8px;
+    max-width: 68ch;
+  }
+
+  .facts { padding-left: 20px; margin: 0 0 12px; }
+  .facts li { margin-bottom: 10px; max-width: 68ch; }
+
+  .table-wrap { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; min-width: 460px; }
+  th, td {
+    text-align: left;
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+  }
+  th { color: var(--muted); font-weight: 600; font-size: 0.85rem; }
+  td:first-child { white-space: nowrap; }
+
+  .note { color: var(--muted); font-size: 0.88rem; }
+</style>
