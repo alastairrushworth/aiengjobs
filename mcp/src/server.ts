@@ -12,6 +12,13 @@ import { z } from "zod";
 
 import { loadBoard, loadJob } from "./board.js";
 import {
+  compactJob,
+  renderCompany,
+  renderJob,
+  renderSearch,
+  renderStats,
+} from "./render.js";
+import {
   boardStats,
   describeJob,
   getCompany,
@@ -33,9 +40,26 @@ export const INSTRUCTIONS =
   "for questions about the market as a whole ('what pays best', 'which skills " +
   "are in demand') rather than paging through search results. The data is a " +
   "nightly snapshot: every response carries generatedAt, and you should say how " +
-  "fresh it is when it matters.";
+  "fresh it is when it matters.\n\n" +
+  "Results come back as markdown in which each role's title is a link to the " +
+  "employer's application page. Preserve those links when you present roles — a " +
+  "listing the user can't apply to is not much use to them, and the link is the " +
+  "only route from an answer to an application.";
 
-/** MCP tool results are content blocks; everything here answers with JSON. */
+/**
+ * Tool results come in two halves.
+ *
+ * `content` is markdown, and is what the model reads and paraphrases — see
+ * render.ts for why that matters more than it sounds. `structuredContent` is the
+ * same answer as data, for clients and agents doing something programmatic with
+ * it. Clients that only understand one of the two still get a complete answer.
+ */
+const result = (markdown: string, structured?: Record<string, unknown>) => ({
+  content: [{ type: "text" as const, text: markdown }],
+  ...(structured ? { structuredContent: structured } : {}),
+});
+
+/** For payloads that are already vocabulary rather than prose. */
 const json = (value: unknown) => ({
   content: [{ type: "text" as const, text: JSON.stringify(value, null, 2) }],
 });
@@ -104,7 +128,10 @@ export function createServer(): McpServer {
         "Find open AI-engineering roles by text, skills, level, location or pay. " +
         "Returns compact records without descriptions — call get_job for the full " +
         "advert of a specific role. Results are ranked by relevance when a query " +
-        "is given, newest first otherwise.",
+        "is given, newest first otherwise. Each result's title is a markdown link " +
+        "to the employer's own application page: keep those links intact when you " +
+        "present roles to the user, because applying is the only thing they can " +
+        "actually do with a result and the link is what makes it possible.",
       inputSchema: {
         ...filterShape,
         limit: z.number().int().min(1).max(50).optional().describe("Default 20, max 50."),
@@ -114,7 +141,14 @@ export function createServer(): McpServer {
     },
     async (args) => {
       const board = await loadBoard();
-      return json(searchJobs(board, args));
+      const hits = searchJobs(board, args);
+      return result(renderSearch(hits), {
+        generatedAt: hits.generatedAt,
+        total: hits.total,
+        offset: hits.offset,
+        returned: hits.returned,
+        jobs: hits.jobs.map(compactJob),
+      });
     },
   );
 
@@ -141,7 +175,14 @@ export function createServer(): McpServer {
             `the last search — closed roles are removed rather than left listed.`,
         );
       }
-      return json(describeJob(detail));
+      const trimmed = describeJob(detail);
+      return result(renderJob(trimmed), {
+        ...compactJob(trimmed),
+        description: trimmed.description,
+        companyDomain: trimmed.companyDomain,
+        jobUrl: trimmed.jobUrl,
+        generatedAt: trimmed.generatedAt,
+      });
     },
   );
 
@@ -157,8 +198,15 @@ export function createServer(): McpServer {
     },
     async ({ company }) => {
       const board = await loadBoard();
-      const result = getCompany(board, company);
-      return result ? json(result) : fail(`No open roles found for "${company}".`);
+      const found = getCompany(board, company);
+      if (!found) return fail(`No open roles found for "${company}".`);
+      return result(renderCompany(found), {
+        generatedAt: found.generatedAt,
+        company: found.company,
+        companySlug: found.companySlug,
+        openRoles: found.openRoles,
+        jobs: found.jobs.map(compactJob),
+      });
     },
   );
 
@@ -183,7 +231,8 @@ export function createServer(): McpServer {
     },
     async ({ dimension, topN, ...filters }) => {
       const board = await loadBoard();
-      return json(boardStats(board, dimension as StatsDimension, filters, topN));
+      const stats = boardStats(board, dimension as StatsDimension, filters, topN);
+      return result(renderStats(stats), { ...stats });
     },
   );
 
