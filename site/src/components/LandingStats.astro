@@ -20,7 +20,11 @@ const tiles: { label: string; value: string; note?: string }[] = [
   stats.medianUsd !== null && {
     label: "Median salary",
     value: kUsd(stats.medianUsd),
-    note: `${pct(stats.pricedCount)}% publish a range`,
+    // The count, not the share. "16% publish a range" is the same styling as
+    // "Open roles 120" while resting on 19 roles, and a reader has to do the
+    // arithmetic to find that out. USD is stated because the figure is
+    // FX-normalised: on the London page it sat above a column of £ ranges.
+    note: `median of ${stats.pricedCount} priced role${stats.pricedCount === 1 ? "" : "s"}, USD`,
   },
   stats.remote > 0 && {
     label: "Remote",
@@ -52,9 +56,8 @@ const tiles: { label: string; value: string; note?: string }[] = [
   {stats.topCompanies.length > 0 && (
     <p class="line">
       <span class="lead">Hiring most:</span>
-      {stats.topCompanies.map((c, i) => (
+      {stats.topCompanies.map((c) => (
         <span class="item">
-          {i > 0 && <span class="sep">·</span>}
           {c.slug ? (
             <a href={url(`/companies/${c.slug}/`)}>{c.name}</a>
           ) : (
@@ -69,9 +72,8 @@ const tiles: { label: string; value: string; note?: string }[] = [
   {stats.topSkills.length > 1 && (
     <p class="line">
       <span class="lead">Common stack:</span>
-      {stats.topSkills.map((s, i) => (
+      {stats.topSkills.map((s) => (
         <span class="item">
-          {i > 0 && <span class="sep">·</span>}
           <span>{s.name}</span>
           <span class="n">{s.count}</span>
         </span>
@@ -112,26 +114,28 @@ const tiles: { label: string; value: string; note?: string }[] = [
     overflow-wrap: anywhere;
   }
   .tile .note { margin: 2px 0 0; color: var(--muted); font-size: 0.75rem; }
-  /* Flex-wrap, not inline flow: each entry has to wrap as a unit so a row can't
-     end on a bare "·" belonging to the name that wrapped to the next one. The
-     separator leads rather than trails so the mobile cap below can hide an
-     entry without stranding a dangling "·" on the last one still visible.
-     (`white-space: nowrap` alone did not work here — Astro emits no whitespace
-     between the spans, so with no break opportunities left between entries the
-     line stopped wrapping at all and ran off the viewport.) */
+  /* Flex-wrap with a column gap, and no separator character at all. There used
+     to be a leading "·" on each entry so the mobile cap below could hide the
+     tail without stranding a trailing one — but a leading separator means every
+     line that wraps *starts* with "· ", which is what it did ("· Tool use 202"
+     opening the second row). Gap does the same separating job, can't orphan
+     onto either end of a line, and stays correct however many entries the
+     phone rule hides. `white-space: nowrap` keeps each name glued to its count.
+     (nowrap alone can't replace the flex wrap here — Astro emits no whitespace
+     between the spans, so inline flow had no break opportunities at all and the
+     line ran off the viewport.) */
   .line {
     display: flex;
     flex-wrap: wrap;
     align-items: baseline;
-    row-gap: 4px;
+    gap: 4px 14px;
     margin: 0 0 8px;
     font-size: 0.9rem;
     line-height: 1.6;
     color: var(--text);
   }
-  .line .lead { color: var(--muted); margin-right: 6px; }
+  .line .lead { color: var(--muted); }
   .line .item { white-space: nowrap; }
-  .line .sep { color: var(--border-strong); margin: 0 6px; }
   .line .n { color: var(--muted); font-size: 0.78rem; margin-left: 3px; }
   .line a { color: var(--accent-text); }
   .line a:hover { text-decoration: underline; }

@@ -34,6 +34,6 @@ export const CARD_CLASS = {
   salary: "salary",
   meta: "meta",
   badge: "badge",
-  badgeNew: "badge new",
+  badgePosted: "badge posted",
   badgeSkill: "badge skill",
 } as const;

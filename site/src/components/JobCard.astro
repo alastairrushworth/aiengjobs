@@ -1,6 +1,6 @@
 ---
 import type { Job } from "@aiengjobs/shared";
-import { formatSalary, isNewJob, remoteLabel, seniorityLabel } from "../lib/format.ts";
+import { formatSalary, postedAgo, remoteLabel, seniorityLabel } from "../lib/format.ts";
 import { generatedAt, fxRates } from "../lib/data.ts";
 import CompanyLogo from "./CompanyLogo.astro";
 import { CARD_CLASS as C, CARD_LOGO_PX } from "../lib/jobCardShape.ts";
@@ -17,24 +17,29 @@ import { CARD_CLASS as C, CARD_LOGO_PX } from "../lib/jobCardShape.ts";
 interface Props {
   job: Job;
   href: string;
+  /** Above-the-fold card — load its mark eagerly (see CompanyLogo). */
+  eager?: boolean;
 }
 
-const { job, href } = Astro.props;
+const { job, href, eager = false } = Astro.props;
 const salary = formatSalary(job, fxRates);
 const remote = remoteLabel(job.remoteType);
 const sen = seniorityLabel(job.seniority);
-// No "posted Xd ago" stamp on cards: nothing older than MAX_JOB_AGE_DAYS is
-// listed at all now, so the only freshness distinction worth drawing is
-// "just posted" — and the New badge already draws it. Showing both put "New"
-// and "Posted today" side by side on every card of a newest-first list.
-const isNew = isNewJob(job.postedAt, generatedAt);
+// A dated stamp rather than a "New" flag. The two used to sit side by side and
+// say the same thing, so one had to go; "New" was the one that survived. It
+// turned out to be the wrong choice for the view that matters most — the
+// default list is sorted newest-first, so every one of the 50 cards on it
+// qualified and a badge that never varies carries no information. The date
+// says strictly more ("today" vs "6d ago" is a real distinction the flag
+// flattened) and stays useful under every sort.
+const posted = postedAgo(job.postedAt, generatedAt);
 ---
 
 <li>
   <a class={C.link} href={href}>
     <div class={C.top}>
       <div class={C.head}>
-        <CompanyLogo name={job.companyName} slug={job.companySlug} size={CARD_LOGO_PX} />
+        <CompanyLogo name={job.companyName} slug={job.companySlug} size={CARD_LOGO_PX} eager={eager} />
         <div class={C.headText}>
           <div class={C.title}>{job.title}</div>
           <div class={C.company}>
@@ -45,7 +50,7 @@ const isNew = isNewJob(job.postedAt, generatedAt);
       {salary && <div class={C.salary}>{salary}</div>}
     </div>
     <div class={C.meta}>
-      {isNew && <span class={C.badgeNew}>New</span>}
+      {posted && <span class={C.badgePosted}>{posted === "today" ? "Posted today" : `Posted ${posted}`}</span>}
       {remote && <span class={C.badge}>{remote}</span>}
       {sen && <span class={C.badge}>{sen}</span>}
       {job.skills.slice(0, 4).map((s) => <span class={C.badgeSkill}>{s}</span>)}

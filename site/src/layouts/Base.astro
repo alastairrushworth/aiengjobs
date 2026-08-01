@@ -117,6 +117,11 @@ const ogImage = new URL(url("/og-default.png"), Astro.site).href;
     </main>
     <footer class="site-footer">
       <div class="container">
+        {/* Every cluster page is linked from here, on every page. This is now
+            the site-wide route to them: the "Browse by stack" rows that used to
+            carry them are gone, and MLOps and Core ML were missing from this
+            list — dropping those rows without adding them here would have left
+            two landing pages with no internal links at all. */}
         <nav class="footer-nav" aria-label="Browse">
           <a href={url("/")}>All jobs</a>
           <a href={url("/stats/")}>Stats</a>
@@ -126,6 +131,8 @@ const ogImage = new URL(url("/og-default.png"), Astro.site).href;
           <a href={url("/ai-eval-jobs/")}>Eval jobs</a>
           <a href={url("/inference-engineer-jobs/")}>Inference jobs</a>
           <a href={url("/fine-tuning-jobs/")}>Fine-tuning jobs</a>
+          <a href={url("/mlops-engineer-jobs/")}>MLOps jobs</a>
+          <a href={url("/machine-learning-engineer-jobs/")}>Core ML jobs</a>
           <a href={url("/remote-ai-jobs/")}>Remote AI jobs</a>
           <a href={url("/rss.xml")}>RSS</a>
         </nav>

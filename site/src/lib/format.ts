@@ -150,15 +150,10 @@ export function postedAgo(postedAt: string | undefined, generatedAt: string): st
   return `${Math.floor(days / 365)}y ago`;
 }
 
-/** "New" = the employer posted it within the last 7 days (postedAt is the only
- *  trustworthy freshness signal — everything re-ingests nightly). */
-export function isNewJob(postedAt: string | undefined, generatedAt: string): boolean {
-  if (!postedAt) return false;
-  const posted = Date.parse(postedAt);
-  const gen = Date.parse(generatedAt);
-  if (!Number.isFinite(posted) || !Number.isFinite(gen)) return false;
-  return gen - posted <= 7 * DAY_MS;
-}
+// isNewJob() lived here and answered "posted within 7 days", for the green
+// "New" badge on job cards. Cards now carry postedAgo()'s dated stamp instead —
+// on a newest-first list the flag was true of all 50 visible cards and so said
+// nothing — and nothing else ever asked the question.
 
 const REMOTE_LABELS: Record<RemoteType, string> = {
   remote: "Remote",

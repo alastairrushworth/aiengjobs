@@ -1,6 +1,5 @@
 ---
 import Base from "../layouts/Base.astro";
-import BrowseNav from "../components/BrowseNav.astro";
 import { url } from "../lib/url.ts";
 import {
   countryName,
@@ -9,7 +8,6 @@ import {
   salaryMidpointUsd,
   SENIORITY_OPTIONS,
 } from "../lib/format.ts";
-import { CLUSTER_PAGES } from "../lib/clusters.ts";
 import { landingBySlug } from "../lib/landings.ts";
 import { openJobs as open, fxRates, generatedAt } from "../lib/data.ts";
 import type { Job } from "@aiengjobs/shared";
@@ -260,7 +258,10 @@ const maxCountry = topCountries[0]?.n ?? 1;
     </section>
 
     <section class="panel">
-      <h2>Top locations</h2>
+      {/* "Countries", not "locations" — these are country rows, and everywhere
+          else on the site "location" means a city (Browse by location, the
+          /ai-jobs-<city> pages). */}
+      <h2>Top countries</h2>
       <ul class="bars">
         {topCountries.map((c) => (
           <li>
@@ -273,13 +274,9 @@ const maxCountry = topCountries[0]?.n ?? 1;
     </section>
   </div>
 
-  <BrowseNav
-    label="Browse:"
-    links={[
-      { href: url("/"), text: "All jobs" },
-      ...CLUSTER_PAGES.map((p) => ({ href: url(`/${p.slug}/`), text: p.label })),
-    ]}
-  />
+  {/* The cluster row that sat here is gone — the footer nav carries all eight
+      on every page, and this one repeated them a few hundred pixels above it.
+      Every stat row above is already a link into the listing it describes. */}
 </Base>
 
 <style>
@@ -314,9 +311,14 @@ const maxCountry = topCountries[0]?.n ?? 1;
   .figures .lbl { color: var(--muted); font-size: 0.78rem; }
 
   /* Two-column panel grid */
+  /* align-items: start so each panel is as tall as its own contents. Grid items
+     stretch by default, which paired a 12-row list with a 6-row one and padded
+     the short panel to match — "Best-paid skills" carried ~230px of empty card
+     below its last row purely to reach the height of the panel beside it. */
   .cols {
     display: grid;
     grid-template-columns: 1fr 1fr;
+    align-items: start;
     gap: 16px;
     margin-top: 16px;
   }
