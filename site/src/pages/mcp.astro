@@ -1,19 +1,10 @@
 ---
 import Base from "../layouts/Base.astro";
 import { url } from "../lib/url.ts";
-import { generatedAt } from "../lib/data.ts";
-import { mcpJobs } from "./mcp-index.json.ts";
 
-// Counted from the same array the MCP index is built from, so the number on
-// this page can never drift from the number the server actually serves.
-const roleCount = mcpJobs.length;
-const companyCount = new Set(mcpJobs.map((j) => j.companySlug)).size;
-const updated = new Date(generatedAt).toLocaleDateString("en-GB", {
-  day: "numeric",
-  month: "long",
-  year: "numeric",
-});
-
+// Deliberately free of counts and snapshot dates. This page describes a server,
+// not an inventory, and every number on it would be a day stale the moment the
+// nightly rebuild ran — the server's own responses carry the freshness.
 const ENDPOINT = "https://mcp.frontierroles.com/mcp";
 
 // Interpolated rather than written inline: braces in Astro markup are template
@@ -60,15 +51,14 @@ const PROMPTS = [
 
 <Base
   title="MCP server"
-  description={`Use ${roleCount} first-party AI engineering roles directly from Claude, Cursor or any MCP client. Free, no account, no API key.`}
+  description="Use first-party AI engineering roles directly from Claude, Cursor or any MCP client. Free, no account, no API key."
 >
   <section class="hero">
     <h1>Use the board from your AI assistant</h1>
     <p class="lede">
       frontierroles runs a free <a href="https://modelcontextprotocol.io" rel="noopener">MCP</a>
-      server. Connect it once and Claude can search {roleCount.toLocaleString()} open AI
-      engineering roles from {companyCount.toLocaleString()} companies, read full adverts, and
-      answer questions about the market — without you leaving the conversation.
+      server. Connect it once and Claude can search every open role on the board, read full
+      adverts, and answer questions about the market — without you leaving the conversation.
     </p>
     <p class="endpoint-line">
       <span class="note">Endpoint</span>
@@ -108,17 +98,6 @@ const PROMPTS = [
   </section>
 
   <section>
-    <h2>Things to ask it</h2>
-    <ul class="prompts">
-      {PROMPTS.map((p) => <li>{p}</li>)}
-    </ul>
-    <p class="note">
-      The last one is the point, really. A board can filter; an assistant that can see the whole
-      board can tell you what the filters would have hidden.
-    </p>
-  </section>
-
-  <section>
     <h2>What it can do</h2>
     <div class="table-wrap">
       <table>
@@ -143,6 +122,17 @@ const PROMPTS = [
   </section>
 
   <section>
+    <h2>Things to ask it</h2>
+    <ul class="prompts">
+      {PROMPTS.map((p) => <li>{p}</li>)}
+    </ul>
+    <p class="note">
+      The last one is the point, really. A board can filter; an assistant that can see the whole
+      board can tell you what the filters would have hidden.
+    </p>
+  </section>
+
+  <section>
     <h2>About the data</h2>
     <ul class="facts">
       <li>
@@ -151,8 +141,8 @@ const PROMPTS = [
         reposts, no scraped aggregators, no sponsored placement.
       </li>
       <li>
-        <strong>Rebuilt nightly.</strong> Last updated {updated}. Roles drop off when they close
-        or pass 90 days old, so the board doesn't accumulate ghost jobs.
+        <strong>Rebuilt nightly.</strong> Roles drop off when they close or pass 90 days old, so
+        the board doesn't accumulate listings you can no longer apply to.
       </li>
       <li>
         <strong>Deduplicated.</strong> Employers often open one requisition per office for the
@@ -161,6 +151,11 @@ const PROMPTS = [
       <li>
         <strong>Dated, not live.</strong> Every response carries the snapshot date, so an
         assistant can tell you how fresh its answer is instead of implying it's real-time.
+      </li>
+      <li>
+        <strong>Nothing stored.</strong> The server takes no account, sets no cookie, and keeps no
+        record of what was asked or who asked it. It serves public job data that is already on
+        this site.
       </li>
     </ul>
   </section>
@@ -183,20 +178,6 @@ const PROMPTS = [
     <p class="note">
       There's also an <a href={url("/rss.xml")}>RSS feed</a> if you'd rather just watch for new
       roles.
-    </p>
-  </section>
-
-  <section>
-    <h2>Privacy</h2>
-    <p>
-      The server stores nothing. It takes no account, sets no cookie, and keeps no record of what
-      was asked or who asked it. Requests are served from public job data that is already on this
-      site.
-    </p>
-    <p class="note">
-      Questions or a problem to report: <a href="https://github.com/alastairrushworth/aiengjobs/issues"
-        >open an issue on GitHub</a
-      >.
     </p>
   </section>
 </Base>
