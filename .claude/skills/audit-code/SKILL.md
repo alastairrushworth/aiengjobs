@@ -1,6 +1,6 @@
 ---
 name: audit-code
-description: Run a thorough, deep-thinking code-quality audit of the whole aiengjobs codebase — correctness, security, type safety, simplicity, duplication, readability, modernness/idiom, error handling, testing, dependencies, performance, architecture, and tooling/CI hygiene. Use when the user asks to audit, review, or sanity-check the code (as opposed to the rendered site) — "review the code", "code quality audit", "is this codebase well written", "security review of the engine", or a deep pass over a subsystem. Covers all source in the repo: engine/ (connectors, pipeline, db, export, notify), shared/, site/src/ as source, tests/, scripts/, deploy/, and .github/workflows/. Rendered-output concerns (SEO, structured data, a11y, responsive layout, on-page UX copy) belong to the audit-site skill, not this one. For a full sweep across source, rendered output and UI together, use audit-all instead. Produces a prioritized findings report; read-only by default (does not edit files unless asked).
+description: Run a thorough, deep-thinking code-quality audit of the whole aiengjobs codebase — correctness, security, type safety, simplicity, duplication, readability, modernness/idiom, error handling, testing, dependencies, performance, architecture, and tooling/CI hygiene. Use when the user asks to audit, review, or sanity-check the code (as opposed to the rendered site) — "review the code", "code quality audit", "is this codebase well written", "security review of the engine", or a deep pass over a subsystem. Covers all source in the repo: engine/ (connectors, pipeline, db, export, notify), shared/, site/src/ as source, tests/, scripts/, ml/, and .github/workflows/. Rendered-output concerns (SEO, structured data, a11y, responsive layout, on-page UX copy) belong to the audit-site skill, not this one. For a full sweep across source, rendered output and UI together, use audit-all instead. Produces a prioritized findings report; read-only by default (does not edit files unless asked).
 ---
 
 # Code Audit — aiengjobs
@@ -34,7 +34,7 @@ This skill owns **every line of source in the repo**, judged as code:
   page front-matter logic, component structure, inline `<script>` blocks,
   `global.css` organisation
 - `tests/` — the vitest suite: what it covers, how well, and what it misses
-- `scripts/droplet-refresh.sh`, `deploy/` (systemd units, README)
+- `scripts/refresh.sh` — the nightly ingest/export/push script
 - `.github/workflows/` — deploy, and the two Claude workflows
 - Workspace plumbing: root/`site`/`engine`/`shared` `package.json`,
   `tsconfig.json`s, `.gitignore`, `astro.config.mjs`
@@ -165,7 +165,7 @@ into a database, an LLM, a published snapshot, and a public site.**
   everywhere they must be, and that `safeUrl` actually rejects `javascript:` and
   `data:`. (Correctness of the *guards* is yours; whether the resulting page is
   SEO-valid is audit-site's.)
-- **Shell and ops.** `scripts/droplet-refresh.sh`: unquoted expansions, `eval`,
+- **Shell and ops.** `scripts/refresh.sh`: unquoted expansions, `eval`,
   `set -euo pipefail` (present) vs the `|| true` escapes that intentionally
   bypass it — is each one deliberate and safe? The `git push --force` to
   `refs/heads/snapshot` — can it ever target the wrong ref?
@@ -274,8 +274,8 @@ Modern where it buys something — not novelty for its own sake.
 
 ### 7. Error handling, resilience & observability
 
-The engine runs **unattended nightly on a droplet** — nobody is watching the
-terminal. That framing decides most calls in this section.
+The engine runs **unattended nightly on a GitHub Actions runner** — nobody is
+watching the log. That framing decides most calls in this section.
 
 - **Failure taxonomy.** For each stage, what's fatal vs. recoverable? One dead
   ATS feed must not kill the run; a corrupt DB write should. Check that the code
@@ -293,9 +293,10 @@ terminal. That framing decides most calls in this section.
   which URL, which stage), no secrets, no unbounded dumps of feed bodies,
   consistent prefixes, sensible `console.warn` vs `.error` vs `.log`. Is there a
   run summary — counts in/out/new/closed/errors?
-- **Exit codes.** Does `cli.ts` exit non-zero on real failure so systemd marks
-  the unit failed? Trace `refresh` and `notify` through `droplet-refresh.sh` and
-  check the exit status survives the pipe/`||` chain.
+- **Exit codes.** Does `cli.ts` exit non-zero on real failure so the workflow
+  step is marked failed? Trace `refresh` and `notify` through `refresh.sh` and
+  check the exit status survives the pipe/`||` chain. Watch for steps guarded by
+  `if: success()` — publishing the DB on a failed run poisons every later one.
 - **Retries and rate limits.** `fetchRetry` handles 429 + timeouts; check
   `Retry-After` is respected, that per-host concurrency won't get the bot
   blocked, and that the LLM path has comparable protection.
@@ -336,9 +337,10 @@ terminal. That framing decides most calls in this section.
 - **Version discipline.** `^` ranges vs the committed lockfile; CI uses
   `npm ci` (good) — confirm the lockfile is committed and in sync
   (`npm ci` failing on drift is the canonical symptom).
-- **Node version.** CI pins Node 24; the droplet's version is set by whatever
-  was installed there. Flag the absence of a shared pin (`engines`, `.nvmrc`) if
-  it's a genuine drift risk given `node:sqlite`'s stability status.
+- **Node version.** CI pins Node 24 in each workflow independently, and a local
+  clone uses whatever the developer has. Flag the absence of a shared pin
+  (`engines`, `.nvmrc`) if it's a genuine drift risk given `node:sqlite`'s
+  stability status.
 - **Workspace wiring.** `shared` is consumed as a source-only package via
   `exports` with no build step. Verify each export path resolves for *both* tsx
   (engine) and Astro (site), and that nothing imports across a workspace
@@ -382,12 +384,13 @@ Correctness first, but this pipeline grows monotonically.
 - **Configuration vs. code.** Tuning knobs (thresholds, patterns, model name)
   centralized in `config.ts` and overridable by env — is that consistent, and is
   anything hardcoded that operationally needs to change without a deploy?
-- **The ops story.** systemd timer → `droplet-refresh.sh` → engine → git push →
-  Pages build. Where are the single points of failure, what's the manual
-  recovery path, and is it documented well enough to follow at 2am?
+- **The ops story.** `refresh.yml` cron → `refresh.sh` → engine → git push →
+  Pages build, with the DB carried between runs by the Actions cache and the
+  `db-latest` release asset. Where are the single points of failure, what's the
+  manual recovery path, and is it documented well enough to follow at 2am?
 - **Scale-out thinking.** What structurally breaks at 10× companies — not
-  performance (§10) but *design*: the single-DB-on-one-droplet model, the
-  full-snapshot-every-night model, the no-queue model.
+  performance (§10) but *design*: the one-SQLite-file model and its 6-hour job
+  timeout, the full-snapshot-every-night model, the no-queue model.
 
 ### 12. Tooling, CI & deploy hygiene
 
@@ -401,8 +404,8 @@ Correctness first, but this pipeline grows monotonically.
   alone? Try the documented path (`npm ci`, `npm run snapshot:fetch`,
   `npm run build`) and report where it diverges from the docs.
 - **Scripts.** Root and per-workspace `package.json` scripts: any missing
-  (`lint`? `format`?), any broken, any that only work on the droplet.
-- **Docs as code.** `README.md`, `spec.md`, `deploy/README.md`,
+  (`lint`? `format`?), any broken, any that only work in CI.
+- **Docs as code.** `README.md`, `spec.md`, `ml/README.md`,
   `engine/.env.example` — are they still accurate? Documentation that lies is
   worse than none; call out specific stale claims with a line reference.
 
@@ -457,8 +460,8 @@ one-liners, offer to fix or save — never write files unasked). Specific to thi
 audit:
 
 - Tag each finding with its dimension number so themes are visible.
-- Runtime behaviour you couldn't exercise — droplet ops, live feeds, LLM
-  responses — gets "needs verification" rather than a confident claim.
+- Runtime behaviour you couldn't exercise — nightly workflow runs, live feeds,
+  classifier output — gets "needs verification" rather than a confident claim.
 - Save target: `audits/audit-code-<date>.md`.
 
 Parallel `Explore` fan-out is available for broad location-gathering ("every

@@ -25,14 +25,14 @@ function displayText(row: JobRow): string | undefined {
   return row.description_text ?? undefined;
 }
 
-// The exporter writes the snapshot the Astro site reads at build time. On the
-// droplet this commits into the repo working tree before `git push`.
+// The exporter writes the snapshot the Astro site reads at build time. The
+// nightly job force-pushes it to the detached `snapshot` branch from there.
 export const SNAPSHOT_OUT =
   process.env.SNAPSHOT_OUT ??
   join(here, "..", "..", "..", "site", "src", "data", "snapshot.json");
 
 // A few hundred bytes of run summary that IS committed to main, alongside the
-// ~22MB snapshot that isn't (see scripts/droplet-refresh.sh). It gives the Pages
+// ~22MB snapshot that isn't (see scripts/refresh.sh). It gives the Pages
 // build something to trigger on and leaves a readable history of nightly runs.
 export const SNAPSHOT_META_OUT =
   process.env.SNAPSHOT_META_OUT ??

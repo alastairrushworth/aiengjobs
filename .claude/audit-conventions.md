@@ -72,7 +72,7 @@ These apply to every audit.
 ## The data boundary
 
 `site/src/data/snapshot.json` is **engine-generated** — exported nightly from
-the droplet's SQLite DB and published on the detached `snapshot` branch.
+the engine's SQLite DB and published on the detached `snapshot` branch.
 
 **Never propose hand-edits to it.** When a defect originates in the data — a bad
 salary parse, a wrong country, a mangled title, a missing `postedAt`, a stale
@@ -151,7 +151,7 @@ npm run preview -w @aiengjobs/site   # serves dist/ — closer to production
 
 **Check snapshot freshness** whenever you load it: read `generatedAt` and
 compare to today. The site advertises "refreshed nightly"; a snapshot more than
-~2 days old means the droplet refresh loop is broken. That's a top-tier finding
+~2 days old means the nightly refresh workflow is broken. That's a top-tier finding
 in its own right — stale jobs and decaying `validThrough` dates poison Google
 for Jobs.
 
@@ -181,8 +181,8 @@ own skeleton. These rules are common to all of them:
   Add the viewport for layout findings and the page type for rendered ones, so
   they're reproducible.
 - **Be honest about uncertainty.** Mark "needs verification" for anything you
-  couldn't exercise (droplet ops, live feeds, LLM responses, Google for Jobs
-  guideline calls), and state plainly what you couldn't run and why.
+  couldn't exercise (nightly workflow runs, live feeds, classifier output,
+  Google for Jobs guideline calls), and state plainly what you couldn't run and why.
 - **Route cross-skill observations** as single `→ audit-<x>` lines.
 - **Say what's already good.** A short section calling out the solid patterns
   worth protecting, so a future pass doesn't "fix" them.

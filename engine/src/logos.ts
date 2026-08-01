@@ -414,9 +414,9 @@ async function tryFetchImage(url: string): Promise<{ buf: Buffer; probe: Probe }
  *
  * Favicons are often shipped as multi-resolution .ico (a 256px Discord icon is
  * 279KB) or as absurd masters (one logo arrives at 4110x4110). Both get served
- * on company pages, so they're worth normalising — but not worth a native image
- * dependency on a 1GB droplet. Uses whatever the host already has and returns
- * the original untouched when there's nothing available, so the fetch works
+ * on company pages, so they're worth normalising — but not worth adding a native
+ * image dependency for. Uses whatever the host already has and returns the
+ * original untouched when there's nothing available, so the fetch works
  * everywhere and merely produces heavier files on a bare box.
  */
 const MAX_LOGO_PX = 256;
