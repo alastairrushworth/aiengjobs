@@ -85,6 +85,14 @@ export function baseUrl(): string {
  */
 const TTL_MS = 60 * 60 * 1000;
 
+/**
+ * Every network call is bounded. An unbounded fetch against a hung origin hangs
+ * the tool call itself — indefinitely on stdio, and until the wall-clock limit
+ * on a Worker — which reads to the user as the assistant having frozen. The
+ * signal covers the body read too, so a truncated or endless response also ends.
+ */
+const FETCH_TIMEOUT_MS = 10_000;
+
 interface CacheEntry {
   board: Board;
   etag: string | null;
@@ -103,7 +111,23 @@ async function fetchBoard(previous: CacheEntry | null): Promise<Board> {
   const headers: Record<string, string> = {};
   if (previous?.etag) headers["If-None-Match"] = previous.etag;
 
-  const res = await fetch(`${baseUrl()}/mcp-index.json`, { headers });
+  let res: Response;
+  try {
+    res = await fetch(`${baseUrl()}/mcp-index.json`, {
+      headers,
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+    });
+  } catch (e) {
+    // A DNS failure, TLS error, connection reset or timeout throws rather than
+    // returning a bad status, so the stale-board fallback has to be here as
+    // well as below — this is the "site briefly unreachable" case the comment
+    // further down describes, and it never reached that branch.
+    if (previous) {
+      previous.fetchedAt = Date.now();
+      return previous.board;
+    }
+    throw new Error(`Could not reach ${baseUrl()}: ${(e as Error).message}`);
+  }
 
   // Nothing changed — keep the parsed copy and reset its clock. This is the
   // common path on revalidation and costs no parse and no body transfer.
@@ -154,7 +178,9 @@ export async function loadBoard(): Promise<Board> {
  * signal that the role is gone rather than an error to retry.
  */
 export async function loadJob(slug: string): Promise<JobDetail | null> {
-  const res = await fetch(`${baseUrl()}/mcp-jobs/${encodeURIComponent(slug)}.json`);
+  const res = await fetch(`${baseUrl()}/mcp-jobs/${encodeURIComponent(slug)}.json`, {
+    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+  });
   if (res.status === 404) return null;
   if (!res.ok) throw new Error(`Could not load job "${slug}" (HTTP ${res.status}).`);
   return (await res.json()) as JobDetail;

@@ -41,8 +41,11 @@ jobs:
       - name: Typecheck
         run: npm run typecheck -w @aiengjobs/mcp
 
+      # All three MCP suites, not just the tools: render guards the apply link
+      # (a role nobody can apply to is the one failure that matters here) and
+      # board guards the fetch layer the worker lives or dies by.
       - name: Test
-        run: npx vitest run tests/mcpTools.test.ts
+        run: npx vitest run tests/mcpTools.test.ts tests/mcpRender.test.ts tests/mcpBoard.test.ts
 
       - name: Deploy
         uses: cloudflare/wrangler-action@v3
