@@ -6,6 +6,9 @@ import { url } from "../lib/url.ts";
 // not an inventory, and every number on it would be a day stale the moment the
 // nightly rebuild ran — the server's own responses carry the freshness.
 const ENDPOINT = "https://mcp.frontierroles.com/mcp";
+// Derived rather than written out again: two hard-coded hostnames are two things
+// to remember to change when one of them moves.
+const HEALTH = `${new URL(ENDPOINT).origin}/health`;
 
 // Interpolated rather than written inline: braces in Astro markup are template
 // expressions, so a literal JSON block has to arrive as a string.
@@ -20,7 +23,7 @@ const jsonConfig = `{
 const TOOLS = [
   {
     name: "search_jobs",
-    what: "Find roles by free text, skill, cluster, seniority, location, pay floor or how recently they were posted.",
+    what: "Find roles by free text, skill, cluster, seniority, location, pay floor or how recently they were posted. Compact records, up to 50 at a time.",
   },
   {
     name: "get_job",
@@ -28,7 +31,7 @@ const TOOLS = [
   },
   {
     name: "get_company",
-    what: "Every open role at one company.",
+    what: "Every open role at one company, by slug or display name.",
   },
   {
     name: "board_stats",
@@ -51,7 +54,7 @@ const PROMPTS = [
 
 <Base
   title="MCP server"
-  description="Use first-party AI engineering roles directly from Claude, Cursor or any MCP client. Free, no account, no API key."
+  description="Use first-party AI engineering roles directly from Claude, ChatGPT, Cursor or any MCP client. Free, no account, no API key."
 >
   <section class="hero">
     <h1>Use the board from your AI assistant</h1>
@@ -60,16 +63,22 @@ const PROMPTS = [
         href="https://modelcontextprotocol.io"
         target="_blank"
         rel="noopener noreferrer nofollow">MCP</a>
-      server. Connect it once and Claude can search every open role on the board, read full
-      adverts, and answer questions about the market — without you leaving the conversation.
+      server. Connect it once and Claude, ChatGPT or your editor can search every open role on
+      the board, read full adverts, and answer questions about the market — without you leaving
+      the conversation.
     </p>
     <p class="endpoint-line">
       <span class="note">Endpoint</span>
-      <code class="endpoint">{ENDPOINT}</code>
+      <code class="endpoint" id="endpoint">{ENDPOINT}</code>
+      {/* Hidden until the script un-hides it: a copy button that can't copy is
+          worse than no button, and clipboard access needs both JS and a secure
+          context. The endpoint itself is plain selectable text either way. */}
+      <button type="button" class="copy" id="copy" hidden>Copy</button>
+      <span class="sr-only" id="copy-status" role="status" aria-live="polite"></span>
     </p>
     <p class="note">
-      No account, no API key, no rate card. Every role links straight to the employer's own
-      application page.
+      Streamable HTTP, no authentication. No account, no API key, no rate card. Every role links
+      straight to the employer's own application page.
     </p>
   </section>
 
@@ -78,26 +87,67 @@ const PROMPTS = [
 
     <div class="steps">
       <div class="step">
-        <h3>Claude (web, desktop or mobile)</h3>
+        <h3>Claude — web, desktop or mobile</h3>
         <ol>
           <li>Open <strong>Settings → Connectors</strong></li>
           <li>Choose <strong>Add custom connector</strong></li>
           <li>Paste the endpoint above and save</li>
         </ol>
-        <p class="note">Leave authentication blank — the server doesn't use any.</p>
+        <p class="note">
+          Leave authentication blank — the server doesn't use any. Switch the connector on for a
+          conversation from the <strong>+</strong> menu beside the message box.
+        </p>
+      </div>
+
+      <div class="step">
+        <h3>ChatGPT — web</h3>
+        <ol>
+          <li>
+            Open <strong>Settings → Security and login</strong> and turn on
+            <strong>Developer mode</strong>
+          </li>
+          <li>
+            Go to <strong>Settings → Plugins</strong>, press <strong>+</strong>, and create an app
+            with the endpoint above as its server URL and authentication set to
+            <strong>None</strong>
+          </li>
+          <li>
+            In a chat, open the <strong>+</strong> menu and switch on the app you just created
+          </li>
+        </ol>
+        <p class="note">
+          Custom MCP servers need a paid plan and the web app. Deep research is a separate route
+          that only accepts servers exposing tools named <code>search</code> and <code>fetch</code>,
+          which this one doesn't — developer mode is the way in.
+        </p>
       </div>
 
       <div class="step">
         <h3>Claude Code</h3>
         <pre><code>claude mcp add --transport http frontierroles {ENDPOINT}</code></pre>
+        <p class="note">
+          Add <code>-s user</code> to make it available in every project rather than this one.
+          <code>/mcp</code> in a session lists what connected.
+        </p>
       </div>
 
       <div class="step">
-        <h3>Cursor, Windsurf and others</h3>
+        <h3>Cursor, Windsurf, VS Code and others</h3>
         <p class="note">Add the server to your client's MCP config file:</p>
         <pre><code>{jsonConfig}</code></pre>
+        <p class="note">
+          VS Code is the odd one out: it wants <code>servers</code> rather than
+          <code>mcpServers</code>, and <code>"type": "http"</code> alongside the URL.
+        </p>
       </div>
     </div>
+
+    <p class="note">
+      Nothing connecting? Open the endpoint in a browser. It answers with a short plain-text
+      description rather than a web page, which is how you know the URL is right and reachable;
+      <a href={HEALTH} target="_blank" rel="noopener noreferrer nofollow"><code>/health</code></a>
+      reports what the server is currently serving.
+    </p>
   </section>
 
   <section>
@@ -120,7 +170,9 @@ const PROMPTS = [
       </table>
     </div>
     <p class="note">
-      Every tool is read-only. Nothing it can do changes anything, here or anywhere else.
+      Every tool is read-only, and says so in its own annotations — nothing it can do changes
+      anything, here or anywhere else, and clients that stop to confirm write actions have no
+      reason to interrupt you.
     </p>
   </section>
 
@@ -214,20 +266,45 @@ const PROMPTS = [
     /* Long enough to wrap awkwardly on a phone; break rather than overflow. */
     word-break: break-all;
   }
+  .copy {
+    background: var(--surface);
+    border: 1px solid var(--border-strong);
+    border-radius: 8px;
+    color: var(--text);
+    font: inherit;
+    font-size: 0.85rem;
+    padding: 8px 12px;
+    cursor: pointer;
+    /* Fixed floor so swapping the label to "Copied" doesn't shuffle the row. */
+    min-width: 5.5rem;
+  }
+  .copy:hover { border-color: var(--accent); }
 
   .steps {
+    /* A 340px floor rather than something narrower: four cards, two of which
+       carry a three-step list, and the three-up layout a smaller floor produces
+       leaves one card stranded on its own row while squeezing the ChatGPT
+       steps into ribbons. Two-up until the viewport genuinely can't hold it.
+       min() so the floor yields on a narrow phone — a bare 340px track is wider
+       than the container on a 375px screen and scrolls the whole page sideways. */
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(min(340px, 100%), 1fr));
     gap: 16px;
+    margin-bottom: 14px;
   }
   .step {
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: var(--radius);
     padding: 16px;
+    /* Grid items default to min-content width; without this the code blocks
+       below set a floor that pushes the whole grid wider than its column. */
+    min-width: 0;
   }
   .step ol { margin: 0 0 10px; padding-left: 20px; }
-  .step li { margin-bottom: 4px; }
+  .step li { margin-bottom: 6px; }
+  .step .note:last-child { margin-bottom: 0; }
+  .step pre + .note { margin-top: 10px; }
 
   pre {
     background: var(--surface-2);
@@ -274,3 +351,35 @@ const PROMPTS = [
 
   .note { color: var(--muted); font-size: 0.88rem; }
 </style>
+
+<script>
+  // The page's entire job is to hand over one URL, so make taking it one click.
+  const button = document.getElementById("copy") as HTMLButtonElement | null;
+  const endpoint = document.getElementById("endpoint");
+  const status = document.getElementById("copy-status");
+
+  if (button && endpoint && status && navigator.clipboard) {
+    button.hidden = false;
+    let revert: ReturnType<typeof setTimeout>;
+
+    button.addEventListener("click", async () => {
+      clearTimeout(revert);
+      try {
+        await navigator.clipboard.writeText(endpoint.textContent!.trim());
+        button.textContent = "Copied";
+        // The label change is invisible to a screen reader that isn't sitting on
+        // the button, so the outcome gets announced separately.
+        status.textContent = "Endpoint copied to clipboard";
+      } catch {
+        // Permission can still be refused per-site. Say so rather than showing
+        // "Copied" over an empty clipboard.
+        button.textContent = "Copy failed";
+        status.textContent = "Copy failed — select the endpoint and copy it manually";
+      }
+      revert = setTimeout(() => {
+        button.textContent = "Copy";
+        status.textContent = "";
+      }, 2500);
+    });
+  }
+</script>
