@@ -11,11 +11,11 @@ on:
   # site — the refresh job invokes this directly instead.
   workflow_call:
 
-# Allow the workflow to publish to Pages
+# Read-only at workflow scope. `pages: write` + `id-token: write` live on the
+# deploy job alone — declared here they were inherited by check and build, which
+# only ever read.
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 # One deploy at a time; cancel superseded runs
 concurrency:
@@ -66,6 +66,11 @@ jobs:
   deploy:
     needs: [build, check]
     runs-on: ubuntu-latest
+    # The only job that publishes, so the only one that needs these.
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
