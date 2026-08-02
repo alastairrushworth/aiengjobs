@@ -14,6 +14,7 @@ export type AtsProvider =
   | "eightfold"
   | "icims"
   | "successfactors"
+  | "bamboohr"
   | "personio"
   | "direct";
 
