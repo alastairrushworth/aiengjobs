@@ -198,10 +198,24 @@ export function getCompany(board: Board, nameOrSlug: string): CompanyResult | nu
     (j) => lower(j.companySlug) === needle || lower(j.company) === needle,
   );
   // Fall back to a contains match so "shield" finds "Shield AI".
-  const matched = jobs.length
+  let matched = jobs.length
     ? jobs
     : board.jobs.filter((j) => lower(j.company).includes(needle));
   if (!matched.length) return null;
+
+  // The fallback is a substring test, so a short needle spans employers:
+  // get_company("ai") matched 16 of them — Scale AI, OpenAI, Mistral AI,
+  // LlamaIndex, Faire — and reported all their roles as the first one's. An
+  // agent relays that verbatim. Narrow to the single best company (most open
+  // roles) rather than answering about a set the caller didn't ask for.
+  const bySlug = new Map<string, McpJob[]>();
+  for (const j of matched) {
+    const key = lower(j.companySlug);
+    (bySlug.get(key) ?? bySlug.set(key, []).get(key)!).push(j);
+  }
+  if (bySlug.size > 1) {
+    matched = [...bySlug.values()].reduce((a, b) => (b.length > a.length ? b : a));
+  }
 
   return {
     generatedAt: board.generatedAt,
