@@ -12,6 +12,8 @@ import { oracle } from "./oracle.ts";
 import { eightfold } from "./eightfold.ts";
 import { icims } from "./icims.ts";
 import { successfactors } from "./successfactors.ts";
+import { bamboohr } from "./bamboohr.ts";
+import { personio } from "./personio.ts";
 
 // Registry of the ATS connectors we build ourselves (spec §6.6 recommendation).
 export const CONNECTORS: Partial<Record<AtsProvider, Connector>> = {
@@ -27,6 +29,8 @@ export const CONNECTORS: Partial<Record<AtsProvider, Connector>> = {
   eightfold,
   icims,
   successfactors,
+  bamboohr,
+  personio,
 };
 
 export function getConnector(provider: AtsProvider): Connector | undefined {
