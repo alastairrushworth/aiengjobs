@@ -149,3 +149,31 @@ describe("parseSalaryFromDescription", () => {
     expect(parseSalaryFromDescription("")).toBeNull();
   });
 });
+
+describe("parseSalaryText currency detection", () => {
+  it("drops pay it cannot attribute to a currency", () => {
+    // The Graphcore case: a bare "260400 - 352200" was PLN, and defaulting to
+    // USD showed ~$70k as $260k.
+    expect(parseSalaryText("260400 - 352200")).toBeNull();
+    expect(parseSalaryText("120000 to 150000 per year")).toBeNull();
+  });
+
+  it("does not read dollar-suffixed currencies as USD", () => {
+    expect(parseSalaryText("CA$120,000 - CA$150,000")?.salaryCurrency).toBe("CAD");
+    expect(parseSalaryText("A$140,000 - A$180,000")?.salaryCurrency).toBe("AUD");
+    expect(parseSalaryText("S$90,000 - S$120,000")?.salaryCurrency).toBe("SGD");
+    expect(parseSalaryText("R$200,000 - R$300,000")?.salaryCurrency).toBe("BRL");
+  });
+
+  it("recognises non-symbol currency codes", () => {
+    expect(parseSalaryText("CHF 150,000")?.salaryCurrency).toBe("CHF");
+    expect(parseSalaryText("260400 - 352200 PLN")?.salaryCurrency).toBe("PLN");
+    expect(parseSalaryText("₹4,000,000")?.salaryCurrency).toBe("INR");
+  });
+
+  it("still reads plain dollars, pounds and euros", () => {
+    expect(parseSalaryText("$165K - $330K")?.salaryCurrency).toBe("USD");
+    expect(parseSalaryText("£90,000–£120,000")?.salaryCurrency).toBe("GBP");
+    expect(parseSalaryText("€80k per year")?.salaryCurrency).toBe("EUR");
+  });
+});

@@ -75,6 +75,23 @@ const PLACEHOLDER = new Set([
   "on-site",
   "field",
   "virtual",
+  // Observed in the live snapshot reaching `city`, and from there into
+  // <title> ("· Any location") and the job page's Location fact. Two of them
+  // also collided a pair of pages onto one title, because jobTitle.ts
+  // disambiguates on city and these are the same non-answer for both.
+  "any location",
+  "in-office",
+  "office",
+  "main office",
+  // "Main (Hybrid)" reduces to "Main" once the parenthetical is stripped.
+  // Frankfurt am Main is unaffected — it keys on the whole string.
+  "main",
+  "remote office",
+  "us and canada offices",
+  "home or",
+  "home",
+  "flexible",
+  "anywhere",
 ]);
 
 // Deliberate merges. Values are the display form; keys are lowercased.
