@@ -1,7 +1,7 @@
 import type { APIRoute, GetStaticPaths } from "astro";
 import { buildRssFeed } from "../../lib/feed.ts";
 import { LANDINGS, type Landing } from "../../lib/landings.ts";
-import { generatedAt } from "../../lib/data.ts";
+import { generatedAt, duplicateOf } from "../../lib/data.ts";
 
 // A feed per listing page — "new RAG roles", "new jobs in London". Cheap to
 // emit, and it's the format aggregators and newsletter tooling actually consume.
@@ -18,7 +18,8 @@ export const GET: APIRoute = ({ site, props }) => {
     description: landing.intro,
     pagePath: `/${landing.slug}/`,
     feedPath: `/${landing.slug}/rss.xml`,
-    jobs: landing.jobs,
+    // Deduped like every other consumer of the board — see rss.xml.ts.
+    jobs: landing.jobs.filter((j) => duplicateOf(j) === null),
     site,
     generatedAt,
   });

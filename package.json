@@ -2,7 +2,7 @@
   "name": "aiengjobs",
   "private": true,
   "version": "0.0.0",
-  "description": "frontierroles.com — static job board (GitHub Pages) + nightly ingestion engine (GitHub Actions)",
+  "description": "frontierroles.com \u2014 static job board (GitHub Pages) + nightly ingestion engine (GitHub Actions)",
   "workspaces": [
     "shared",
     "site",
@@ -17,7 +17,10 @@
     "snapshot:fetch": "git fetch --depth=1 origin snapshot && git cat-file blob FETCH_HEAD:snapshot.json > site/src/data/snapshot.json && echo 'Fetched site/src/data/snapshot.json'"
   },
   "devDependencies": {
-    "sharp": "^0.34.5",
+    "sharp": "^0.35.3",
     "vitest": "^3.0.0"
+  },
+  "engines": {
+    "node": ">=24"
   }
 }

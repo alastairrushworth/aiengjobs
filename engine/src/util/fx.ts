@@ -25,7 +25,10 @@ export async function fetchFxRates(): Promise<Record<string, number>> {
         cur === "USD"
           ? 1
           : perUsd
-            ? Number((1 / perUsd).toFixed(4))
+            ? // toPrecision, not toFixed(4): for a small-unit currency the
+              // fixed form keeps only two significant figures (JPY → 0.0063,
+              // ~0.8% error before any conversion happens).
+              Number((1 / perUsd).toPrecision(6))
             : FX_FALLBACK[cur];
     }
     return out;

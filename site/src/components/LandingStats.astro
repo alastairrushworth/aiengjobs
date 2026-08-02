@@ -29,7 +29,11 @@ const tiles: { label: string; value: string; note?: string }[] = [
   stats.remote > 0 && {
     label: "Remote",
     value: `${pct(stats.remote)}%`,
-    note: `${stats.hybrid > 0 ? `${pct(stats.hybrid)}% hybrid` : ""}`,
+    // "15% hybrid" under a tile labelled "Remote" showing 15% reads as the same
+    // number printed twice — on /ai-agent-jobs the two genuinely coincide, and
+    // it looks like a bug until you check another page. Naming the second
+    // figure's subject separates them.
+    note: stats.hybrid > 0 ? `plus ${pct(stats.hybrid)}% hybrid` : "",
   },
   stats.topSkills.length > 0 && {
     label: "Top skill",
@@ -72,9 +76,14 @@ const tiles: { label: string; value: string; note?: string }[] = [
   {stats.topSkills.length > 1 && (
     <p class="line">
       <span class="lead">Common stack:</span>
+      {/* Links, like the companies on the row above. These sat as plain text at
+          the same weight, in the same shape of row, next to a row where every
+          entry navigates — so the obvious next thought ("show me the Python
+          ones") had nowhere to go. The card badges already use this exact URL,
+          so the destination is one the board understands. */}
       {stats.topSkills.map((s) => (
         <span class="item">
-          <span>{s.name}</span>
+          <a href={url(`/?skill=${encodeURIComponent(s.name)}`)}>{s.name}</a>
           <span class="n">{s.count}</span>
         </span>
       ))}
@@ -137,7 +146,10 @@ const tiles: { label: string; value: string; note?: string }[] = [
   .line .lead { color: var(--muted); }
   .line .item { white-space: nowrap; }
   .line .n { color: var(--muted); font-size: 0.78rem; margin-left: 3px; }
-  .line a { color: var(--accent-text); }
+  /* inline-block + padding so these clear the 24px target floor (WCAG 2.2 SC
+     2.5.8); at 0.9rem they were ~17px. The row gap is 4px vertical, so the
+     padded boxes still don't touch. */
+  .line a { color: var(--accent-text); display: inline-block; padding-block: 4px; }
   .line a:hover { text-decoration: underline; }
 
   /* On a phone this block sat between the hero and the listing at ~404px — ten

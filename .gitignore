@@ -3,17 +3,20 @@ dist/
 .astro/
 .output/
 
-# SQLite database lives on the droplet, never in the repo
+# SQLite database is carried between nightly runs as a release asset, never in the repo
 *.db
 *.db-shm
 *.db-wal
 *.sqlite
 
 # The ~22MB snapshot is published on the detached `snapshot` branch, not in
-# main's history (see scripts/droplet-refresh.sh). Fetch it with:
+# main's history (see scripts/publish.sh). Fetch it with:
 #   npm run snapshot:fetch
 # Its small companion, snapshot.meta.json, IS committed.
 site/src/data/snapshot.json
+
+# Phase 1 of the nightly writes the previous snapshot here for phase 2 to diff.
+data/prev-snapshot.json
 
 # Trained encoder weights (~600MB per run) and the ad corpus they train on.
 # Both are reproducible from ml/gold/labels.jsonl + ml/train_encoder.py; only

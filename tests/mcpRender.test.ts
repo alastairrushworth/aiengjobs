@@ -129,32 +129,58 @@ describe("formatSalary", () => {
   it("shows the currency it was posted in, not a conversion", () => {
     // Showing "$216k" for a role advertised in pounds is a conversion, not what
     // the employer said. The USD figure stays in the structured payload.
-    const gbp = job({ salaryMin: 90_000, salaryMax: 120_000, salaryCurrency: "GBP" });
+    const gbp = job({ salaryMin: 90_000, salaryMax: 120_000, salaryCurrency: "GBP", salaryUsd: 133_000 });
     expect(formatSalary(gbp)).toBe("£90k–£120k");
   });
 
   it("collapses an equal range to one figure", () => {
-    expect(formatSalary(job({ salaryMin: 200_000, salaryMax: 200_000, salaryCurrency: "USD" })))
-      .toBe("$200k");
+    expect(
+      formatSalary(job({ salaryMin: 200_000, salaryMax: 200_000, salaryCurrency: "USD", salaryUsd: 200_000 })),
+    ).toBe("$200k");
   });
 
   it("keeps hourly and daily rates readable instead of rounding them to thousands", () => {
     // Rounding everything to thousands turned a $90–120/hr contract into
     // "$0k–$0k/hr". The period suffix is what stops the figure reading as an
     // annual salary.
-    const hourly = job({ salaryMin: 90, salaryMax: 120, salaryCurrency: "USD", salaryPeriod: "hour" });
+    const hourly = job({ salaryMin: 90, salaryMax: 120, salaryCurrency: "USD", salaryPeriod: "hour", salaryUsd: 218_400 });
     expect(formatSalary(hourly)).toBe("$90–$120/hr");
 
-    const daily = job({ salaryMin: 650, salaryCurrency: "GBP", salaryPeriod: "day" });
+    const daily = job({ salaryMin: 650, salaryCurrency: "GBP", salaryPeriod: "day", salaryUsd: 216_000 });
     expect(formatSalary(daily)).toBe("£650/day");
   });
 
   it("falls back to the currency code when there's no symbol", () => {
-    expect(formatSalary(job({ salaryMin: 500_000, salaryCurrency: "CZK" }))).toBe("CZK 500k");
+    expect(
+      formatSalary(job({ salaryMin: 500_000, salaryCurrency: "CZK", salaryUsd: 21_000 })),
+    ).toBe("CZK 500k");
   });
 
   it("returns null when unpriced", () => {
     expect(formatSalary(job())).toBeNull();
+  });
+
+  it("defers to the site's plausibility gate rather than re-deriving one", () => {
+    // salaryUsd is null exactly when site/src/lib/format.ts judged the stored
+    // figures unpostable, and the website prints "Not published" for them.
+    // Gating only on "both fields null?" let the raw numbers through, so
+    // search_jobs rendered nuro-technical-lead-evaluation-infrastructure as
+    // "$193.9m–$291.2m" for a role the site reports as unpriced.
+    const implausible = job({
+      salaryMin: 193_930_200,
+      salaryMax: 291_150_200,
+      salaryCurrency: "USD",
+      salaryUsd: null,
+    });
+    expect(formatSalary(implausible)).toBeNull();
+
+    const subannual = job({
+      salaryMin: 170_000,
+      salaryCurrency: "USD",
+      salaryPeriod: "month",
+      salaryUsd: null,
+    });
+    expect(formatSalary(subannual)).toBeNull();
   });
 });
 

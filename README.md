@@ -11,10 +11,13 @@ Two halves joined by a nightly data hand-off:
   at [frontierroles.com](https://frontierroles.com). Pre-renders the job index, job detail pages,
   and (later) programmatic SEO pages. Reads `site/src/data/snapshot.json` at build time.
 - **`engine/`** — a TypeScript ingestion engine that runs nightly on a **GitHub Actions**
-  runner. Polls public ATS feeds (Greenhouse / Lever / Ashby), classifies + tags into a
-  **SQLite** DB, then exports `snapshot.json` and pushes it to the repo — which triggers
-  the Pages rebuild.
+  runner. Polls 12 public ATS feeds (Greenhouse, Lever, Ashby, Workday, SmartRecruiters,
+  Recruitee, Personio, Teamtailor, Oracle, iCIMS, Eightfold, SuccessFactors), classifies +
+  tags into a **SQLite** DB, then exports `snapshot.json` and publishes it on the detached
+  `snapshot` branch — after which the refresh workflow invokes the Pages deploy directly.
 - **`shared/`** — the data model (`types.ts`) and skill taxonomy (`taxonomy.ts`), shared by both.
+- **`mcp/`** — a Model Context Protocol server (Cloudflare Worker) exposing the board as
+  tools to AI assistants. Reads the published `mcp-index.json`; see [`/mcp`](https://frontierroles.com/mcp/).
 - **`ml/`** — the labelled corpus and training script for the classifier (see `ml/README.md`).
 
 Classification runs **locally**: a ModernBERT-base encoder fine-tuned on 4,898 hand-labelled
@@ -41,23 +44,32 @@ detached, single-commit `snapshot` branch; main only carries the few-hundred-byt
 npm install                       # install all workspaces
 npm run snapshot:fetch            # pull site/src/data/snapshot.json (gitignored)
 
-npm run dev   -w @aiengjobs/site  # run the site locally (http://localhost:4321/aiengjobs)
+npm run dev   -w @aiengjobs/site  # run the site locally (http://localhost:4321/)
 npm run build -w @aiengjobs/site  # build static site to site/dist
 
-npm run db:init   -w @aiengjobs/engine   # create + seed the SQLite schema
-npm run ingest    -w @aiengjobs/engine   # poll ATS feeds (Phase 1)
+npm run db:init   -w @aiengjobs/engine   # create the SQLite schema
+npm run seed      -w @aiengjobs/engine   # load engine/seed/companies.csv
+npm run ingest    -w @aiengjobs/engine   # poll ATS feeds
 npm run export    -w @aiengjobs/engine   # write site/src/data/snapshot.json from the DB
-npm run typecheck -w @aiengjobs/engine
+
+npm run typecheck                        # engine tsc + astro check + mcp tsc
+npm test                                 # vitest
 ```
+
+Node 24+ (the engine uses `node:sqlite`, unflagged only from 23.4). CI installs with
+`npm ci`.
 
 ## Deploy
 
 - **Site:** pushing to `main` runs `.github/workflows/deploy.yml`, which fetches the
   snapshot from the `snapshot` branch, builds Astro and publishes to GitHub Pages.
 - **Engine:** runs nightly on a GitHub Actions runner via
-  `.github/workflows/refresh.yml`. The SQLite database is not in the repo — it is
-  carried between runs as a gzipped release asset on the `db-latest` tag, with
-  `actions/cache` as a fast path.
+  `.github/workflows/refresh.yml`, in two phases — `scripts/refresh.sh` ingests, the
+  workflow then persists the database, and only then does `scripts/publish.sh` publish
+  the snapshot. That ordering matters: publishing first meant any late failure discarded
+  the night's ingest. The SQLite database is not in the repo — it is carried between runs
+  as a gzipped release asset on the `db-latest` tag, with `actions/cache` as a fast path.
+- **MCP server:** `.github/workflows/deploy-mcp.yml` deploys the Cloudflare Worker.
 
 > The `snapshot` branch must exist before CI can build. To seed it by hand:
 >
@@ -69,6 +81,6 @@ npm run typecheck -w @aiengjobs/engine
 
 ## Status
 
-Phase 0 (foundations) complete: monorepo scaffold, working static site with sample data,
-engine skeleton with SQLite schema + exporter, Pages deploy workflow. Phase 1 (real ATS
-ingestion) and Phase 2 (programmatic SEO, newsletter, Stripe) are next.
+Live at [frontierroles.com](https://frontierroles.com), refreshed nightly: ~850 seeded
+sources, ~2,000 open roles, a fine-tuned ONNX classifier, programmatic landing pages for
+clusters and cities, RSS feeds, and an MCP server. No newsletter and no payments.

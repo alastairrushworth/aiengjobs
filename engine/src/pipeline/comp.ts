@@ -15,10 +15,45 @@ export function parseSalaryText(text?: string | null): ParsedSalary | null {
   // would otherwise parse as $401,000.
   const t = text.replace(/,/g, "").replace(/\b401\s*\(?k\)?\b/gi, "");
 
-  let currency = "USD";
-  if (/£|gbp/i.test(t)) currency = "GBP";
-  else if (/€|eur/i.test(t)) currency = "EUR";
-  else if (/\$|usd/i.test(t)) currency = "USD";
+  // No default. `ingest.ts` states the rule this has to keep: "an unlabelled
+  // number isn't a salary… feeds that omit the currency are usually the non-USD
+  // ones (a Graphcore posting shipped a bare 260400-352200, which is PLN —
+  // ~$70k shown as $260k). Drop the pay rather than guess at it."
+  //
+  // Defaulting to USD here quietly opted this path out of that rule, and
+  // pay()'s `&& src.salaryCurrency` guard could never fire for it. "CHF
+  // 150,000" and "₹4,000,000" were stored as USD; so was "CA$120,000", because
+  // the bare `$` test matched it.
+  //
+  // The dollar variants are tested before plain `$` for the same reason.
+  const currency = /£|\bgbp\b/i.test(t)
+    ? "GBP"
+    : /€|\beur\b/i.test(t)
+      ? "EUR"
+      : /CA\$|\bcad\b/i.test(t)
+        ? "CAD"
+        : /A\$|\baud\b/i.test(t)
+          ? "AUD"
+          : /NZ\$|\bnzd\b/i.test(t)
+            ? "NZD"
+            : /S\$|\bsgd\b/i.test(t)
+              ? "SGD"
+              : /HK\$|\bhkd\b/i.test(t)
+                ? "HKD"
+                : /R\$|\bbrl\b/i.test(t)
+                  ? "BRL"
+                  : /\bchf\b/i.test(t)
+                    ? "CHF"
+                    : /₹|\binr\b/i.test(t)
+                      ? "INR"
+                      : /¥|\bjpy\b/i.test(t)
+                        ? "JPY"
+                        : /\bpln\b/i.test(t)
+                          ? "PLN"
+                          : /\$|\busd\b/i.test(t)
+                            ? "USD"
+                            : null;
+  if (!currency) return null;
 
   // Detect the pay period first — it decides which figures are plausible
   // (an hourly rate like "$45 – $55 per hour" is well under 1000).

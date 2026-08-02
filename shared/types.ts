@@ -99,7 +99,6 @@ export interface Job {
   postedAt?: string;
   updatedAt?: string;
   ingestedAt: string;
-  expiresAt?: string;
 
   contentHash?: string;
 }

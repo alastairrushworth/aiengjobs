@@ -48,9 +48,50 @@ export function buildJobTitles(jobs: Job[]): Map<string, string> {
     titleCount.set(k, (titleCount.get(k) ?? 0) + 1);
   }
 
+  // Increasingly specific ways to say where a role is. The suffix picks the
+  // first that actually tells this posting apart from the others it collides
+  // with, rather than the first that happens to be non-null.
+  //
+  // `j.city ?? countryName(...)` short-circuited on the city, and two postings
+  // can share one: two Coalition roles both carrying the city "Any location"
+  // (one US, one Canada) rendered an identical <title> AND meta description,
+  // and two Anduril "Research Scientist, Battlespace Awareness" roles both sit
+  // in Broomfield with different full location strings. The collision loop
+  // below can't rescue either — it only grows the role-name allowance, and the
+  // role names are already the same.
+  const placeCandidates = (j: Job): string[] => [
+    ...new Set(
+      [
+        j.city ?? undefined,
+        [j.city, countryName(j.country)].filter(Boolean).join(", ") || undefined,
+        j.locationRaw ?? undefined,
+      ].filter((s): s is string => Boolean(s)),
+    ),
+  ];
+
+  // For each candidate string, how many colliding postings would still share it.
+  const placeCount = new Map<string, number>();
+  for (const j of jobs) {
+    for (const where of placeCandidates(j)) {
+      const k = `${j.title}·${j.companyName}·${where}`;
+      placeCount.set(k, (placeCount.get(k) ?? 0) + 1);
+    }
+  }
+
   const suffixOf = (j: Job) => {
     const dup = (titleCount.get(`${j.title}·${j.companyName}`) ?? 0) > 1;
-    const where = dup ? (j.city ?? countryName(j.country) ?? j.locationRaw) : null;
+    let where: string | undefined;
+    if (dup) {
+      const candidates = placeCandidates(j);
+      where =
+        candidates.find(
+          (c) => (placeCount.get(`${j.title}·${j.companyName}·${c}`) ?? 0) === 1,
+        ) ??
+        // Nothing separates them — two requisitions genuinely alike in every
+        // field we render. Use the most specific string anyway; the pages stay
+        // distinct by URL and one of them is usually a `duplicateOf` canonical.
+        candidates[candidates.length - 1];
+    }
     return [j.companyName, where]
       .filter(Boolean)
       .map((s) => ` · ${s}`)

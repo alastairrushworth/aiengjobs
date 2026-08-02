@@ -57,7 +57,6 @@ CREATE TABLE IF NOT EXISTS jobs (
   posted_at                 TEXT,
   updated_at                TEXT,
   ingested_at               TEXT NOT NULL DEFAULT (datetime('now')),
-  expires_at                TEXT,
   content_hash              TEXT,                       -- change detection (skip reprocessing)
   dedup_key                 TEXT,                       -- company + normalized_title + location
   last_seen_at              TEXT                        -- last poll that still listed this job

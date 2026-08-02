@@ -11,15 +11,24 @@ import { CLUSTER_PAGES } from "../lib/clusters.ts";
 <Base title="Page not found" noindex canonicalOverride={url("/")}>
   <section class="hero">
     <h1>That page doesn't exist</h1>
+    {/* Two things 404 here, and the copy used to name only the first. Listing
+        pages come and go as well: a city page exists while the city clears
+        MIN_CITY_JOBS, so one closed requisition can retire /ai-jobs-seoul/
+        after Google has indexed it. Telling that visitor "the role has closed"
+        is simply wrong. */}
     <p>
       If you followed a link to a job, the role has probably closed and been
       removed from the board — listings are re-verified nightly.
+    </p>
+    <p>
+      If you were after a city or topic page, it may no longer have enough open
+      roles to list. Everything currently on the board is below.
     </p>
   </section>
 
   <BrowseNav
     center
-    ariaLabel="Browse"
+    ariaLabel="Where to go next"
     links={[
       { href: url("/"), text: "Browse all jobs" },
       ...CLUSTER_PAGES.map((p) => ({ href: url(`/${p.slug}/`), text: p.label })),
