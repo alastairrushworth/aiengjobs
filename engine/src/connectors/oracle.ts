@@ -1,6 +1,7 @@
 import type { Connector, RawPosting } from "./types.ts";
-import { USER_AGENT, stripHtml } from "../util/html.ts";
+import { stripHtml } from "../util/html.ts";
 import { mapPool } from "../util/concurrency.ts";
+import { fetchRetry } from "../util/fetch.ts";
 import { AI_QUERIES, TECH_TITLE } from "../util/enterprise.ts";
 
 // Oracle Recruiting Cloud (Fusion / "Oracle Cloud HCM") public candidate-
@@ -39,9 +40,10 @@ function parseSlug(slug: string): { host: string; site: string; base: string } {
 }
 
 async function ofetch(url: string): Promise<Response> {
-  return fetch(url, {
-    headers: { "User-Agent": USER_AGENT, Accept: "application/json" },
-  });
+  // Via fetchRetry, not bare fetch: these enterprise tenants are the slowest
+  // feeds on the board and the likeliest to tarpit a bot, and a hung socket
+  // here would stall the whole nightly run against its 300-minute timeout.
+  return fetchRetry(url, { headers: { Accept: "application/json" } });
 }
 
 export const oracle: Connector = {
@@ -81,8 +83,11 @@ export const oracle: Connector = {
       );
     }
     const targets = kept.slice(0, MAX_DETAIL);
+    // Capped means we did NOT see the whole board; say so, or closeStaleJobs
+    // closes everything past the cap (see PostingsResult in ./types.ts).
+    const partial = kept.length > MAX_DETAIL;
 
-    return mapPool(targets, DETAIL_CONCURRENCY, async (r): Promise<RawPosting> => {
+    const postings = await mapPool(targets, DETAIL_CONCURRENCY, async (r): Promise<RawPosting> => {
       // Detail carries the HTML description; degrade to the list row on failure.
       let info: OracleDetail | undefined;
       try {
@@ -119,5 +124,6 @@ export const oracle: Connector = {
             : undefined,
       };
     });
+    return { postings, partial };
   },
 };

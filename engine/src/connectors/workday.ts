@@ -92,8 +92,11 @@ export const workday: Connector = {
       );
     }
     const targets = kept.slice(0, MAX_DETAIL);
+    // Capped means we did NOT see the whole board; say so, or closeStaleJobs
+    // closes everything past the cap (see PostingsResult in ./types.ts).
+    const partial = kept.length > MAX_DETAIL;
 
-    return mapPool(targets, DETAIL_CONCURRENCY, async (j): Promise<RawPosting> => {
+    const postings = await mapPool(targets, DETAIL_CONCURRENCY, async (j): Promise<RawPosting> => {
       // Detail carries the description, ISO start date and canonical URL; degrade
       // to the list row (title-only) if a single detail fetch fails.
       let info: WdInfo | undefined;
@@ -122,5 +125,6 @@ export const workday: Connector = {
         postedAt: posted,
       };
     });
+    return { postings, partial };
   },
 };

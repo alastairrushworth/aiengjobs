@@ -224,3 +224,38 @@ export function closeStaleJobs(
   }
   return bySource;
 }
+
+/** How long a closed role stays in the database.
+ *
+ *  Three times the snapshot's CLOSED_RETENTION_DAYS, so a tombstone always
+ *  outlives its page by a wide margin and this can never be what removes one. */
+const PRUNE_AFTER_DAYS = 90;
+
+/** Delete long-closed roles and reclaim their pages.
+ *
+ *  Nothing used to remove rows: the table grew ~890/day, each carrying the full
+ *  description twice (HTML + text). The database had reached 61k rows / 122 MiB
+ *  gzipped, and every run downloads, gunzips, re-gzips and re-uploads that as a
+ *  release asset — plus a second copy in actions/cache against a 10 GB budget.
+ *  Left alone that is ~325k rows and roughly half a gigabyte within a year, all
+ *  of it roles that closed months ago and are in no snapshot.
+ *
+ *  VACUUM is what actually returns the space; without it SQLite keeps the freed
+ *  pages for reuse and the file never shrinks. */
+export function pruneClosedJobs(
+  db: DatabaseSync,
+  afterDays = PRUNE_AFTER_DAYS,
+): number {
+  const cutoff = new Date(Date.now() - afterDays * 86_400_000).toISOString();
+  const rows = db
+    .prepare(
+      `DELETE FROM jobs
+       WHERE is_closed = 1
+         AND last_seen_at IS NOT NULL
+         AND last_seen_at < ?
+       RETURNING id`,
+    )
+    .all(cutoff) as { id: string }[];
+  if (rows.length > 0) db.exec("VACUUM");
+  return rows.length;
+}

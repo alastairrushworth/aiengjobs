@@ -6,8 +6,10 @@ import {
   setJobSkills,
   markSeen,
   closeStaleJobs,
+  pruneClosedJobs,
 } from "./db/repo.ts";
 import { getConnector } from "./connectors/index.ts";
+import type { RawPosting } from "./connectors/types.ts";
 import { normalize } from "./pipeline/normalize.ts";
 import { classifyHeuristic, type ClassifyResult } from "./pipeline/classify.ts";
 import { tagHeuristic } from "./pipeline/tag.ts";
@@ -32,6 +34,22 @@ const SLEEP_MS = Number(process.env.INGEST_DELAY_MS) || 400; // polite to feeds 
 // posting-level pool can buy here.
 const CONCURRENCY = Number(process.env.INGEST_CONCURRENCY) || 2;
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/** Wall-clock ceiling on the polling loop, in milliseconds.
+ *
+ * The workflow kills the job at 300 minutes, and a killed run is not a slow
+ * night — it is a lost one: the database is only persisted when the ingest step
+ * exits 0. A run that overran therefore left the *next* run two nights of
+ * changed adverts to process, which made it slower still. That is a feedback
+ * loop into permanent failure, and the margin was thin (4h40m of the 5h budget
+ * on 2026-08-01, with the seed list growing 744 → 853 sources in a day).
+ *
+ * So stop starting new sources at 200 minutes, log what was skipped, and exit
+ * 0. The sources already polled are committed, `closeStaleJobs` still runs
+ * against them alone, and the skipped ones keep yesterday's roles — the same
+ * degradation an unreachable feed already gets. Coverage suffers for one night;
+ * the state survives. */
+const BUDGET_MS = Number(process.env.INGEST_BUDGET_MS) || 200 * 60_000;
 
 // Apply links come from third-party feeds and end up as hrefs on the site —
 // only plain web URLs are acceptable (a javascript: link would be an XSS).
@@ -169,15 +187,31 @@ export async function ingest(): Promise<void> {
   const tallies = new Map<string, { name: string; tally: Tally }>();
   let failed = 0;
 
+  let skippedForBudget = 0;
   for (const t of targets) {
+    // Budget check before the fetch, never mid-source: a half-polled source
+    // would look complete to closeStaleJobs.
+    if (Date.now() - runStartedMs > BUDGET_MS) {
+      skippedForBudget++;
+      continue;
+    }
+
     const connector = getConnector(t.atsProvider);
-    if (!connector) continue;
+    if (!connector) {
+      // seed.ts warns for the same condition; without this a typo'd provider in
+      // companies.csv is dropped from every run with no trace at all.
+      console.warn(`  ! ${t.name}: unknown ATS provider "${t.atsProvider}", skipping`);
+      continue;
+    }
 
     const tally = newTally();
     const fetchStart = Date.now();
-    let postings;
+    let postings: RawPosting[];
+    let partial = false;
     try {
-      postings = await connector.fetchPostings(t.atsToken);
+      const result = await connector.fetchPostings(t.atsToken);
+      postings = Array.isArray(result) ? result : result.postings;
+      partial = Array.isArray(result) ? false : result.partial === true;
     } catch (e) {
       failed++;
       console.warn(`  ! ${t.name} (${t.atsProvider}:${t.atsToken}): ${(e as Error).message}`);
@@ -185,12 +219,21 @@ export async function ingest(): Promise<void> {
       continue;
     }
     tally.fetchMs = Date.now() - fetchStart;
-    // Only a feed that returned something counts as polled. A 200 with an empty
-    // array is indistinguishable from a renamed board, an expired token, or a
-    // response shape that changed under us — and marking it polled would let
-    // closeStaleJobs close every open role at this company on that evidence.
-    // A genuinely empty board just keeps yesterday's roles until they age out.
-    if (postings.length > 0) {
+    // Only a feed that returned the WHOLE board counts as polled.
+    //
+    // A 200 with an empty array is indistinguishable from a renamed board, an
+    // expired token, or a response shape that changed under us — and marking it
+    // polled would let closeStaleJobs close every open role at this company on
+    // that evidence. A genuinely empty board just keeps yesterday's roles until
+    // they age out.
+    //
+    // A capped return (the enterprise connectors' MAX_DETAIL) is the same
+    // problem wearing a different hat: the roles past the cap are live, they're
+    // just unseen, and closing them made those boards flap open and closed from
+    // one night to the next.
+    if (partial) {
+      console.warn(`  ! ${t.name} (${t.atsProvider}:${t.atsToken}): capped result, not closing its roles`);
+    } else if (postings.length > 0) {
       polledSourceIds.push(t.sourceId);
     } else {
       console.warn(`  ! ${t.name} (${t.atsProvider}:${t.atsToken}): returned 0 postings, not closing its roles`);
@@ -226,8 +269,8 @@ export async function ingest(): Promise<void> {
 
         const norm = normalize(raw, t.slug);
         const text = norm.descriptionText ?? "";
-        const loc = parseLocation(raw.locationRaw, raw.remoteType, raw.remoteHint);
-        const heuristicClass = classifyHeuristic(raw.title);
+        const loc = parseLocation(norm.locationRaw, raw.remoteType, raw.remoteHint);
+        const heuristicClass = classifyHeuristic(norm.title);
 
         // Local encoder decides scope. Skip it for titles the heuristic already
         // rules OUT — those are discarded regardless, and skipping is a third of
@@ -240,6 +283,10 @@ export async function ingest(): Promise<void> {
           tally.filtered++;
           cls = heuristicClass;
         } else {
+          // raw, not norm, deliberately: these are the model's inputs, and
+          // trainInferenceParity.test.ts pins them to what the corpus was built
+          // from. Decoding here would silently move the decision boundary for
+          // any advert carrying an entity.
           const p = await encoderScore(id, raw.title, t.name, raw.locationRaw ?? "", text);
           tally.inferred++;
           if (heuristicClass?.classification === "in") {
@@ -274,17 +321,22 @@ export async function ingest(): Promise<void> {
           companyId: t.companyId,
           sourceId: t.sourceId,
           externalId: raw.externalId,
-          slug: jobSlug(t.slug, raw.title, raw.externalId),
-          title: raw.title,
+          // norm.*, not raw.*. normalize() decodes HTML entities so that
+          // "R&amp;D Engineer" is stored once as "R&D Engineer" — its docstring
+          // promises exactly that — but the decoded title and location were
+          // computed and then thrown away here, and only the values derived
+          // from them (normalizedTitle, dedupKey) were kept.
+          slug: jobSlug(t.slug, norm.title, raw.externalId),
+          title: norm.title,
           normalizedTitle: norm.normalizedTitle,
           descriptionHtml: raw.descriptionHtml,
           descriptionText: norm.descriptionText,
           applyUrl: raw.applyUrl,
-          locationRaw: raw.locationRaw,
+          locationRaw: norm.locationRaw,
           country: loc.country ?? undefined,
           city: loc.city ?? undefined,
           remoteType: loc.remoteType ?? undefined,
-          seniority: inferSeniority(raw.title) ?? undefined,
+          seniority: inferSeniority(norm.title) ?? undefined,
           // An unlabelled number isn't a salary: the site would render it as
           // USD, and feeds that omit the currency are usually the non-USD ones
           // (a Graphcore posting shipped a bare 260400-352200, which is PLN —
@@ -320,6 +372,10 @@ export async function ingest(): Promise<void> {
   }
 
   const closedBySource = closeStaleJobs(db, runStart, polledSourceIds);
+  // Roles closed long enough ago that no snapshot still carries them. Nothing
+  // else deletes rows, and each one holds the full advert twice — see
+  // pruneClosedJobs for what that was costing the release asset.
+  const pruned = pruneClosedJobs(db);
   db.close();
 
   const all = [...tallies.values()];
@@ -335,8 +391,19 @@ export async function ingest(): Promise<void> {
       ` inferred=${sum((t) => t.inferred)} processed=${sum((t) => t.written)}` +
       ` in-scope=${sum((t) => t.listed)} closed=${closed} feeds_polled=${all.length}` +
       ` feeds_failed=${failed} postings_errored=${sum((t) => t.errored)}` +
+      (skippedForBudget > 0 ? ` feeds_skipped_for_budget=${skippedForBudget}` : "") +
+      (pruned > 0 ? ` pruned=${pruned}` : "") +
       ` elapsed=${dur(Date.now() - runStartedMs)}`,
   );
+
+  // Loud, because partial coverage that goes unnoticed looks exactly like a
+  // quiet hiring week. Still exit 0 — see BUDGET_MS.
+  if (skippedForBudget > 0) {
+    console.warn(
+      `\n::warning::ingest budget (${dur(BUDGET_MS)}) exhausted — ${skippedForBudget} source(s) not polled this run.` +
+        ` Their roles are untouched, not closed. Raise INGEST_BUDGET_MS or trim companies.csv if this persists.`,
+    );
+  }
 
   // Inference dominates the run — it is the only per-posting step that costs
   // seconds — so name the sources that spent the time. Without this the only

@@ -1,6 +1,7 @@
 import type { Connector, RawPosting } from "./types.ts";
 import type { RemoteType } from "@aiengjobs/shared";
-import { USER_AGENT, stripHtml } from "../util/html.ts";
+import { stripHtml } from "../util/html.ts";
+import { fetchRetry } from "../util/fetch.ts";
 import { AI_QUERIES, TECH_TITLE } from "../util/enterprise.ts";
 
 // Eightfold AI talent-platform public careers API. A tenant is reached at a
@@ -68,9 +69,9 @@ export const eightfold: Connector = {
         const url =
           `${base}?domain=${encodeURIComponent(domain)}` +
           `&query=${encodeURIComponent(q)}&start=${start}&num=${PAGE}&sort_by=relevance`;
-        const res = await fetch(url, {
-          headers: { "User-Agent": USER_AGENT, Accept: "application/json" },
-        });
+        // fetchRetry, not bare fetch: no timeout here meant a hung tenant could
+        // stall the nightly run to its 300-minute cap.
+        const res = await fetchRetry(url, { headers: { Accept: "application/json" } });
         if (!res.ok) throw new Error(`eightfold ${host} HTTP ${res.status}`);
         const data = (await res.json()) as { positions?: EfPosition[] };
         const batch = data.positions ?? [];

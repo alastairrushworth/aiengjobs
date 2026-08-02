@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { fetchRetry } from "./util/fetch.ts";
 import type { SiteSnapshot } from "@aiengjobs/shared";
 import {
   INDEXNOW_ENDPOINT,
@@ -75,7 +76,10 @@ export async function submitIndexNow(urls: string[]): Promise<boolean> {
 
   for (let i = 0; i < urls.length; i += MAX_URLS_PER_REQUEST) {
     const batch = urls.slice(i, i + MAX_URLS_PER_REQUEST);
-    const res = await fetch(INDEXNOW_ENDPOINT, {
+    // fetchRetry for the timeout: this runs after the snapshot is published, and
+    // a hung POST here used to be one of the ways a run could sit until the job
+    // timeout killed it.
+    const res = await fetchRetry(INDEXNOW_ENDPOINT, {
       method: "POST",
       headers: { "Content-Type": "application/json; charset=utf-8" },
       body: JSON.stringify({ host, key: INDEXNOW_KEY, keyLocation, urlList: batch }),

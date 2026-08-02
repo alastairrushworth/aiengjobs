@@ -108,20 +108,28 @@ jobs:
       # changed adverts and stored classifications are left alone. Re-scoring the
       # whole board is `npm run reclassify -w @aiengjobs/engine`, run by hand
       # against a database copy — not something a click on this workflow can do.
+      # Phase 1: ingest only. Publishes nothing, so the two steps below can
+      # persist the database before anything leaves the runner.
       - name: Refresh
+        id: refresh
         run: scripts/refresh.sh
-        env:
-          GIT_AUTHOR_NAME: github-actions[bot]
-          GIT_AUTHOR_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
-          GIT_COMMITTER_NAME: github-actions[bot]
-          GIT_COMMITTER_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
 
-      # Only on success. `if: always()` here once published a half-ingested,
-      # wrongly-classified database over the last good one when a run was
-      # cancelled — losing a night of ingest is far cheaper than poisoning the
-      # state every later run restores from.
+      # Gated on the ingest step specifically, not on `success()`.
+      #
+      # `if: always()` here once published a half-ingested, wrongly-classified
+      # database over the last good one when a run was cancelled — losing a
+      # night of ingest is far cheaper than poisoning the state every later run
+      # restores from. That reasoning still holds; `steps.refresh.outcome` is
+      # simply a sharper way to say it.
+      #
+      # The ordering matters just as much. Publishing used to happen inside the
+      # refresh script, before these steps ran, so any late failure — a
+      # non-fast-forward push, a hung IndexNow ping, the 300-minute timeout —
+      # discarded the night's database while the public board had already moved.
+      # Run 30653925404 lost 3h47m of ingest that way. Persist first, publish
+      # after.
       - name: Publish database
-        if: success()
+        if: steps.refresh.outcome == 'success'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -136,11 +144,22 @@ jobs:
       # Same reasoning, and more urgent: the cache is restored BEFORE the
       # release, so a bad entry here wins over a good release asset.
       - name: Save database cache
-        if: success()
+        if: steps.refresh.outcome == 'success'
         uses: actions/cache/save@v4
         with:
           path: data/aiengjobs.db
           key: aiengjobs-db-${{ github.run_id }}
+
+      # Phase 2: publish. The database is safe by now, so a failure here costs
+      # one night's publication and nothing else.
+      - name: Publish snapshot
+        if: steps.refresh.outcome == 'success'
+        run: scripts/publish.sh
+        env:
+          GIT_AUTHOR_NAME: github-actions[bot]
+          GIT_AUTHOR_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
+          GIT_COMMITTER_NAME: github-actions[bot]
+          GIT_COMMITTER_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
 
   # Rebuild and publish the site. Invoked directly rather than left to the push
   # event: commits made with GITHUB_TOKEN deliberately do not trigger workflows.

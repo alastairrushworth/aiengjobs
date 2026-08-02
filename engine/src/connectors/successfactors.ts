@@ -1,5 +1,5 @@
 import type { Connector, RawPosting } from "./types.ts";
-import { USER_AGENT } from "../util/html.ts";
+import { fetchRetry } from "../util/fetch.ts";
 import {
   AI_QUERIES,
   TECH_TITLE,
@@ -48,12 +48,18 @@ export const successfactors: Connector = {
     const byKey = new Map<string, RawPosting>();
     let anyOk = false;
     for (const q of AI_QUERIES) {
+      // Per query, not cumulative. `byKey` accumulates across all of AI_QUERIES,
+      // so testing it directly meant that once the first query found anything,
+      // every later query tried only searchUrls()[0] and never fell back to the
+      // legacy careersection shape — even when the modern one returned nothing
+      // for that keyword.
+      const foundBefore = byKey.size;
       for (const url of searchUrls(host, company, q)) {
         let html: string;
         try {
-          const res = await fetch(url, {
-            headers: { "User-Agent": USER_AGENT, Accept: "text/html" },
-          });
+          // fetchRetry, not bare fetch: no timeout here meant a hung tenant
+          // could stall the nightly run to its 300-minute cap.
+          const res = await fetchRetry(url, { headers: { Accept: "text/html" } });
           if (!res.ok) continue; // try the next URL shape
           anyOk = true;
           html = await res.text();
@@ -74,7 +80,8 @@ export const successfactors: Connector = {
             postedAt: job.datePosted,
           });
         }
-        if (byKey.size) break; // got results from this URL shape; skip the fallback
+        // This URL shape answered *this* query; skip the fallback shape for it.
+        if (byKey.size > foundBefore) break;
       }
       await sleep(150);
     }
