@@ -91,7 +91,17 @@ const pageNumbers = paged ? pageWindow(page.currentPage, page.lastPage) : [];
 // Filter options and the payload are scoped to this landing, so "Senior (240)"
 // counts senior roles in *this* list — a filter bar carrying whole-board counts
 // would be a worse answer than no filter bar.
-const filterOptions = page.currentPage === 1 ? buildFilterOptions(landing.jobs) : null;
+// On every slice, not just the first.
+//
+// The stats block is page-1-only by design (it describes the whole landing, and
+// repeating it down 16 pages is noise). The filter bar was tied to the same
+// condition, but it isn't the same kind of thing: it's built from the WHOLE
+// landing's jobs and fetches the whole landing's jobs-data.json, so it works
+// identically on any slice — and arriving on page 8 from Google or the pager
+// used to leave you with 798 roles and no way to narrow them without first
+// going back to page 1. JobFilters already knows to stand the pager down once a
+// filter is up (hasPager).
+const filterOptions = buildFilterOptions(landing.jobs);
 
 // Don't offer to narrow what the page has already narrowed. /ai-jobs-london
 // spent a row of the panel on a Country select whose honest answer was "United
@@ -117,8 +127,9 @@ const description = `${landing.intro} ${page.total} open role${page.total === 1 
     <h1>{landing.h1}</h1>
     <p>{landing.intro}</p>
     {/* Page 1's range is stated by the filter bar's results line, which also
-        keeps saying something true once you narrow it. Later pages have no
-        filter bar, so the range stays here. */}
+        keeps saying something true once you narrow it. The range stays here on
+        later pages: it describes the pager's slice, and JobFilters hides the
+        pager the moment a filter is applied. */}
     <p class="count">
       {page.total} open role{page.total === 1 ? "" : "s"}
       {paged && page.currentPage > 1 && ` · showing ${page.start + 1}–${page.end + 1}`}
@@ -209,7 +220,10 @@ const description = `${landing.intro} ${page.total} open role${page.total === 1 
     align-items: baseline;
     margin: 8px 0;
   }
-  .crumbs .feed { color: var(--muted); font-size: 0.85rem; }
+  /* padding-block takes the tap target from 20px to the 24px floor WCAG 2.2
+     SC 2.5.8 asks for; the row uses align-items: baseline so it doesn't shift
+     the text. */
+  .crumbs .feed { color: var(--muted); font-size: 0.85rem; padding-block: 3px; }
   .crumbs .feed:hover { text-decoration: underline; }
   .empty { text-align: center; color: var(--muted); padding: 32px 0; }
   .pager {
