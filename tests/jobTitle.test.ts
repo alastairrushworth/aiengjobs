@@ -95,3 +95,43 @@ describe("buildJobTitles", () => {
     expect(buildJobTitles(jobs).size).toBe(3);
   });
 });
+
+describe("collisions the city cannot separate", () => {
+  it("falls through to the country when two postings share a placeholder city", () => {
+    // Both Coalition postings carry city "Any location" — one US, one Canada —
+    // so short-circuiting on the city rendered an identical <title> and meta
+    // description for two indexable pages.
+    const jobs = [
+      job({
+        slug: "coalition-senior-software-engineer-594ea7",
+        title: "Senior Software Engineer",
+        companyName: "Coalition",
+        city: "Any location",
+        country: "US",
+        locationRaw: "Any location, United States",
+      }),
+      job({
+        slug: "coalition-senior-software-engineer-15c976",
+        title: "Senior Software Engineer",
+        companyName: "Coalition",
+        city: "Any location",
+        country: "CA",
+        locationRaw: "Any location, Canada",
+      }),
+    ];
+    const titles = buildJobTitles(jobs);
+    const a = titles.get("coalition-senior-software-engineer-594ea7")!;
+    const b = titles.get("coalition-senior-software-engineer-15c976")!;
+    expect(a).not.toBe(b);
+  });
+
+  it("still prefers the bare city when that is enough to tell them apart", () => {
+    const jobs = [
+      job({ slug: "a", title: "AI Engineer", companyName: "Acme", city: "London", country: "GB" }),
+      job({ slug: "b", title: "AI Engineer", companyName: "Acme", city: "Berlin", country: "DE" }),
+    ];
+    const titles = buildJobTitles(jobs);
+    expect(titles.get("a")).toContain("London");
+    expect(titles.get("a")).not.toContain("United Kingdom");
+  });
+});
