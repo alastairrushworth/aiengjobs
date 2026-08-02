@@ -272,3 +272,39 @@ describe("listSkills", () => {
     expect(v.remoteTypes).toEqual(["remote", "hybrid", "onsite"]);
   });
 });
+
+describe("getCompany substring fallback", () => {
+  it("does not attribute several employers' roles to one company", () => {
+    // get_company("ai") used to match 16 employers via the contains fallback —
+    // Scale AI, OpenAI, Mistral AI, LlamaIndex, Faire — and report all their
+    // roles as the first one's. An agent relays that verbatim.
+    const b = board([
+      job({ company: "Scale AI", companySlug: "scaleai" }),
+      job({ company: "Scale AI", companySlug: "scaleai" }),
+      job({ company: "OpenAI", companySlug: "openai" }),
+      job({ company: "Mistral AI", companySlug: "mistral" }),
+    ]);
+    const result = getCompany(b, "ai");
+    expect(result).not.toBeNull();
+    expect(new Set(result!.jobs.map((j) => j.companySlug)).size).toBe(1);
+    expect(result!.companySlug).toBe("scaleai");
+    expect(result!.openRoles).toBe(2);
+  });
+
+  it("still resolves a genuine partial name to its one company", () => {
+    const b = board([
+      job({ company: "Shield AI", companySlug: "shieldai" }),
+      job({ company: "Anthropic", companySlug: "anthropic" }),
+    ]);
+    expect(getCompany(b, "shield")?.companySlug).toBe("shieldai");
+  });
+
+  it("prefers an exact match over the fallback", () => {
+    const b = board([
+      job({ company: "OpenAI", companySlug: "openai" }),
+      job({ company: "OpenAI Ventures", companySlug: "openai-ventures" }),
+      job({ company: "OpenAI Ventures", companySlug: "openai-ventures" }),
+    ]);
+    expect(getCompany(b, "OpenAI")?.companySlug).toBe("openai");
+  });
+});

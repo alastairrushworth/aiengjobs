@@ -1,6 +1,6 @@
 import type { Connector, RawPosting } from "./types.ts";
-import { USER_AGENT } from "../util/html.ts";
 import { mapPool } from "../util/concurrency.ts";
+import { fetchRetry } from "../util/fetch.ts";
 import {
   AI_QUERIES,
   TECH_TITLE,
@@ -24,9 +24,9 @@ function hostOf(slug: string): string {
 }
 
 async function ifetch(url: string): Promise<Response> {
-  return fetch(url, {
-    headers: { "User-Agent": USER_AGENT, Accept: "text/html" },
-  });
+  // See the note in oracle.ts: bare fetch here has no timeout, and a hung
+  // enterprise tenant would stall the nightly run.
+  return fetchRetry(url, { headers: { Accept: "text/html" } });
 }
 
 export const icims: Connector = {
@@ -92,6 +92,11 @@ export const icims: Connector = {
       },
     );
 
-    return mapped.filter((p): p is RawPosting => p !== null);
+    // Capped means we did NOT see the whole board; say so, or closeStaleJobs
+    // closes everything past the cap (see PostingsResult in ./types.ts).
+    return {
+      postings: mapped.filter((p): p is RawPosting => p !== null),
+      partial: paths.size > MAX_DETAIL,
+    };
   },
 };

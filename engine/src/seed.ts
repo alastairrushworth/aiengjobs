@@ -11,6 +11,36 @@ const here = dirname(fileURLToPath(import.meta.url));
 const CSV = process.env.SEED_CSV ?? join(here, "..", "seed", "companies.csv");
 
 /** Load the curated company list (§6.3) into companies + sources. */
+/** One CSV row, honouring double-quoted fields.
+ *
+ *  `line.split(",")` was fine for today's file (no quoted fields in 968 lines),
+ *  but a company legitimately named `"Scale AI, Inc"` would split into six
+ *  columns, fail the name/provider/slug check, and be silently counted as
+ *  skipped — a seed row that vanishes without saying why. */
+export function splitCsvRow(line: string): string[] {
+  const out: string[] = [];
+  let field = "";
+  let quoted = false;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (quoted) {
+      if (c === '"') {
+        if (line[i + 1] === '"') {
+          field += '"'; // escaped quote inside a quoted field
+          i++;
+        } else quoted = false;
+      } else field += c;
+    } else if (c === '"') {
+      quoted = true;
+    } else if (c === ",") {
+      out.push(field.trim());
+      field = "";
+    } else field += c;
+  }
+  out.push(field.trim());
+  return out;
+}
+
 export function seed(): void {
   const text = readFileSync(CSV, "utf8");
   const lines = text
@@ -22,9 +52,7 @@ export function seed(): void {
   let companies = 0;
   let skipped = 0;
   for (const line of lines) {
-    const [name, provider, atsSlug, domain, stage] = line
-      .split(",")
-      .map((s) => s?.trim());
+    const [name, provider, atsSlug, domain, stage] = splitCsvRow(line);
     if (!name || !provider || !atsSlug) {
       skipped++;
       continue;

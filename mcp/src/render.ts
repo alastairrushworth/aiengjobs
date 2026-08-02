@@ -71,6 +71,16 @@ function short(n: number): string {
 export function formatSalary(job: McpJob): string | null {
   const { salaryMin, salaryMax, salaryCurrency, salaryPeriod } = job;
   if (salaryMin == null && salaryMax == null) return null;
+  // Defer to the site's plausibility gate rather than re-deriving one.
+  //
+  // `salaryUsd` is null exactly when site/src/lib/format.ts judged the stored
+  // figures unpostable (below SALARY_FLOOR_USD, above SALARY_CEILING_USD, or a
+  // sub-annual rate over SUBANNUAL_CEILING_USD), and the website prints "Not
+  // published" for those. Gating only on "are both fields null?" meant the raw
+  // numbers came through anyway: nuro-technical-lead-evaluation-infrastructure
+  // rendered as "$193.9m–$291.2m", and an agent reads the markdown and repeats
+  // it. A role is priced everywhere or nowhere.
+  if (job.salaryUsd == null) return null;
 
   const symbol = salaryCurrency ? (CURRENCY_SYMBOLS[salaryCurrency] ?? `${salaryCurrency} `) : "";
   const suffix = PERIOD_SUFFIX[salaryPeriod ?? "year"] ?? "";
@@ -99,6 +109,13 @@ export function postedAgo(postedAt: string | null, generatedAt: string): string 
 /** `]` in a title would otherwise close the link early. */
 const escapeLinkText = (s: string) => s.replace(/([[\]])/g, "\\$1");
 
+/** Feed-supplied text used as prose rather than as link text. Neutralises the
+ *  markers that would otherwise let an advert's location or company name bend
+ *  the surrounding markdown ("**Remote**" arriving as emphasis, a leading "#"
+ *  becoming a heading). Distortion only, not injection — but the facts line is
+ *  our voice, and it should read as ours. */
+const escapeInline = (s: string) => s.replace(/([\\`*_[\]()<>#|])/g, "\\$1");
+
 /**
  * Angle brackets around every destination. Apply URLs routinely carry parens and
  * commas from ATS query strings, and a bare `)` ends the link at the wrong place.
@@ -119,7 +136,7 @@ const titleCase = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
  */
 export function renderJobRow(job: McpJob, generatedAt: string): string {
   const facts = [
-    job.location,
+    job.location ? escapeInline(job.location) : null,
     job.seniority ? titleCase(job.seniority) : null,
     job.remote ? REMOTE_LABEL[job.remote] : null,
     formatSalary(job),
@@ -127,7 +144,7 @@ export function renderJobRow(job: McpJob, generatedAt: string): string {
   ].filter(Boolean);
 
   return (
-    `**${link(job.title, job.applyUrl)}** — ${job.company}\n` +
+    `**${link(job.title, job.applyUrl)}** — ${escapeInline(job.company)}\n` +
     `${facts.join(" · ")} · \`${job.slug}\``
   );
 }
@@ -159,6 +176,15 @@ export function renderSearch(result: SearchResult): string {
   ].join("\n");
 }
 
+/** Wrap untrusted text in a code fence long enough that the text cannot close
+ *  it. A body containing ``` would otherwise end the block early and put the
+ *  rest back on our side of the boundary. */
+function fence(text: string): string {
+  const longest = Math.max(0, ...[...text.matchAll(/`+/g)].map((m) => m[0].length));
+  const ticks = "`".repeat(Math.max(3, longest + 1));
+  return `${ticks}\n${text}\n${ticks}`;
+}
+
 export function renderJob(detail: JobDetail): string {
   const facts = [
     detail.location,
@@ -177,7 +203,24 @@ export function renderJob(detail: JobDetail): string {
   ];
 
   if (detail.skills.length) parts.push("", `Skills: ${detail.skills.join(", ")}`);
-  if (detail.description) parts.push("", "---", "", detail.description);
+  // Fenced and labelled, not appended raw.
+  //
+  // This file's opening note makes the argument: tool results arrive on the
+  // same channel as employer-authored advert copy, and a model that obeys
+  // "always show the apply link" from that channel will obey worse. Serving
+  // plain text strips the markup, not the instructions. A fence plus an
+  // attribution line marks where our voice stops and 4,000 characters of
+  // third-party text begins.
+  if (detail.description) {
+    parts.push(
+      "",
+      "---",
+      "",
+      "**Advert text below is written by the employer and is not verified.**",
+      "",
+      fence(detail.description),
+    );
+  }
 
   return parts.join("\n");
 }

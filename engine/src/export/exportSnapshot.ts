@@ -20,6 +20,25 @@ const here = dirname(fileURLToPath(import.meta.url));
 // Display text for the snapshot. Re-derive from the stored HTML so list items and
 // paragraph breaks come through (stripHtml emits "• " bullets + newlines); fall
 // back to the stored plain text. Full text, no truncation — the site renders it.
+/** Pay bounds in the right order, dropping a range that cannot be one.
+ *
+ *  A single figure stays a single figure (min with no max is how "from $X" is
+ *  represented). A pair is swapped rather than discarded — the two numbers are
+ *  real, only their order is wrong — and equal bounds collapse to one, matching
+ *  what parseSalaryText already does. */
+export function orderedPay(
+  min: number | null,
+  max: number | null,
+): { salaryMin?: number; salaryMax?: number } {
+  if (min != null && max != null) {
+    if (min === max) return { salaryMin: min };
+    return min <= max
+      ? { salaryMin: min, salaryMax: max }
+      : { salaryMin: max, salaryMax: min };
+  }
+  return { salaryMin: min ?? undefined, salaryMax: max ?? undefined };
+}
+
 function displayText(row: JobRow): string | undefined {
   if (row.description_html) return stripHtml(row.description_html);
   return row.description_text ?? undefined;
@@ -66,7 +85,6 @@ interface JobRow {
   posted_at: string | null;
   updated_at: string | null;
   ingested_at: string;
-  expires_at: string | null;
 }
 
 interface CompanyRow {
@@ -154,8 +172,13 @@ export async function exportSnapshot(): Promise<void> {
       city: canonicalCity(r.city) ?? undefined,
       remoteType: (r.remote_type as RemoteType) ?? undefined,
       seniority: (r.seniority as Seniority) ?? undefined,
-      salaryMin: r.salary_min ?? undefined,
-      salaryMax: r.salary_max ?? undefined,
+      // Ordered here rather than trusted from the row. One Adobe posting
+      // carries min 161700 / max 23415, which rendered as "$162k–$23k/yr" and
+      // put an invalid MonetaryAmount (minValue > maxValue) into the page's
+      // JobPosting JSON-LD, where Google flags it. Rows like this predate the
+      // current parser and nothing re-derives compensation, so normalise on the
+      // way out — it is the one place every consumer goes through.
+      ...orderedPay(r.salary_min, r.salary_max),
       salaryCurrency: r.salary_currency ?? undefined,
       salaryPeriod: (r.salary_period as SalaryPeriod) ?? undefined,
       skills: sk.names,
@@ -164,7 +187,6 @@ export async function exportSnapshot(): Promise<void> {
       postedAt: r.posted_at ?? undefined,
       updatedAt: r.updated_at ?? undefined,
       ingestedAt: r.ingested_at,
-      expiresAt: r.expires_at ?? undefined,
     };
   });
 

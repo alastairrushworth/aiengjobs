@@ -269,7 +269,17 @@ const showAllHidden = hasPager || total <= initial;
     q.value = state.q;
     for (const key of SELECT_KEYS) {
       const el = selects[key];
-      if (!el) continue;
+      // No control for this key on this page — a city landing drops the
+      // country/city selects because they'd only offer what the page already
+      // is (LandingPage.astro). `parseState` still reads the param though, so
+      // /ai-jobs-london/?country=US used to filter the list to nothing with no
+      // control to undo it, and the chip fell back to the raw code ("US", not
+      // "United States") because optionLabels is built from the select. Drop
+      // the filter: it's the same "invisible filter" the guard below prevents.
+      if (!el) {
+        state[key] = "";
+        continue;
+      }
       el.value = state[key];
       // A value this page has no option for (a shared link into a landing that
       // doesn't carry that city) would otherwise leave the select showing "Any"

@@ -119,23 +119,33 @@ export async function reclassify(): Promise<void> {
   const counts = { in: 0, out: 0, promoted: 0, demoted: 0, failed: 0 };
 
   await mapPool(candidates, RECLASSIFY_CONCURRENCY, async (j) => {
-    const p = await encoderScore(
-      j.id,
-      j.title,
-      j.company,
-      j.locationRaw ?? "",
-      j.text ?? "",
-    );
-    // A heuristic IN title keeps its prior unless the model is confidently OUT,
-    // mirroring ingest.ts — the two paths must not disagree on the same posting.
-    const heuristicIn = classifyHeuristic(j.title)?.classification === "in";
-    const isIn = heuristicIn ? 1 - p < ENCODER_VETO_CONFIDENCE : p >= ENCODER_THRESHOLD;
-    update.run(isIn ? "in" : "out", isIn ? p : 1 - p, j.id);
-    setJobSkills(db, j.id, isIn ? tagHeuristic(j.text ?? "").skills : []);
-    if (isIn) counts.in++;
-    else counts.out++;
-    if (isIn && j.was === "out") counts.promoted++;
-    if (!isIn && j.was === "in") counts.demoted++;
+    // Isolated per posting. Without this a single encoderScore throw rejected
+    // Promise.all and aborted the pass mid-way, leaving the database PARTIALLY
+    // reclassified — the one outcome the "run it by hand, against a copy"
+    // warning above exists to avoid — and skipping the summary line, so there
+    // was no record of how far it got.
+    try {
+      const p = await encoderScore(
+        j.id,
+        j.title,
+        j.company,
+        j.locationRaw ?? "",
+        j.text ?? "",
+      );
+      // A heuristic IN title keeps its prior unless the model is confidently OUT,
+      // mirroring ingest.ts — the two paths must not disagree on the same posting.
+      const heuristicIn = classifyHeuristic(j.title)?.classification === "in";
+      const isIn = heuristicIn ? 1 - p < ENCODER_VETO_CONFIDENCE : p >= ENCODER_THRESHOLD;
+      update.run(isIn ? "in" : "out", isIn ? p : 1 - p, j.id);
+      setJobSkills(db, j.id, isIn ? tagHeuristic(j.text ?? "").skills : []);
+      if (isIn) counts.in++;
+      else counts.out++;
+      if (isIn && j.was === "out") counts.promoted++;
+      if (!isIn && j.was === "in") counts.demoted++;
+    } catch (e) {
+      counts.failed++;
+      console.warn(`  ! ${j.id} (${j.title}): ${(e as Error).message}`);
+    }
   });
 
   db.close();
