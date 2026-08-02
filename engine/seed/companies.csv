@@ -966,3 +966,132 @@ Unitary,workable,unitary,unitary.ai,early
 # --- recruitee (2026-08 AI additions) ---
 CausaLens,recruitee,causalens,causalens.com,early
 Greyparrot,recruitee,greyparrotai,greyparrot.ai,early
+# ===========================================================================
+# UK / Scotland / Northern Ireland / Ireland pass, verified 2026-08-02.
+# Coverage of these islands was thin outside London, so this sweep is
+# geography-first rather than provider-first: a candidate list per nation was
+# probed across every supported connector, and each miss then had its own
+# careers page read for the board URL (which is how the Workday, iCIMS and
+# custom-subdomain Teamtailor boards turned up). Every row below was finally
+# fetched through the real engine connector, not just the raw ATS API — so what
+# is here is what the nightly ingest can actually poll.
+# Identity was checked against the board's own posting copy, which has to name
+# the company. That caught ~20 same-name collisions: greenhouse:fetch is a pet
+# insurer (not Fetch.ai), greenhouse:cleo a US benefits firm, ashby:level a US
+# edtech and lever:levelai a Mountain View one (neither is Level E Research),
+# lever:bloom a design consultancy, ashby:phoenix a Canadian telehealth,
+# smartrecruiters:budai a restaurant, smartrecruiters:skycomltd a Kenyan
+# reseller, and greenhouse:nucleus / greenhouse:axial / greenhouse:immersive
+# unrelated US companies. smartrecruiters:gousto and smartrecruiters:beamery
+# are both unpurged test boards ("YVasiliy Test job2"), so Beamery is seeded
+# from its real Ashby board instead.
+# Also dropped: boards that resolved but were empty (Brainomix, Definely, and
+# Arm's + Iomart's iCIMS portals, whose JS-rendered search yields no links),
+# and Cera Care — a genuine match, but 440 live postings with no engineering
+# role among them is noise the classifier would only ever throw away.
+# --- England: AI-first ---
+Darktrace,workday,darktrace:wd3:DarktaceExternal,darktrace.com,late
+Luminance,workable,luminance-1,luminance.com,growth
+Riverlane,greenhouse,riverlane,riverlane.com,growth
+Genomics plc,ashby,genomics,genomicsplc.com,growth
+Radiant,ashby,radiant,radiant.co,growth
+Dexory,greenhouse,dexory,dexory.com,growth
+Phasecraft,workable,phasecraft-1,phasecraft.io,early
+Cogna,workable,cogna,cogna.com,early
+Sylvera,ashby,sylvera,sylvera.com,growth
+Cognism,greenhouse,cognism,cognism.com,growth
+Beamery,ashby,beamery,beamery.com,growth
+Immersive Labs,ashby,immersivelabs,immersivelabs.com,growth
+Matillion,lever,matillion,matillion.com,growth
+Unmind,ashby,unmind,unmind.com,growth
+Odin Vision,teamtailor,odinvision-1669714977,odin-vision.com,early
+# --- England: legal AI ---
+Orbital (fmr. Orbital Witness),ashby,orbital,orbital.tech,growth
+Juro,ashby,juro,juro.com,growth
+Lawhive,ashby,lawhive,lawhive.co.uk,growth
+# --- England: health AI ---
+ZOE,ashby,zoe,joinzoe.com,growth
+# --- England: fintech / payments ---
+Checkout.com,ashby,checkout.com,checkout.com,late
+Paddle,ashby,paddle,paddle.com,growth
+Payhawk,greenhouse,payhawkio,payhawk.com,growth
+9fin,ashby,9fin,9fin.com,growth
+Yapily,workable,yapily,yapily.com,growth
+Bud Financial,workable,thisisbud1,thisisbud.com,growth
+Moneybox,lever,moneyboxapp,moneyboxapp.com,growth
+Plum,workable,withplum,withplum.com,growth
+PensionBee,teamtailor,pensionbeelimited-1750950714,pensionbee.com,late
+Ophelos,greenhouse,ophelos,ophelos.com,growth
+# --- England: insurtech AI ---
+Flock,ashby,flock,flockcover.com,growth
+Cytora,ashby,cytora.com,cytora.com,growth
+Sprout.ai,ashby,sprout-ai,sprout.ai,early
+ManyPets,greenhouse,manygroup,manypets.com,late
+# --- England: quant / systematic ---
+Qube Research & Technologies,greenhouse,quberesearchandtechnologies,qube-rt.com,late
+Winton,greenhouse,winton,winton.com,late
+Smarkets,ashby,smarkets,smarkets.com,growth
+# --- England: marketplaces & large employers ---
+Motorway,ashby,motorway,motorway.co.uk,growth
+Fresha,lever,fresha,fresha.com,growth
+Nothing,greenhouse,nothing,nothing.tech,growth
+ASOS,smartrecruiters,asos,asos.com,late
+THG,greenhouse,thehutgroup,thg.com,late
+Entain,smartrecruiters,entain,entaingroup.com,late
+bet365,smartrecruiters,bet3651,bet365.com,late
+# --- Scotland ---
+Modulr,greenhouse,modulrfinance,modulrfinance.com,growth
+FanDuel,greenhouse,fanduel,fanduel.com,late
+Waracle,recruitee,waracle,waracle.com,growth
+# --- Ireland ---
+Tines,greenhouse,tines,tines.com,growth
+Workhuman,workday,workhuman:wd1:WorkhumanCareers,workhuman.com,late
+Fenergo,workable,fenergocareers,fenergo.com,late
+Fonoa,ashby,fonoa,fonoa.com,growth
+Nory,ashby,nory,nory.ai,growth
+Kota,ashby,kota,kota.io,early
+CitySwift,greenhouse,cityswift,cityswift.com,growth
+Manna,workable,manna-1,manna.aero,growth
+Flipdish,greenhouse,flipdish,flipdish.com,growth
+LearnUpon,greenhouse,learnupon,learnupon.com,growth
+LetsGetChecked,greenhouse,letsgetchecked,letsgetchecked.com,growth
+Payslip,greenhouse,payslipltd,payslip.com,growth
+# ===========================================================================
+# BambooHR additions, verified 2026-08-02 (see connectors/bamboohr.ts).
+# BambooHR is where the 20-200-person UK, Scottish and Irish engineering
+# companies live — too small for Greenhouse's pricing, too early for Workday —
+# so none of them were reachable until the connector existed. A sweep of ~300
+# candidates found only these seven live tenants; the rest of that cohort is on
+# Personio, or on a careers page with no feed behind it at all.
+# Tenant names are generic enough that guessing collides constantly, so every
+# row was confirmed against its own posting copy naming the company. Dropped on
+# that test: bamboohr:nucleus (a Vancouver firm, not Nucleus Financial),
+# bamboohr:level (Houston electrical, not Level E Research), bamboohr:immersive
+# (a Salesforce consultancy), bamboohr:liberty (Provo, Utah), bamboohr:bud
+# (Sydney) and bamboohr:royal (Louisiana).
+InstaDeep,bamboohr,instadeep,instadeep.com,late
+Nyobolt,bamboohr,nyobolt,nyobolt.com,growth
+Cyberhawk,bamboohr,thecyberhawk,thecyberhawk.com,growth
+Options Technology,bamboohr,optionsit,options-it.com,late
+Deciphex,bamboohr,deciphex,deciphex.com,growth
+Ocuco,bamboohr,ocuco,ocuco.com,late
+Vaultree,bamboohr,vaultree,vaultree.com,early
+# ===========================================================================
+# Personio additions, verified 2026-08-02 (see connectors/personio.ts).
+# The same small-UK/Irish cohort as the BambooHR block above; ~300 candidates
+# probed, four real tenants found. Personio is thinner here than hoped — most
+# of the Scottish companies it was added for (FreeAgent, Craneware,
+# Administrate, Blackford Analysis, Airts) are on neither it nor BambooHR.
+# Watch out when re-verifying: Personio hands unclaimed trial tenants a STOCK
+# SAMPLE BOARD — three postings named "General Application", "SEO Marketing
+# Manager" and "Social Media (Working Student)". Those tenants answer 200 with
+# well-formed XML on exactly the slug you would guess for a real company, so
+# personio:current, personio:deep, personio:payhawk and personio:beauhurst all
+# look like hits and are none of those companies. A slug matching the company
+# name proves nothing here; read the posting copy. (personio:royal is a Madrid
+# tenant and personio:phoenix is Phoenix Design of Stuttgart — neither is the
+# UK insurer whose name they match.)
+Amiqus,personio,amiqus,amiqus.co,growth
+Keelvar,personio,keelvar,keelvar.com,growth
+Teamwork.com,personio,teamwork,teamwork.com,late
+Output Sports,personio,output-sports,outputsports.com,early
