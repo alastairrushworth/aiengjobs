@@ -261,8 +261,13 @@ a { color: inherit; text-decoration: none; }
   border-right: 1.5px solid currentColor;
   border-bottom: 1.5px solid currentColor;
   transform: rotate(45deg);
-  transition: transform 0.15s ease;
   vertical-align: middle;
+}
+/* The rotation is the only transform transition on the site that wasn't behind
+   this query. Gated rather than removed — the chevron turning is what says the
+   panel opened. */
+@media (prefers-reduced-motion: no-preference) {
+  .filters .more > summary::after { transition: transform 0.15s ease; }
 }
 .filters .more[open] > summary::after { transform: rotate(225deg) translate(-2px, -2px); }
 .filters .more > summary:hover,
@@ -432,7 +437,9 @@ a { color: inherit; text-decoration: none; }
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  transition: border-color 0.15s ease, transform 0.05s ease;
+  /* No transform transition: nothing ever sets a transform on .job-card, so
+     the second half of this was animating a property that never changed. */
+  transition: border-color 0.15s ease;
 }
 /* :focus-within, not :focus-visible — the card is the <li> now and never takes
    focus itself; what takes focus is the link inside it, or one of the skill
