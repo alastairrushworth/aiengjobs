@@ -24,13 +24,29 @@ export function jobId(companySlug: string, externalId: string): string {
   return `j_${shortHash(`${companySlug}|${externalId}`, 16)}`;
 }
 
+const SLUG_MAX = 110;
+
+/** URL slug for a posting. Unique per posting, and stable across re-ingests.
+ *
+ * The trailing hash is the only thing separating two requisitions that share a
+ * company and a title, so it has to survive the length cap. Truncating the
+ * *composed* string cut it off whenever company + title already filled the
+ * budget: the second posting then collided on `jobs.slug UNIQUE`, `upsertJob`
+ * threw, and `ingest` swallowed it into `postings_errored` — three roles a
+ * night, silently, every night. Spend the budget on the title instead, which
+ * can afford to lose its tail. */
 export function jobSlug(
   companySlug: string,
   title: string,
   externalId: string,
 ): string {
-  return `${slugify(companySlug)}-${slugify(title)}-${shortHash(externalId, 6)}`.slice(
-    0,
-    110,
-  );
+  const hash = shortHash(externalId, 6);
+  // Company slugs are short in practice; cap defensively so that even a
+  // pathological one cannot squeeze the hash out.
+  const co = trimDashes(slugify(companySlug).slice(0, SLUG_MAX - hash.length - 2));
+  const room = SLUG_MAX - co.length - hash.length - 2;
+  const t = trimDashes(slugify(title).slice(0, Math.max(room, 0)));
+  return [co, t, hash].filter(Boolean).join("-");
 }
+
+const trimDashes = (s: string) => s.replace(/-+$/, "");

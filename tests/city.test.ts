@@ -117,3 +117,35 @@ describe("multi-country regions", () => {
     expect(canonicalCity("Seattle")).toBe("Seattle");
   });
 });
+
+describe("placeholder locations never become a city", () => {
+  it("rejects the placeholders seen in the live snapshot", () => {
+    // These reached `city` and rendered verbatim in <title> ("· Any location")
+    // and in the job page's Location fact. Two Coalition postings also shared a
+    // title because jobTitle.ts disambiguates on city and both said the same
+    // non-answer.
+    for (const raw of [
+      "Any location",
+      "In-Office",
+      "Office",
+      "US and Canada Offices",
+      "Home Or",
+      "Remote Office",
+      "Main (Hybrid)",
+      "Virtual",
+      "HQ",
+    ]) {
+      expect(canonicalCity(raw), raw).toBeUndefined();
+    }
+  });
+
+  it("is case- and whitespace-insensitive about them", () => {
+    expect(canonicalCity("  any LOCATION  ")).toBeUndefined();
+    expect(canonicalCity("IN-OFFICE")).toBeUndefined();
+  });
+
+  it("still accepts real cities that merely contain a placeholder word", () => {
+    expect(canonicalCity("Officer Falls")).toBe("Officer Falls");
+    expect(canonicalCity("Homestead")).toBe("Homestead");
+  });
+});
