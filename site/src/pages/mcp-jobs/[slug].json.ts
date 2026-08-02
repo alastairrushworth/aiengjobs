@@ -45,8 +45,13 @@ export const GET: APIRoute = ({ props, site }) => {
     }),
     {
       headers: {
+        // Content-Type only. `output: "static"` runs this at build time and
+        // writes the BODY to disk — the Response headers are dropped, so a
+        // Cache-Control set here never reaches a client. GitHub Pages serves
+        // its own (~10 min). Caching for this endpoint belongs to the
+        // Cloudflare Worker in front of mcp.frontierroles.com, which is the one
+        // place that can actually set it.
         "Content-Type": "application/json; charset=utf-8",
-        "Cache-Control": "public, max-age=3600, stale-while-revalidate=86400",
       },
     },
   );

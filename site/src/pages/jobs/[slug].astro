@@ -133,9 +133,12 @@ const DAY_MS = 86_400_000;
 // three sanctioned ways to retire a JobPosting, and it's the only one that keeps
 // working without us being able to reach Google.
 const VALID_THROUGH_DAYS = 10;
-const validThrough =
-  job.expiresAt ??
-  new Date(Date.parse(generatedAt) + VALID_THROUGH_DAYS * DAY_MS).toISOString();
+// No per-role override: nothing in the pipeline ever set jobs.expires_at, so
+// the `job.expiresAt ?? …` this replaced had exactly one live branch while
+// implying the engine supplied a per-role expiry.
+const validThrough = new Date(
+  Date.parse(generatedAt) + VALID_THROUGH_DAYS * DAY_MS,
+).toISOString();
 const PERIOD_UNIT: Record<string, string> = {
   year: "YEAR", month: "MONTH", day: "DAY", hour: "HOUR",
 };
@@ -256,6 +259,44 @@ if (jsonLd) {
 // has open roles) — don't link into a 404.
 const companyPageExists = openJobs.some((j) => j.companySlug === job.companySlug);
 
+// Breadcrumbs replace the raw URL in the SERP, which is worth having on slugs
+// this long. The company page is the honest parent — a role sits in several
+// clusters, so no single cluster page is "the" one above it — and it is only
+// claimed when that page exists (see companyPageExists). Suppressed on the
+// same pages as the JobPosting: a tombstone or a duplicate shouldn't be
+// advertising a hierarchy it isn't part of.
+const breadcrumbJsonLd =
+  closed || dupCanonicalSlug
+    ? null
+    : {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        itemListElement: [
+          {
+            "@type": "ListItem",
+            position: 1,
+            name: "AI engineering jobs",
+            item: new URL(url("/"), Astro.site).href,
+          },
+          ...(companyPageExists
+            ? [
+                {
+                  "@type": "ListItem",
+                  position: 2,
+                  name: job.companyName,
+                  item: new URL(url(`/companies/${job.companySlug}/`), Astro.site).href,
+                },
+              ]
+            : []),
+          {
+            "@type": "ListItem",
+            position: companyPageExists ? 3 : 2,
+            name: job.title,
+            item: pageUrl,
+          },
+        ],
+      };
+
 const descBits = [
   `${job.title} at ${job.companyName}`,
   [location, remoteLabel(job.remoteType)].filter(Boolean).join(", "),
@@ -367,6 +408,9 @@ const metaDescription = `${descBits.join(" — ")}.`.slice(0, 300);
 
   {jsonLd && (
     <script type="application/ld+json" set:html={jsonLdScript(jsonLd)} is:inline />
+  )}
+  {breadcrumbJsonLd && (
+    <script type="application/ld+json" set:html={jsonLdScript(breadcrumbJsonLd)} is:inline />
   )}
 </Base>
 

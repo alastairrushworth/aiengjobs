@@ -343,7 +343,12 @@ const maxCountry = topCountries[0]?.n ?? 1;
     place-items: center;
     font-size: 0.72rem;
     font-weight: 700;
-    color: var(--accent);
+    /* --accent-text, not --accent. global.css:14-16 states the rule: "#7c5cff
+       fails 4.5:1 on the panel surfaces, so accent-colored TEXT uses this
+       lighter tone; borders/fills keep --accent." These digits are the one
+       place accent was used for text — 3.83:1 at 11.5px bold, against the
+       4.5:1 this size needs. The lighter tone is 6.41:1. */
+    color: var(--accent-text);
     background: var(--surface-2);
     border: 1px solid var(--border);
     border-radius: 6px;
@@ -355,7 +360,12 @@ const maxCountry = topCountries[0]?.n ?? 1;
     white-space: nowrap;
     color: var(--text);
   }
-  a.bl { border-bottom: 1px solid transparent; }
+  /* These labels are the only route from a stat into the listing it describes,
+     and at ~20px they sat under the 24px floor WCAG 2.2 SC 2.5.8 asks for —
+     with a 9px row gap, neither the target nor the spacing exception applied.
+     Padding rather than a taller line-height so the text rhythm is unchanged;
+     44px (SC 2.5.5) would rewrite the page's density, 24px clears AA. */
+  a.bl { border-bottom: 1px solid transparent; padding-block: 3px; }
   a.bl:hover,
   a.bl:focus-visible { color: var(--accent-text); border-color: var(--accent-text); }
   .bar {
