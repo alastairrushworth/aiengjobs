@@ -234,7 +234,7 @@ export function createServer(): McpServer {
     },
     async ({ dimension, topN, ...filters }) => {
       const board = await loadBoard();
-      const stats = boardStats(board, dimension as StatsDimension, filters, topN);
+      const stats = boardStats(board, dimension, filters, topN);
       return result(renderStats(stats), { ...stats });
     },
   );
