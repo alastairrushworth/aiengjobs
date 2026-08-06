@@ -425,7 +425,7 @@ Correctness first, but this pipeline grows monotonically.
 §12 reads the workflow *files*. This reads what actually happened when they ran.
 It is the only dimension that can catch the failure mode this project is most
 exposed to: **the nightly refresh quietly stops working and nobody notices**,
-because nobody is watching a 03:30 UTC cron on a runner.
+because nobody is watching a 23:10 UTC cron on a runner.
 
 **Read-only, always.** Inspect runs; never change them. Do not
 `gh run rerun`/`cancel`/`delete`, `gh workflow enable`/`disable`/`run`,
@@ -452,12 +452,14 @@ Work through:
   (`Nightly refresh: 4/9`). A workflow that fails a third of the time is broken
   even if the last run was green — intermittent failure that self-heals still
   means missed nights of ingest.
-- **Did the cron actually fire?** `refresh.yml` is `cron: "30 3 * * *"`. Count
+- **Did the cron actually fire?** `refresh.yml` is `cron: "10 23 * * *"`. Count
   the `event: schedule` runs over the window: 14 days should mean ~14 runs.
   GitHub delays and silently **drops** scheduled runs on public repos under
   load, and disables the schedule entirely after 60 days of repo inactivity.
-  Compare `createdAt` against 03:30 UTC — a consistent 20-minute drift is
-  normal; a missing day is a finding. Note that `workflow_dispatch` runs are
+  Compare `createdAt` against 23:10 UTC — delay is the norm rather than the
+  exception here, and has historically run to two or three hours, so drift
+  alone is not a finding; a missing day is. If the delay has grown enough that
+  the board is no longer rebuilt by UK morning, that is worth raising. Note that `workflow_dispatch` runs are
   manual repairs, not evidence the schedule works.
 - **Triage every failure to a step, from the log.** For each failed run, name
   the job, the step, and the real error (`--log-failed`). Then classify:
