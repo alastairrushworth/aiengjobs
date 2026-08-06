@@ -4,9 +4,20 @@ name: Nightly refresh
 # runners are free and unlimited on public repositories and give 4 vCPU / 16GB —
 # more than the droplet had. Never switch to a larger runner label: those are
 # billed even on public repos.
+# 23:10 UTC is midnight UK during BST, and 23:10 the evening before during GMT.
+# The winter hour of drift is deliberate: GitHub's scheduler is the dominant
+# term by a wide margin. At the old 03:30 UTC, runs were consistently picked up
+# around 06:15 — a delay of nearly three hours — so an hour of DST error is well
+# inside the noise, and a guard step to correct it would only add a skipped run
+# every night. Ten past rather than on the hour for the same reason: the top of
+# the hour is the most contended slot in the queue.
+#
+# What the schedule has to buy is a finished board by morning, not a punctual
+# start. A run takes 2–3 hours (4h45m at its worst), so even with a three-hour
+# pickup delay this lands well before UK breakfast.
 on:
   schedule:
-    - cron: "30 3 * * *"
+    - cron: "10 23 * * *"
   workflow_dispatch:
 
 # The database is mutable state carried between runs. Two concurrent refreshes
