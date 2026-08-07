@@ -1,20 +1,34 @@
-# Labelling rubric v2.1 — strict AI-engineering job board
+# Labelling rubric v3 — strict AI-engineering job board
 
 ## The test
 Is the work of this role **building, training, evaluating, serving, or researching
-AI/ML models and systems**? Judge the artefact the role produces, not the title
+frontier AI models and systems**? Judge the artefact the role produces, not the title
 and not how AI-forward the employer sounds.
+
+"Frontier AI" means the GenAI-era stack — LLMs, agents, generative models — plus
+frontier model work that isn't generative: robotics learning, computer vision,
+speech, RL, multimodal, and the research, evals, inference/serving, accelerator
+software and ML platforms behind them. **Traditional business ML is not frontier
+AI** (see OUT), even when the role genuinely trains models. (New in v3.)
 
 ## READING RULE — this decides most contested cases
 Weigh the **responsibilities** section above everything else. Specifically:
-- Company mission and intro paragraphs are NOT evidence. "We build AI Humans",
-  "Our mission is to create reliable AI systems" tells you nothing about the role.
+- Company mission and intro paragraphs are NOT evidence of what the *role* does.
+  "We build AI Humans", "Our mission is to create reliable AI systems" tells you
+  nothing about whether this role builds them. (But see the FDE rule below for the
+  one place the employer's business IS evidence.)
 - When an ad contains BOTH delivery/engagement language ("manage concurrent customer
   engagements", "drive projects from scoping through delivery") AND building language
   ("design, implement and scale production-grade GenAI evaluation programs"),
   **the building language decides**. Do not stop at the first delivery sentence.
 - A skill listed under requirements ("deep experience with LLMs") is weaker evidence
   than a responsibility ("you will build X"), but it is not nothing.
+- **Read for what the ad means, not the exact wording.** (New in v3.) Many genuine
+  AI-engineering ads are vague — "deploy our AI into customer environments" with no
+  technical detail. Do not demand a checklist of specific phrases before labelling
+  IN; infer the role's real artefact from the whole ad, the product being built,
+  and what the company sells. Anchoring on exact phrasing produces false OUTs on
+  vague-but-real AI roles and false INs on keyword-stuffed generic ones.
 
 ## IN
 - LLM application engineering: RAG/retrieval, agents, tool use, prompting/context systems
@@ -36,6 +50,14 @@ Weigh the **responsibilities** section above everything else. Specifically:
   plainly generic (payments, mobile, internal tooling, CRUD APIs) it stays OUT. (New in v2.)
 - **Dataset and benchmark research** — designing evaluation sets, post-training data
   curation, frontier benchmarks — where the work is research rather than pipeline operation
+- **Forward-deployed engineers at companies that sell AI systems.** (New in v3.) An
+  FDE is IN when the primary job is to build, deploy, or scope AI systems for
+  customers — even when the ad states this vaguely. When the employer's product IS
+  an AI system (agents, models, an inference platform), infer that its FDEs
+  primarily do AI work unless the ad shows otherwise. OUT only when the role is
+  plainly non-engineering (no code ownership; pure change-management, training,
+  adoption tracking) or the "AI" being deployed is someone else's product the role
+  merely configures.
 
 ## OUT
 - **Leadership of anything that is not an AI-building team** — delivery, deployment,
@@ -43,6 +65,13 @@ Weigh the **responsibilities** section above everything else. Specifically:
   engineering. "Technical Deployment Lead", "Director of AI Analytics",
   "AI Success Manager", "Engineering Manager, Payments" are all OUT. (Refined in v2.)
 - Analytics: data analyst, BI, analytics engineer, and data scientists doing reporting/dashboards/experimentation
+- **Traditional business ML.** (New in v3.) Fraud/risk/credit models, ranking,
+  recommenders, pricing, forecasting, churn — the pre-GenAI applied-ML stack — is
+  OUT even when the role trains, serves, or platforms those models, and even at an
+  otherwise AI-forward employer. A "Senior Data Scientist, Fraud" or an ML platform
+  whose workload is fraud models is not what this board lists. When a role is
+  clearly ML but you cannot tell whether the domain is frontier or business ML,
+  **break toward OUT**.
 - Generic software engineering: backend, frontend, full-stack, platform, infra, security, SRE, QA, embedded — EVEN at an AI company, and even with a token "AI experience a plus"
 - Model consumers: roles that call or integrate a model owned by another team without training, fine-tuning, evaluating, serving, or building the LLM/agent system themselves
 - **Data engineering — including pipelines that produce model training data.** Building
@@ -81,17 +110,17 @@ Weigh the **responsibilities** section above everything else. Specifically:
 |---|---|
 | Engineering Manager, Inference / Evals / Agents | **IN** (v2) |
 | Engineering Manager, Payments / Mobile / Platform | OUT |
-| Technical Deployment Lead, Delivery Lead, FDE Manager | OUT |
+| Technical Deployment Lead, Delivery Lead, FDE Manager | OUT when the artefact is delivery itself; a hands-on technical lead of AI deployments at an AI-systems company is IN (v3) |
 | Research Engineering Lead (hands-on) | IN |
-| Forward-Deployed Engineer | IN when responsibilities describe building AI systems; OUT when scoping/delivery/pre-sales |
+| Forward-Deployed Engineer | **IN when the primary job is building/deploying/scoping AI systems — presumed at companies selling AI systems** (v3); OUT when plainly non-engineering or pure adoption/change management |
 | Pretraining data pipeline engineer | **OUT** (v2) |
 | Frontier benchmark / eval dataset researcher | IN |
 | Consultancy DS delivering bespoke client models | **OUT** (v2) |
 | Consultant whose responsibilities are building LLM/agent systems | IN |
 | Engineer on a conversational/agent runtime at an AI company | IN, weakly (v2) |
-| Software Engineer, ML Platform | IN |
+| Software Engineer, ML Platform | IN when the workloads are frontier (LLM/generative/robotics/CV/speech); **OUT when the workloads are business ML** (v3) |
 | Generic SWE at an AI lab | OUT |
-| Data Scientist shipping ranking/risk models | IN |
+| Data Scientist shipping ranking/risk/fraud models | **OUT** (v3 — reversed from v2's IN; traditional business ML) |
 | Data Scientist doing product analytics | OUT |
 | Solutions/Sales Engineer at an AI company | OUT unless responsibilities are building AI systems |
 | PhD internship in ML research | IN |
