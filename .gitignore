@@ -38,3 +38,4 @@ __pycache__/
 # wrangler dev's local miniflare state (caches, observability traces)
 .wrangler/
 ml/acceptance/ads/
+ml/model_v3_candidate/
