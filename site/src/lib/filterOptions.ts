@@ -1,7 +1,6 @@
 import type { Job } from "@aiengjobs/shared";
 import { countryName, SENIORITY_OPTIONS } from "./format.ts";
-import { generatedAt } from "./data.ts";
-import { SENIOR_PLUS_IDS, SINCE_OPTIONS, WORK_OPTIONS } from "./search.ts";
+import { SENIOR_PLUS_IDS, WORK_OPTIONS } from "./search.ts";
 
 /**
  * Option lists for the filter bar, counted against whatever set of roles the
@@ -20,7 +19,6 @@ export interface FilterOptions {
   /** Roles at or above `senior` — the grouped option (see search.SENIOR_PLUS). */
   seniorPlus: number;
   works: { id: string; label: string; count: number }[];
-  sinces: { id: string; label: string; count: number }[];
 }
 
 /**
@@ -73,19 +71,5 @@ export function buildFilterOptions(jobs: Job[]): FilterOptions {
     count: jobs.filter((j) => j.remoteType === w.id).length,
   })).filter((w) => w.count > 0);
 
-  // Freshness measured against the snapshot, exactly as the client does it —
-  // the payload ships whole days since posting (JobEntry.ag) off this same
-  // clock, so the number on the button is the number of cards you get.
-  const genMs = Date.parse(generatedAt);
-  const DAY_MS = 86_400_000;
-  const sinces = SINCE_OPTIONS.map((o) => ({
-    id: o.id,
-    label: o.label,
-    count: jobs.filter((j) => {
-      const posted = j.postedAt ? Date.parse(j.postedAt) : NaN;
-      return Number.isFinite(posted) && (genMs - posted) / DAY_MS <= o.days;
-    }).length,
-  })).filter((o) => o.count > 0);
-
-  return { countries, cities, seniorities, seniorPlus, works, sinces };
+  return { countries, cities, seniorities, seniorPlus, works };
 }

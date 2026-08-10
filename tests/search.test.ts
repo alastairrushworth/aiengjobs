@@ -34,7 +34,6 @@ const job = (over: Partial<JobEntry> & { t: string }): JobEntry => ({
   l: "",
   s: "",
   p: "",
-  ag: 1,
   r: "",
   rm: "",
   sl: "",
@@ -149,9 +148,9 @@ describe("relevance ordering", () => {
 });
 
 describe("filters", () => {
-  const remote = job({ t: "A", rm: "remote", ci: "London", co: "GB", s: "$1k", ag: 3, sn: "staff" });
-  const hybrid = job({ t: "B", rm: "hybrid", ci: "London", co: "GB", ag: 40, sn: "junior" });
-  const onsite = job({ t: "C", rm: "onsite", ci: "Berlin", co: "DE", s: "$2k", ag: 200, sn: "senior" });
+  const remote = job({ t: "A", rm: "remote", ci: "London", co: "GB", s: "$1k", sn: "staff" });
+  const hybrid = job({ t: "B", rm: "hybrid", ci: "London", co: "GB", sn: "junior" });
+  const onsite = job({ t: "C", rm: "onsite", ci: "Berlin", co: "DE", s: "$2k", sn: "senior" });
   const jobs = [remote, hybrid, onsite];
 
   it("filters by work type, which text search only ever approximated", () => {
@@ -160,11 +159,6 @@ describe("filters", () => {
 
   it("filters by city", () => {
     expect(slugs(filterJobs(jobs, state({ city: "London" })))).toEqual([remote.slug, hybrid.slug]);
-  });
-
-  it("filters by age in days", () => {
-    expect(slugs(filterJobs(jobs, state({ since: "7" })))).toEqual([remote.slug]);
-    expect(slugs(filterJobs(jobs, state({ since: "30" })))).toEqual([remote.slug]);
   });
 
   it("ANDs multiple skills", () => {
@@ -192,7 +186,7 @@ describe("filters", () => {
     // updateCounts() in JobFilters.astro drops the clause whose key matches the
     // select's id; a rename here silently stops excluding a select's own value.
     expect(Object.keys(buildTests(EMPTY_STATE)).sort()).toEqual(
-      ["city", "country", "level", "q", "since", "skill", "work"].sort(),
+      ["city", "country", "level", "q", "skill", "work"].sort(),
     );
   });
 });
@@ -205,19 +199,19 @@ describe("URL state", () => {
       country: "GB",
       city: "London",
       work: "remote",
-      since: "7",
       skills: ["RAG", "Python"],
     });
     expect(parseState(toParams(s))).toEqual(s);
   });
 
   it("drops values that name nothing rather than filtering to zero", () => {
-    const s = parseState(new URLSearchParams("work=wherever&since=soon&level=wizard"));
-    expect([s.work, s.since, s.level]).toEqual(["", "", ""]);
+    const s = parseState(new URLSearchParams("work=wherever&level=wizard"));
+    expect([s.work, s.level]).toEqual(["", ""]);
   });
 
-  it("ignores the retired sort param", () => {
+  it("ignores the retired sort and since params", () => {
     expect(isFiltering(parseState(new URLSearchParams("sort=pay")))).toBe(false);
+    expect(isFiltering(parseState(new URLSearchParams("since=7")))).toBe(false);
   });
 
   it("accepts a single skill or a list", () => {

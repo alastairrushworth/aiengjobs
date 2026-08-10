@@ -19,9 +19,6 @@ export interface JobEntry {
   l: string; // raw location line, as the feed wrote it
   s: string; // formatted salary ("" when unpublished)
   p: string; // relative posted stamp, "today" / "3d ago" ("" when undated)
-  /** Whole days between posting and the snapshot — what "past week" filters on.
-   *  `p` above is a display string and can't answer that ("2w ago" is a range). */
-  ag: number;
   r: string; // work-type label ("Remote")
   rm: string; // work-type id, the filter value ("remote")
   sl: string; // seniority label ("Senior")
