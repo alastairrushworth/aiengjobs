@@ -24,12 +24,6 @@ export const WORK_OPTIONS = [
   { id: "onsite", label: "On-site" },
 ] as const;
 
-/** Posted-within options. `days` is compared against JobEntry.ag. */
-export const SINCE_OPTIONS = [
-  { id: "7", label: "Past week", days: 7 },
-  { id: "30", label: "Past month", days: 30 },
-] as const;
-
 /**
  * Grouped seniority value. "Senior or above" is the most common thing anyone
  * wants to say about level, and a one-of-eight select is the one shape that
@@ -149,7 +143,6 @@ export interface FilterState {
   country: string;
   city: string;
   work: string;
-  since: string;
   /** Exact skill matches, ANDed. Set from card badges, /stats and landings. */
   skills: string[];
 }
@@ -160,7 +153,6 @@ export const EMPTY_STATE: FilterState = {
   country: "",
   city: "",
   work: "",
-  since: "",
   skills: [],
 };
 
@@ -171,7 +163,6 @@ export function isFiltering(s: FilterState): boolean {
       s.country ||
       s.city ||
       s.work ||
-      s.since ||
       s.skills.length,
   );
 }
@@ -186,14 +177,12 @@ export function isFiltering(s: FilterState): boolean {
 export function buildTests(s: FilterState): Record<string, (j: JobEntry) => boolean> {
   const terms = buildTerms(s.q.trim());
   const levels = expandLevel(s.level);
-  const days = Number(s.since) || 0;
   return {
     q: (j) => terms.every((re) => re.test(searchBlob(j))),
     country: (j) => !s.country || j.co === s.country,
     city: (j) => !s.city || j.ci === s.city,
     level: (j) => !levels.length || levels.includes(j.sn),
     work: (j) => !s.work || j.rm === s.work,
-    since: (j) => !days || j.ag <= days,
     skill: (j) => s.skills.every((sk) => j.sk.includes(sk)),
   };
 }
@@ -219,7 +208,7 @@ export const QUERY_TRIM = "q-trim";
 export function activeFilters(s: FilterState): { key: string; value: string }[] {
   const out: { key: string; value: string }[] = [];
   if (s.q.trim()) out.push({ key: "q", value: s.q.trim() });
-  for (const key of ["level", "country", "city", "work", "since"] as const) {
+  for (const key of ["level", "country", "city", "work"] as const) {
     if (s[key]) out.push({ key, value: s[key] });
   }
   for (const sk of s.skills) out.push({ key: "skill", value: sk });
@@ -241,7 +230,6 @@ export function without(s: FilterState, key: string, value = ""): FilterState {
     case "country":
     case "city":
     case "work":
-    case "since":
       return { ...s, [key]: "" };
     default:
       return s;
@@ -280,7 +268,6 @@ export function relaxations(data: JobEntry[], s: FilterState): Relaxation[] {
 }
 
 const isWork = (v: string) => WORK_OPTIONS.some((w) => w.id === v);
-const isSince = (v: string) => SINCE_OPTIONS.some((o) => o.id === v);
 const isLevel = (v: string) =>
   v === SENIOR_PLUS || (SENIORITIES as readonly string[]).includes(v);
 
@@ -293,7 +280,10 @@ const isLevel = (v: string) =>
  * salary and sank the 53% with no published range; the second replaced it with
  * an honest "shows pay" toggle, which has since gone too — pay is on the cards
  * and reported on /stats, and it was the least-used control in the bar. Old
- * links carrying either param degrade to an unfiltered board.
+ * links carrying either param degrade to an unfiltered board. `?since=` (the
+ * posted-within pills) retired the same way: the board only carries 90 days of
+ * roles and newest-first is the default order, so the control mostly restated
+ * what the page already did.
  */
 export function parseState(params: URLSearchParams): FilterState {
   const one = (k: string, ok?: (v: string) => boolean) => {
@@ -306,7 +296,6 @@ export function parseState(params: URLSearchParams): FilterState {
     city: params.get("city") ?? "",
     level: one("level", isLevel),
     work: one("work", isWork),
-    since: one("since", isSince),
     skills: (params.get("skill") ?? "")
       .split(",")
       .map((x) => x.trim())
@@ -322,7 +311,6 @@ export function toParams(s: FilterState): URLSearchParams {
   if (s.country) p.set("country", s.country);
   if (s.city) p.set("city", s.city);
   if (s.work) p.set("work", s.work);
-  if (s.since) p.set("since", s.since);
   if (s.skills.length) p.set("skill", s.skills.join(","));
   return p;
 }

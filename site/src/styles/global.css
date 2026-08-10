@@ -176,17 +176,25 @@ a { color: inherit; text-decoration: none; }
   .hero p { font-size: 1rem; }
 }
 
-/* Filters — full-width search with labelled toggles beneath it */
+/* Filters — one wrapping row: search box, work segment, "More filters", and
+   (only while open) the selects on a full-width row below. This used to be a
+   three-row stack — search, pills, disclosure — which cost ~160px, all of it
+   sticky on desktop, riding on top of the listing it exists to narrow. */
 .filters {
   display: flex;
-  flex-direction: column;
-  gap: 10px;
+  flex-flow: row wrap;
+  align-items: center;
+  gap: 8px 14px;
   margin: 28px 0 20px;
-  padding: 14px;
+  padding: 10px 12px;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
 }
+/* The search box takes the slack width of the row; min-width:0 so the flex
+   basis is real (an input's min-content width would otherwise win). At tablet
+   widths the segment wraps under it rather than crushing it. */
+.filters .search { flex: 1 1 230px; min-width: 0; }
 /* Every control names itself at rest — "Any level", "Any country", "Any city",
    and a placeholder on the search box — so the caption above each was a second
    copy of the same word. It was costing the panel a row on the phone fold and,
@@ -224,35 +232,30 @@ a { color: inherit; text-decoration: none; }
     z-index: 5;
   }
 }
-.filters .toggles { display: flex; flex-wrap: wrap; gap: 10px; }
+/* The selects' row. flex-basis 100% is what puts it on a line of its own
+   *below* the button that opens it — the button keeps its place in the row, so
+   opening the panel never moves the control that opened it. */
+.filters .toggles { flex: 1 1 100%; display: flex; flex-wrap: wrap; gap: 10px; }
 
-/* The selects, behind a disclosure that starts closed.
-
-   The summary is a pill like the ones above it — same size, same border, same
-   muted-until-you-touch-it colour — so the bar reads as one row of controls
-   chips with one more control after them rather than a stray button under a
-   group of them. It keeps its own row and its own place at the left rag:
-   opening the panel must not move the control that opened it, which is what a
-   summary hoisted into the pill row would do the moment the panel needed the
-   full width back, and right-aligning it only opened a hole in the row. */
-.filters .more { margin: 0; }
-.filters .more > summary {
-  display: inline-block;
+/* "More filters" — the selects live behind it, closed by default. A pill like
+   the segment beside it: same border, same muted-until-you-touch-it colour, so
+   the bar reads as one row of controls. */
+.more-btn {
+  font: inherit;
   cursor: pointer;
   color: var(--muted);
   font-size: 0.85rem;
   background: var(--surface-2);
   border: 1px solid var(--border-strong);
   border-radius: 999px;
-  padding: 8px 14px;
-  list-style: none;
+  padding: 7px 12px;
+  white-space: nowrap;
 }
 /* No glyph before the label: "⌕" is a rare codepoint most system stacks have no
    glyph for, and it fell back to a hairline mark that read as a stray
    character. The chevron after it is drawn from two borders for the same
    reason — it says "there is more under here" without depending on a font. */
-.filters .more > summary::-webkit-details-marker { display: none; }
-.filters .more > summary::after {
+.more-btn::after {
   content: "";
   display: inline-block;
   width: 6px;
@@ -267,22 +270,22 @@ a { color: inherit; text-decoration: none; }
    this query. Gated rather than removed — the chevron turning is what says the
    panel opened. */
 @media (prefers-reduced-motion: no-preference) {
-  .filters .more > summary::after { transition: transform 0.15s ease; }
+  .more-btn::after { transition: transform 0.15s ease; }
 }
-.filters .more[open] > summary::after { transform: rotate(225deg) translate(-2px, -2px); }
-.filters .more > summary:hover,
-.filters .more > summary:focus-visible { color: var(--text); border-color: var(--accent); }
-.filters .more[open] > summary { color: var(--text); margin-bottom: 10px; }
+.more-btn[aria-expanded="true"]::after { transform: rotate(225deg) translate(-2px, -2px); }
+.more-btn:hover,
+.more-btn:focus-visible { color: var(--text); border-color: var(--accent); }
+.more-btn[aria-expanded="true"] { color: var(--text); }
 
-/* Work location, freshness and pay. Three questions a select answers worse:
-   their answers fit on one line, so a dropdown only adds a click to see them,
-   and the whole point of the work-location control is that it's the first thing
-   most people want and should be one tap away. */
-.filters .quick { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; }
-.seg { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
-/* The button labels already say what they are ("Remote", "Past week"), so the
-   group captions are a desktop luxury — they aid scanning where there's room
-   and cost a row of a 390px fold where there isn't. The accessible name comes
+/* Work location: the one question a select answers worse — three answers that
+   fit on one line, wanted first by most visitors, so it's one tap away. The
+   buttons are fused into a single bordered track rather than floating pills:
+   per-pill borders and gaps were ~70px of width, and the group reads as one
+   control instead of three stray buttons. */
+.seg { display: flex; align-items: center; gap: 8px; }
+/* The button labels already say what they are ("Remote", "Hybrid"), so the
+   group caption is a desktop luxury — it aids scanning where there's room and
+   costs width of a 390px fold where there isn't. The accessible name comes
    from the group's aria-label either way, so nothing is lost below 701px. */
 .seg-label {
   display: none;
@@ -294,45 +297,63 @@ a { color: inherit; text-decoration: none; }
 @media (min-width: 701px) {
   .seg-label { display: inline; }
 }
+.seg-track {
+  display: flex;
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  background: var(--surface-2);
+  /* Clips the squared button corners to the track's pill shape. The focus ring
+     would be clipped with them — the inset outline below is the compensation. */
+  overflow: hidden;
+}
 .seg-btn {
   font: inherit;
   font-size: 0.85rem;
   color: var(--muted);
-  background: var(--surface-2);
-  border: 1px solid var(--border-strong);
-  border-radius: 999px;
-  padding: 8px 14px;
+  background: none;
+  border: none;
+  padding: 7px 12px;
   cursor: pointer;
   white-space: nowrap;
 }
-.seg-btn:hover { color: var(--text); border-color: var(--accent); }
+.seg-btn + .seg-btn { border-left: 1px solid var(--border); }
+.seg-btn:focus-visible { outline-offset: -2px; }
+.seg-btn:hover { color: var(--text); }
 .seg-btn[aria-pressed="true"] {
   color: var(--text);
-  border-color: var(--accent);
   /* Indigo marks what you can act on, and a pressed filter is the clearest
-     case of it — a tint rather than a fill, so a row of these doesn't outshout
-     the listing they're narrowing. */
+     case of it — a tint rather than a fill, so the segment doesn't outshout
+     the listing it's narrowing. The inset ring stands in for the border a
+     free-standing pill would have recoloured. */
   background: rgba(124, 92, 255, 0.22);
+  box-shadow: inset 0 0 0 1px var(--accent);
 }
 .seg-btn:disabled { opacity: 0.4; cursor: default; }
-.seg-btn:disabled:hover { color: var(--muted); border-color: var(--border-strong); }
-.seg-n { color: var(--muted); font-variant-numeric: tabular-nums; }
+.seg-btn:disabled:hover { color: var(--muted); }
+.seg-n { color: var(--muted); font-size: 0.78em; font-variant-numeric: tabular-nums; }
 .seg-btn[aria-pressed="true"] .seg-n { color: inherit; opacity: 0.8; }
-/* Taller for a thumb (WCAG 2.5.5 asks 44px) and narrower so the rows still
-   fit. This block is the largest thing above the listing on a phone, and at
-   the desktop padding it wrapped into four rows of chips.
-
-   The horizontal numbers are what they are because of a two-pixel overflow:
-   at 11px/10px padding and a 5px gap the three work-location chips measured
-   302px inside a 300px box at 390px, so "On-site" dropped to a line of its
-   own and the group read as a mistake. 9px padding, a 4px gap and a hair off
-   the type put them at ~288 with room to spare for a five-digit count. */
+/* Taller for a thumb (WCAG 2.5.5 asks 44px) and narrower so the row still
+   fits: at 390px the fused track ("Remote 271 | Hybrid 184 | On-site 913")
+   has to clear a ~326px content box with room for a five-digit count. */
 @media (max-width: 700px) {
-  .filters .quick { gap: 8px 10px; }
-  .seg { gap: 4px; }
-  .seg-btn { padding: 11px 9px; font-size: 0.8rem; }
-  /* Same thumb target as the pills it sits under (WCAG 2.5.5 asks 44px). */
-  .filters .more > summary { padding: 11px 12px; font-size: 0.8rem; }
+  .seg-btn {
+    min-height: 44px;
+    padding: 0 10px;
+    font-size: 0.8rem;
+    display: inline-flex;
+    align-items: center;
+    /* Stands in for the literal space in "Remote 271" — whitespace-only text
+       nodes don't lay out between flex items. */
+    gap: 5px;
+  }
+  /* Same thumb target as the segment it sits beside. */
+  .more-btn {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    padding: 0 12px;
+    font-size: 0.8rem;
+  }
 }
 /* min-width:0 or the flex basis is a lie: a flex item's default min-width is
    min-content, and a select's min-content is its longest option ("Hong Kong SAR
@@ -344,7 +365,10 @@ a { color: inherit; text-decoration: none; }
    where the fold is won or lost. Has to sit *after* the base rules above — a
    media query adds no specificity, and these lost to them when they came first. */
 @media (max-width: 700px) {
-  .filters { margin: 14px 0 12px; padding: 12px; gap: 8px; }
+  .filters { margin: 14px 0 12px; padding: 10px; gap: 6px 8px; }
+  /* The search box keeps a row of its own — beside a 44px segment it would
+     shrink to a slot too small to show what was typed. */
+  .filters .search { flex-basis: 100%; }
   /* Two per row, stated rather than negotiated. Left to `flex: 1 1 160px` these
      wrapped one-per-row at 390px: the container is 326px wide there and two
      160px bases plus the gap need 330 — four pixels over, so 190px of controls
