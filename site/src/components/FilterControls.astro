@@ -19,7 +19,6 @@ const {
   seniorities,
   seniorPlus,
   works,
-  sinces,
   hide = [],
 } = Astro.props;
 
@@ -38,98 +37,99 @@ const hasSelects =
   shows("city", cities.length);
 ---
 
+{/* One wrapping row, not a stack: search box, work segment, "More filters",
+    and — only while it's open — the selects on a full-width row of their own.
+    The stacked layout spent three rows (~160px, all of them sticky on desktop)
+    saying what this says in one. */}
 <div class="filters">
   {/* The one control that stays whatever else moves. It's the fastest way to
       narrow 2,000 roles and the only one that can say a thing the selects and
-      the pills have no option for, so it sits above both. */}
-  <div>
+      the segments have no option for, so it comes first and takes the slack
+      width of the row. */}
+  <div class="search">
     <label for="q">Search</label>
     <input type="search" id="q" placeholder="Title, company, skill, city…" />
   </div>
 
-  {/* Two things a select would answer worse. Work location is the first
-      question most people ask and has three answers — as a dropdown it's an
-      extra click to see options that fit on one line. Freshness is two answers
-      and the same argument.
+  {/* Work location: the first question most people ask, with three answers —
+      as a dropdown it'd be an extra click to see options that fit on one line.
+      Fused into a single bordered track rather than three floating pills: the
+      gaps and per-pill borders were ~70px of width, which is the margin this
+      row lives or dies by on a phone.
 
-      No "Any" button in either group: each toggles off when you press the one
-      that's on, and every active filter also carries a removable chip above the
-      listing. An explicit "Any" would be a third control per group saying what
-      the absence of a pressed one already says — and on a 390px phone a row of
-      them is a row of the fold. */}
-  <div class="quick">
-    {shows("work", works.length) && (
-      <div class="seg" role="group" aria-label="Work location" data-filter="work">
-        <span class="seg-label">Work</span>
+      No "Any" button: the pressed segment toggles off when pressed again, and
+      every active filter also carries a removable chip above the listing. */}
+  {shows("work", works.length) && (
+    <div class="seg" role="group" aria-label="Work location" data-filter="work">
+      <span class="seg-label">Work</span>
+      <div class="seg-track">
         {works.map((w) => (
           <button type="button" class="seg-btn" data-value={w.id} aria-pressed="false">
             {w.label} <span class="seg-n">{w.count}</span>
           </button>
         ))}
       </div>
-    )}
-    {sinces.length > 0 && !hide.includes("since") && (
-      <div class="seg" role="group" aria-label="Posted within" data-filter="since">
-        <span class="seg-label">Posted</span>
-        {sinces.map((o) => (
-          <button type="button" class="seg-btn" data-value={o.id} aria-pressed="false">
-            {o.label} <span class="seg-n">{o.count}</span>
-          </button>
-        ))}
-      </div>
-    )}
-  </div>
+    </div>
+  )}
 
-  {/* The dropdowns, closed by default. The search box and the pills above are
-      one row each and answer the questions most people arrive with; these three
-      cost a row apiece and were spending them on top of the listing they exist
-      to narrow. The script opens this on arrival when a filter came in on the
-      URL — a filter you can't see is a page that looks like it's showing
-      everything. */}
+  {/* The dropdowns, closed by default behind a button at the end of the row.
+      A <button> + hidden panel rather than <details>: the summary has to sit in
+      this flex row while the panel opens onto a full-width row below it, and
+      `details { display: contents }` is the only way to get that from a details
+      element — a rendering path browsers disagree on. The script owns the
+      toggle either way (it already opened the disclosure when a filter arrived
+      on the URL — a filter you can't see is a page that looks like it's
+      showing everything and quietly isn't). */}
   {hasSelects && (
-    <details class="more" id="filter-disclosure">
-      <summary>More filters</summary>
-      <div class="toggles">
-        {shows("level", seniorities.length) && (
-          <div>
-            <label for="level">Seniority</label>
-            <select id="level">
-              <option value="">Any level</option>
-              {/* The band, above the rungs. "Senior or above" is the most common
-                  thing anyone wants to say about level and the one thing a
-                  one-of-eight select couldn't say. */}
-              {seniorPlus > 0 && <option value={SENIOR_PLUS}>Senior and above ({seniorPlus})</option>}
-              {seniorities.map((s) => (
-                <option value={s.id}>{s.label} ({s.count})</option>
-              ))}
-            </select>
-          </div>
-        )}
-        {shows("country", countries.length) && (
-          <div>
-            <label for="country">Country</label>
-            <select id="country">
-              <option value="">Any country</option>
-              {countries.map((c) => (
-                <option value={c.code}>{c.label} ({c.count})</option>
-              ))}
-            </select>
-          </div>
-        )}
-        {shows("city", cities.length) && (
-          <div>
-            <label for="city">City</label>
-            <select id="city">
-              <option value="">Any city</option>
-              {/* Alphabetical (see lib/filterOptions): ~90 rows deep, this is a
-                  list you scan for a name you already have in mind. */}
-              {cities.map((c) => (
-                <option value={c.name}>{c.name} ({c.count})</option>
-              ))}
-            </select>
-          </div>
-        )}
-      </div>
-    </details>
+    <button
+      type="button"
+      class="more-btn"
+      id="filter-disclosure"
+      aria-expanded="false"
+      aria-controls="more-filters"
+    >More filters</button>
+  )}
+  {hasSelects && (
+    <div class="toggles" id="more-filters" hidden>
+      {shows("level", seniorities.length) && (
+        <div>
+          <label for="level">Seniority</label>
+          <select id="level">
+            <option value="">Any level</option>
+            {/* The band, above the rungs. "Senior or above" is the most common
+                thing anyone wants to say about level and the one thing a
+                one-of-eight select couldn't say. */}
+            {seniorPlus > 0 && <option value={SENIOR_PLUS}>Senior and above ({seniorPlus})</option>}
+            {seniorities.map((s) => (
+              <option value={s.id}>{s.label} ({s.count})</option>
+            ))}
+          </select>
+        </div>
+      )}
+      {shows("country", countries.length) && (
+        <div>
+          <label for="country">Country</label>
+          <select id="country">
+            <option value="">Any country</option>
+            {countries.map((c) => (
+              <option value={c.code}>{c.label} ({c.count})</option>
+            ))}
+          </select>
+        </div>
+      )}
+      {shows("city", cities.length) && (
+        <div>
+          <label for="city">City</label>
+          <select id="city">
+            <option value="">Any city</option>
+            {/* Alphabetical (see lib/filterOptions): ~90 rows deep, this is a
+                list you scan for a name you already have in mind. */}
+            {cities.map((c) => (
+              <option value={c.name}>{c.name} ({c.count})</option>
+            ))}
+          </select>
+        </div>
+      )}
+    </div>
   )}
 </div>
