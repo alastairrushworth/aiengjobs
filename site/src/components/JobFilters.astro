@@ -168,7 +168,6 @@ const showAllHidden = hasPager || total <= initial;
     QUERY_TRIM,
     SENIOR_PLUS,
     SENIOR_PLUS_IDS,
-    SINCE_OPTIONS,
     WORK_OPTIONS,
     activeFilters,
     buildTerms,
@@ -214,7 +213,16 @@ const showAllHidden = hasPager || total <= initial;
   const emptyClearBtn = byId<HTMLButtonElement>("empty-clear")!;
   const showAllBtn = byId<HTMLButtonElement>("show-all")!;
   const jumpBtn = byId<HTMLButtonElement>("jump-filters")!;
-  const disclosure = byId<HTMLDetailsElement>("filter-disclosure");
+  // "More filters" is a button + hidden panel, not a <details> — see the note
+  // in FilterControls. This script is the only thing that opens and closes it.
+  const disclosure = byId<HTMLButtonElement>("filter-disclosure");
+  const morePanel = byId<HTMLElement>("more-filters");
+  function setMoreOpen(open: boolean) {
+    if (!disclosure || !morePanel) return;
+    disclosure.setAttribute("aria-expanded", String(open));
+    morePanel.hidden = !open;
+  }
+  disclosure?.addEventListener("click", () => setMoreOpen(morePanel!.hidden));
   // Pagination and a client-side filter describe the same roles two different
   // ways; only one of them can be right at a time.
   const pager = hasPager ? document.querySelector<HTMLElement>(".pager") : null;
@@ -250,8 +258,6 @@ const showAllHidden = hasPager || total <= initial;
         return value;
       case "work":
         return WORK_OPTIONS.find((w) => w.id === value)?.label ?? value;
-      case "since":
-        return SINCE_OPTIONS.find((o) => o.id === value)?.label ?? value;
       default:
         return optionLabels.get(key)?.get(value) ?? value;
     }
@@ -289,7 +295,7 @@ const showAllHidden = hasPager || total <= initial;
     for (const seg of segs) {
       const key = seg.dataset.filter!;
       for (const btn of seg.querySelectorAll<HTMLButtonElement>(".seg-btn")) {
-        const on = state[key as "work" | "since"] === btn.dataset.value;
+        const on = state[key as "work"] === btn.dataset.value;
         btn.setAttribute("aria-pressed", on ? "true" : "false");
         btn.classList.toggle("is-on", on);
       }
@@ -462,10 +468,11 @@ const showAllHidden = hasPager || total <= initial;
     updateSegCounts(data, tests);
   }
 
-  /** Does a job answer this segmented button? */
-  function segTest(key: string, value: string): (j: JobEntry) => boolean {
-    if (key === "work") return (j) => j.rm === value;
-    return (j) => j.ag <= Number(value); // since
+  /** Does a job answer this segmented button? Work location is the only
+   *  segmented group today — freshness went with the Posted pills (the board
+   *  is 90 days deep and newest-first already). */
+  function segTest(_key: string, value: string): (j: JobEntry) => boolean {
+    return (j) => j.rm === value;
   }
 
   /**
@@ -637,7 +644,7 @@ const showAllHidden = hasPager || total <= initial;
       // Every group toggles: pressing the pressed one turns it off, which is
       // what stands in for the "Any" button these groups deliberately don't
       // have (see FilterControls).
-      const group = key as "work" | "since";
+      const group = key as "work";
       const value = btn.dataset.value!;
       state[group] = state[group] === value ? "" : value;
       showAll = false;
@@ -679,7 +686,7 @@ const showAllHidden = hasPager || total <= initial;
   // this page has one, bring the panel into view, then put the caret in the
   // search box so the next keystroke goes where it was aimed.
   jumpBtn.addEventListener("click", () => {
-    if (disclosure) disclosure.open = true;
+    setMoreOpen(true);
     q.scrollIntoView({ block: "center" });
     q.focus({ preventScroll: true });
   });
@@ -692,9 +699,9 @@ const showAllHidden = hasPager || total <= initial;
   if (isFiltering(state) || showAll) {
     // A filter that arrived in the URL has to be visible, or the page looks
     // like it's showing everything and quietly isn't. Only the selects need
-    // the panel opened for that — the search box and the pills are on show,
+    // the panel opened for that — the search box and the segments are on show,
     // and every active filter carries a chip above the listing regardless.
-    if (disclosure && SELECT_KEYS.some((k) => state[k])) disclosure.open = true;
+    if (SELECT_KEYS.some((k) => state[k])) setMoreOpen(true);
     apply(false);
   }
 </script>
