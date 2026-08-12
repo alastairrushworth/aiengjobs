@@ -424,12 +424,16 @@ const maxCountry = topCountries[0]?.n ?? 1;
     vertical-align: middle;
   }
 
-  @media (max-width: 720px) {
+  /* 700/420 are the site's breakpoints (global.css, JobFilters, LandingStats,
+     LandingPage). This page used to reflow at 720/440, so between 700 and 720
+     it was the only page in a different layout mode — a maintenance trap rather
+     than a visible bug. Nothing here depends on the extra 20px. */
+  @media (max-width: 700px) {
     .figures { grid-template-columns: repeat(3, 1fr); }
     .cols { grid-template-columns: 1fr; gap: 0; }
     .bl { flex-basis: 40%; }
   }
-  @media (max-width: 440px) {
+  @media (max-width: 420px) {
     .figures { grid-template-columns: repeat(2, 1fr); }
   }
 </style>

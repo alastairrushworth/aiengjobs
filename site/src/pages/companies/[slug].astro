@@ -5,6 +5,7 @@ import JobCard from "../../components/JobCard.astro";
 import BrowseNav from "../../components/BrowseNav.astro";
 import CompanyLogo from "../../components/CompanyLogo.astro";
 import { markupLogo } from "../../lib/logos.ts";
+import { companyUrl } from "../../lib/format.ts";
 import { CLUSTER_PAGES } from "../../lib/clusters.ts";
 import { url } from "../../lib/url.ts";
 import { jsonLdScript } from "../../lib/jsonld.ts";
@@ -30,11 +31,9 @@ type Props = InferGetStaticPropsType<typeof getStaticPaths>;
 const { company, jobs } = Astro.props as Props;
 
 // Company domains come from seed data, but validate the shape anyway before
-// composing a URL from it.
-const domainHref =
-  company.domain && /^[a-z0-9.-]+\.[a-z]{2,}$/i.test(company.domain)
-    ? `https://${company.domain}`
-    : null;
+// composing a URL from it (lib/format — the job page's sameAs uses the same
+// guard, so the two can't disagree about what a usable domain is).
+const domainHref = companyUrl(company.domain);
 
 // Distinct stack across this company's roles.
 const stack = [...new Set(jobs.flatMap((j) => j.skills))].slice(0, 14);

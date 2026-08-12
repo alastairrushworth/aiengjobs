@@ -1,5 +1,9 @@
 import type { RemoteType } from "@aiengjobs/shared";
-import { canonicalCity, MULTI_COUNTRY_REGION, NON_CITY } from "@aiengjobs/shared/city";
+import {
+  canonicalCity,
+  isKnownCityAlias,
+  MULTI_COUNTRY_REGION,
+} from "@aiengjobs/shared/city";
 
 export interface LocationInfo {
   remoteType?: RemoteType;
@@ -94,6 +98,80 @@ function inferCountry(loc: string): string | undefined {
 // The "never a city" vocabulary now lives in @aiengjobs/shared/city, so the
 // export path and the site's location pages apply exactly the same rules.
 
+/**
+ * Separate the work-policy word feeds mix into the location slot from the place
+ * name beside it: "Hybrid - Lisbon" → "Lisbon", "San Carlos - Hybrid" → "San
+ * Carlos", "San Francisco (Remote)" → "San Francisco".
+ *
+ * This used to be a blunt reject — any segment *containing* a policy word
+ * yielded no city — which threw away the place sitting next to it. With no
+ * city, region or country the site can't emit a valid JobPosting, so those
+ * roles were invisible to Google for Jobs.
+ *
+ * The rules below are deliberately narrow, and everything they extract has to
+ * survive PLACE_SHAPE/NOT_A_PLACE before it counts. A blunt strip is tempting
+ * and much shorter, but on this corpus it turned "Remote job" into the city
+ * "Job", "Remote - EST" into "Est", "Remote-Friendly (Travel-Required) | …"
+ * into "Friendly" and "Remote - CA" into "Ca". A wrong city is worse than no
+ * city: it reaches the JobPosting's addressLocality, the city filter, and —
+ * given twelve of them — its own landing page. When the shape is anything but
+ * unambiguous, emit nothing, exactly as before.
+ */
+const POLICY = "remote|hybrid|on[\\s-]?site|virtual|wfh|work from home";
+/** "Hybrid - Lisbon", "Remote: Singapore". Spaced dash or a colon only — the
+ *  same rule canonicalCity uses, so "PL-Poland-Remote" and "Kitchener-Waterloo"
+ *  aren't torn apart at a hyphen that belongs to the name. */
+const POLICY_LEAD = new RegExp(`^(?:${POLICY})\\s*(?::|\\s[-–—])\\s*(.+)$`, "i");
+/** "San Carlos - Hybrid", "New York — Remote" */
+const POLICY_TRAIL = new RegExp(`^(.+?)\\s*(?::|[-–—]\\s)\\s*(?:${POLICY})$`, "i");
+/** "San Francisco (Hybrid)" */
+const POLICY_PAREN = new RegExp(`^(.+?)\\s*\\((?:${POLICY})\\)$`, "i");
+/** "Hybrid London", "Hybrid SF" — no separator, so the tail must be one clean run. */
+const POLICY_BARE = new RegExp(`^(?:${POLICY})\\s+([\\p{L}][\\p{L}\\p{M}\\s'’-]{1,30})$`, "iu");
+/** Nothing but a policy word — genuinely carries no location. */
+const POLICY_ONLY = new RegExp(`^(?:${POLICY})$`, "i");
+/** A policy word, or a "could be anywhere" word, loose in a segment we couldn't
+ *  parse into <policy> + <place>. Whatever else the segment says, it isn't
+ *  naming one city. */
+const LOOSE_NON_PLACE = new RegExp(
+  `\\b(?:${POLICY}|anywhere|global|worldwide|distributed|nationwide)\\b`,
+  "i",
+);
+
+/** Letters, spaces and the punctuation real place names use. No digits, parens,
+ *  ampersands, commas or slashes — those mean a list or an address, not a city. */
+const PLACE_SHAPE = /^[\p{L}][\p{L}\p{M}\s.'’-]{1,38}$/u;
+/** Connectives, hedges and timezone codes that survive a strip looking like a
+ *  place name but aren't one. */
+const NOT_A_PLACE =
+  /\b(or|and|in|the|all|any|anywhere|select|friendly|only|preferred|metro|locations?|jobs?|est|pst|cst|mst|gmt|utc|eu|apac|emea)\b/i;
+
+function isPlausiblePlace(s: string): boolean {
+  if (!PLACE_SHAPE.test(s) || NOT_A_PLACE.test(s)) return false;
+  // Two-letter leftovers are state, province and timezone codes far more often
+  // than cities — allowed only where the shared alias table vouches for one.
+  // Dots don't earn an abbreviation the extra length: "U.S" is the country.
+  const bare = s.replace(/\./g, "").trim();
+  return bare.length > 2 || isKnownCityAlias(bare);
+}
+
+/** The place name in a segment, or "" when the segment names no place. */
+function placeSegment(segment: string): string {
+  for (const re of [POLICY_LEAD, POLICY_TRAIL, POLICY_PAREN, POLICY_BARE]) {
+    const m = segment.match(re);
+    if (!m) continue;
+    const rest = m[1]!.trim();
+    return isPlausiblePlace(rest) ? rest : "";
+  }
+  if (POLICY_ONLY.test(segment)) return "";
+  // No policy word in a shape we recognise. Hand the segment through untouched
+  // — canonicalCity applies NON_CITY and the placeholder rules — unless a
+  // policy or catch-all word is still loose inside it. That's the old blunt
+  // guard, and it's still the right answer for "Remote-Friendly (Travel
+  // Required) …" and "Anywhere in the US".
+  return LOOSE_NON_PLACE.test(segment) ? "" : segment;
+}
+
 /** Classify remote policy + best-effort country/city from the raw location string. */
 export function parseLocation(
   locationRaw?: string,
@@ -115,12 +193,7 @@ export function parseLocation(
 
   const country = loc ? inferCountry(loc) : undefined;
   const firstSegment = loc.split(/[,|/]/)[0]?.trim();
-  const city =
-    firstSegment &&
-    !/remote|hybrid|onsite|anywhere|global/i.test(firstSegment) &&
-    !NON_CITY.has(firstSegment.toLowerCase())
-      ? canonicalCity(firstSegment)
-      : undefined;
+  const city = firstSegment ? canonicalCity(placeSegment(firstSegment)) : undefined;
 
   return { remoteType, country, city };
 }
