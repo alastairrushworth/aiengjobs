@@ -2,7 +2,7 @@ import type { Job } from "@aiengjobs/shared";
 import { citySlug } from "@aiengjobs/shared/city";
 import { CLUSTER_PAGES } from "./clusters.ts";
 import { countryName } from "./format.ts";
-import { openJobs } from "./data.ts";
+import { closedJobs, openJobs } from "./data.ts";
 
 /**
  * Every top-level listing page the board publishes: the stack-native cluster
@@ -30,6 +30,25 @@ export interface Landing {
  * costs more in site-wide quality signals than the long tail can pay back.
  */
 export const MIN_CITY_JOBS = 12;
+
+/**
+ * Once published, a city page survives down to this many open roles.
+ *
+ * A single threshold makes the published set flap. Six of the 34 city landings
+ * sit within three roles of the line today and two (McLean, Pune) sit exactly
+ * on it, so one closed requisition retires a page Google has already indexed —
+ * then the next hire brings it back. Each round trip spends crawl budget and
+ * throws away whatever the URL had accumulated, for a page whose content barely
+ * changed.
+ *
+ * Hysteresis needs to know the page existed before, and a static build has no
+ * memory of the last one. The closed roles in the snapshot are that memory:
+ * the engine retains them for 30 days (CLOSED_RETENTION_DAYS), so a city whose
+ * open + recently-closed count clears MIN_CITY_JOBS demonstrably *was* above
+ * the line inside that window. A city genuinely shrinking runs out of recent
+ * closures and retires properly once it drops under this floor.
+ */
+export const RETAIN_CITY_JOBS = 9;
 
 const clusterLandings: Landing[] = CLUSTER_PAGES.map((p) => ({
   slug: p.slug,
@@ -70,9 +89,20 @@ function buildCityLandings(): Landing[] {
     else byCity.set(j.city, [j]);
   }
 
+  // Roles closed within the engine's retention window, per city — the evidence
+  // that a city below MIN_CITY_JOBS was above it recently (see RETAIN_CITY_JOBS).
+  const recentlyClosedByCity = new Map<string, number>();
+  for (const j of closedJobs) {
+    if (!j.city) continue;
+    recentlyClosedByCity.set(j.city, (recentlyClosedByCity.get(j.city) ?? 0) + 1);
+  }
+
   const landings: Landing[] = [];
   for (const [city, jobs] of byCity) {
-    if (jobs.length < MIN_CITY_JOBS) continue;
+    const recentFootprint = jobs.length + (recentlyClosedByCity.get(city) ?? 0);
+    const publishes = jobs.length >= MIN_CITY_JOBS;
+    const retains = jobs.length >= RETAIN_CITY_JOBS && recentFootprint >= MIN_CITY_JOBS;
+    if (!publishes && !retains) continue;
     const slug = citySlug(city);
     if (!slug) continue;
 
