@@ -148,8 +148,17 @@ const tiles: { label: string; value: string; note?: string }[] = [
   .line .n { color: var(--muted); font-size: 0.78rem; margin-left: 3px; }
   /* inline-block + padding so these clear the 24px target floor (WCAG 2.2 SC
      2.5.8); at 0.9rem they were ~17px. The row gap is 4px vertical, so the
-     padded boxes still don't touch. */
-  .line a { color: var(--accent-text); display: inline-block; padding-block: 4px; }
+     padded boxes still don't touch.
+     min-width covers the other axis: the padding only fixed the height, and a
+     two-character skill ("Go", "R", "C") rendered a 19px-wide target. Centred
+     so the short names don't sit off to one side of their own box. */
+  .line a {
+    color: var(--accent-text);
+    display: inline-block;
+    padding-block: 4px;
+    min-width: 24px;
+    text-align: center;
+  }
   .line a:hover { text-decoration: underline; }
 
   /* On a phone this block sat between the hero and the listing at ~404px — ten

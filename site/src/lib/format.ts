@@ -14,7 +14,25 @@ export { decodeEntities };
 export function safeUrl(u?: string | null): string | null {
   if (!u) return null;
   const t = u.trim();
-  return /^https?:\/\//i.test(t) ? t : null;
+  if (!/^https?:\/\//i.test(t)) return null;
+  // Upgrade http to https rather than sending an applicant somewhere plaintext
+  // off a board whose pitch is first-party trust. Eight apply URLs arrive this
+  // way today (block.xyz, squarespace.com, stability.ai) and every one of them
+  // 301s to https anyway — this just skips the hop and the insecure moment.
+  return t.replace(/^http:\/\//i, "https://");
+}
+
+/**
+ * A company's bare domain ("openai.com") as an https URL, or null if it isn't
+ * a plausible hostname. Seed data rather than ATS input, but it reaches both a
+ * rendered href (companies/[slug]) and a schema.org `sameAs` (jobs/[slug]), and
+ * those two used to validate it differently — the job page not at all, so a
+ * malformed value became a broken sameAs in the markup.
+ */
+export function companyUrl(domain?: string | null): string | null {
+  if (!domain) return null;
+  const d = domain.trim();
+  return /^[a-z0-9.-]+\.[a-z]{2,}$/i.test(d) ? `https://${d}` : null;
 }
 
 export type SalaryFields = Pick<

@@ -4,10 +4,13 @@
   --surface-2: #1b1e27;
   --border: #272b36;
   /* Perceivable boundary for form fields (WCAG 1.4.11 wants ≥3:1 against the
-     adjacent surface). #545c6e measured only 2.70:1 against --surface; this
-     is 3.2:1. Check against --surface, not --bg — the filter panel and the
-     buttons that use it sit on --surface. */
-  --border-strong: #5f6779;
+     adjacent surface). #545c6e measured only 2.70:1 against --surface.
+     Check against every surface this sits on, not just --bg: the filter panel
+     and its buttons are on --surface, and the pager's current-page chip fills
+     with --surface-2. The previous #5f6779 cleared --surface (3.19) and --bg
+     (3.45) but missed --surface-2 at 2.93; this clears all three
+     (3.16 / 3.43 / 3.71). */
+  --border-strong: #646c7e;
   --text: #e7e9ee;
   --muted: #9aa1b1;
   --accent: #7c5cff;
@@ -603,7 +606,11 @@ a.badge.skill:focus-visible { color: var(--text); border-color: var(--accent); }
    normally, which is what a row of links should do when there's no fold to
    defend. */
 
-.back { color: var(--muted); }
+/* inline-block + padding-block so this clears the 24px target floor (WCAG 2.2
+   SC 2.5.8) — at 0.95rem the bare link was 18px tall. Same treatment as
+   .crumbs .feed in LandingPage.astro and .line a in LandingStats.astro; this
+   was the one back-link that never got it. */
+.back { color: var(--muted); display: inline-block; padding-block: 3px; }
 .back:hover { color: var(--accent-text); }
 
 /* Narrow screens: stack salary under the title so long titles don't cramp. */

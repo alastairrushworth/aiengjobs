@@ -3,6 +3,7 @@ import type { InferGetStaticPropsType } from "astro";
 import Base from "../../layouts/Base.astro";
 import JobCard from "../../components/JobCard.astro";
 import {
+  companyUrl,
   countryName,
   decodeEntities,
   formatSalary,
@@ -167,6 +168,7 @@ const descriptionHtml = blocks
   .join("");
 
 const company = companies.find((c) => c.slug === job.companySlug);
+const companySameAs = companyUrl(company?.domain);
 const markLogo = markupLogo(job.companySlug);
 const logoUrl = markLogo ? new URL(url(`/logos/${markLogo.file}`), Astro.site).href : null;
 const pageUrl = new URL(url(`/jobs/${job.slug}/`), Astro.site).href;
@@ -205,7 +207,9 @@ const jsonLd: Record<string, unknown> | null = closed || dupCanonicalSlug || !ha
       hiringOrganization: {
         "@type": "Organization",
         name: job.companyName,
-        ...(company?.domain ? { sameAs: `https://${company.domain}/` } : {}),
+        // Shape-checked, like the company page's own link — an unvalidated
+        // domain here became a broken sameAs in the published markup.
+        ...(companySameAs ? { sameAs: `${companySameAs}/` } : {}),
         // Only claimed when we hold the bytes and render them on this page —
         // Google expects markup to reflect visible content, and a logo URL we
         // haven't verified would be a 404 in the index.
@@ -477,7 +481,13 @@ const metaDescription = `${descBits.join(" — ")}.`.slice(0, 300);
      comfortably; ch units hold the measure whatever the font does. The facts
      grid and the apply button keep the full width — only running text needs
      the shorter line. */
-  .desc p, .desc li { max-width: 66ch; }
+  /* overflow-wrap: ATS descriptions routinely carry bare URLs, and an unbroken
+     48-character one sets the min-content width of the whole article — 8% of
+     open roles carry a token of 40+ characters. At 320px that forced 54px of
+     horizontal scroll on the job page (WCAG 1.4.10 Reflow, which also covers
+     200% zoom at 640px). Every other text container already guards this: the
+     h1 above, .job-detail .company, and both .job-card fields in global.css. */
+  .desc p, .desc li { max-width: 66ch; overflow-wrap: anywhere; }
   .desc.no-desc { color: var(--muted); }
   .desc p { margin: 0 0 14px; }
   .desc ul { margin: 0 0 14px; padding-left: 1.25rem; }

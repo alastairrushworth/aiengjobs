@@ -12,12 +12,20 @@ import { jsonLdScript } from "../site/src/lib/jsonld.ts";
 describe("safeUrl", () => {
   it("allows http(s) only", () => {
     expect(safeUrl("https://example.com/apply")).toBe("https://example.com/apply");
-    expect(safeUrl("http://example.com")).toBe("http://example.com");
     expect(safeUrl("javascript:alert(1)")).toBeNull();
     expect(safeUrl("data:text/html,hi")).toBeNull();
     expect(safeUrl("  https://x.io ")).toBe("https://x.io");
     expect(safeUrl(undefined)).toBeNull();
     expect(safeUrl("")).toBeNull();
+  });
+
+  it("upgrades http to https", () => {
+    expect(safeUrl("http://example.com")).toBe("https://example.com");
+    expect(safeUrl("HTTP://example.com/apply")).toBe("https://example.com/apply");
+    // Only the scheme — an "http://" later in the path or query is left alone.
+    expect(safeUrl("https://ats.example.com/r?next=http://x.io")).toBe(
+      "https://ats.example.com/r?next=http://x.io",
+    );
   });
 });
 
