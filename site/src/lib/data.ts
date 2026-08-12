@@ -80,6 +80,42 @@ export const openJobs: Job[] = data.jobs
 /** Recently-closed roles — rendered as noindexed tombstone pages, not listed. */
 export const closedJobs: Job[] = data.jobs.filter((j) => j.isClosed).map(withCanonicalCity);
 
+/**
+ * How long a role that aged out of the listings keeps a tombstone before its
+ * URL is allowed to 404.
+ *
+ * Mirrors the engine's CLOSED_RETENTION_DAYS (exportSnapshot.ts): a closed role
+ * gets 30 days of tombstone so links from search results, newsletters and
+ * shares land somewhere useful. A role that crossed MAX_JOB_AGE_DAYS is in the
+ * same position — it was listed, indexed and shared right up until the refresh
+ * that dropped it — but it used to 404 immediately, which is the one exit from
+ * the board that got no landing at all. 2,051 URLs were in that state.
+ *
+ * Bounded rather than open-ended for the same reason the engine bounds closed
+ * roles: two thirds of the aged-out set is 180+ days old and long gone from any
+ * index, so building pages for it is cost without a reader.
+ */
+export const AGED_OUT_TOMBSTONE_DAYS = 30;
+
+/**
+ * Roles still open at the ATS that have passed MAX_JOB_AGE_DAYS, within the
+ * tombstone window. Unlike closed roles these keep their description and their
+ * apply link — the requisition is still live, it just stopped being something
+ * this board is willing to vouch for.
+ */
+export const agedOutJobs: Job[] = data.jobs
+  .filter((j) => !j.isClosed)
+  .filter((j) => {
+    const age = ageDays(j);
+    return (
+      age !== null &&
+      age > MAX_JOB_AGE_DAYS &&
+      age <= MAX_JOB_AGE_DAYS + AGED_OUT_TOMBSTONE_DAYS
+    );
+  })
+  .map(withCanonicalCity)
+  .sort((a, b) => postedTs(b) - postedTs(a));
+
 // Employers routinely open several ATS requisitions for one role at one site
 // (6x "Forward Deployed Engineer · Workato · Hyderabad" today). Each is a
 // distinct posting with its own apply URL, but they render byte-identical

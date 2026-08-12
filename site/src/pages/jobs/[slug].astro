@@ -20,17 +20,19 @@ import { markupLogo } from "../../lib/logos.ts";
 import {
   openJobs,
   closedJobs,
+  agedOutJobs,
   companies,
   generatedAt,
   fxRates,
   duplicateOf,
+  MAX_JOB_AGE_DAYS,
 } from "../../lib/data.ts";
 import type { Job } from "@aiengjobs/shared";
 
 export function getStaticPaths() {
   // <title> needs whole-corpus knowledge: it trims over-long feed titles, but
   // only where the trim doesn't merge two distinct roles. See lib/jobTitle.
-  const titles = buildJobTitles([...openJobs, ...closedJobs]);
+  const titles = buildJobTitles([...openJobs, ...closedJobs, ...agedOutJobs]);
 
   const related = (job: Job) => {
     const atCompany = openJobs
@@ -56,19 +58,51 @@ export function getStaticPaths() {
     // Open roles get full, indexable pages.
     ...openJobs.map((job) => ({
       params: { slug: job.slug },
-      props: { job, closed: false, pageTitle: titles.get(job.slug)!, ...related(job) },
+      props: {
+        job,
+        retired: null,
+        pageTitle: titles.get(job.slug)!,
+        ...related(job),
+      },
     })),
     // Recently-closed roles keep a noindexed tombstone page instead of 404ing
     // links from search results, newsletters, and shares.
     ...closedJobs.map((job) => ({
       params: { slug: job.slug },
-      props: { job, closed: true, pageTitle: titles.get(job.slug)!, ...related(job) },
+      props: {
+        job,
+        retired: "closed" as const,
+        pageTitle: titles.get(job.slug)!,
+        ...related(job),
+      },
+    })),
+    // Roles that aged past MAX_JOB_AGE_DAYS. Same reasoning as the closed
+    // tombstone — these URLs were listed and shared right up until the refresh
+    // that dropped them — but the role itself is still live at the ATS, so the
+    // page keeps its description and its apply link and only the board's
+    // endorsement is withdrawn. See AGED_OUT_TOMBSTONE_DAYS.
+    ...agedOutJobs.map((job) => ({
+      params: { slug: job.slug },
+      props: {
+        job,
+        retired: "aged-out" as const,
+        pageTitle: titles.get(job.slug)!,
+        ...related(job),
+      },
     })),
   ];
 }
 
 type Props = InferGetStaticPropsType<typeof getStaticPaths>;
-const { job, closed, pageTitle, atCompany, similar } = Astro.props as Props;
+const { job, retired, pageTitle, atCompany, similar } = Astro.props as Props;
+
+// Both tombstone kinds are noindexed, drop their structured data and stay out
+// of the sitemap. They differ in what's still true of the role: a closed one is
+// gone from the employer's site (no description, no apply link), an aged-out
+// one is still live and still applicable.
+const closed = retired === "closed";
+const agedOut = retired === "aged-out";
+const isTombstone = retired !== null;
 
 const salary = formatSalary(job, fxRates);
 const applyHref = safeUrl(job.applyUrl);
@@ -178,7 +212,7 @@ const pageUrl = new URL(url(`/jobs/${job.slug}/`), Astro.site).href;
 // in search. The page stays live and applicable — it just stops claiming to be
 // the canonical one, and drops the JobPosting markup so Google has a single
 // listing for the role instead of six.
-const dupCanonicalSlug = closed ? null : duplicateOf(job);
+const dupCanonicalSlug = isTombstone ? null : duplicateOf(job);
 
 // Google requires a resolvable location: TELECOMMUTE roles need
 // applicantLocationRequirements (we derive it from country), everything else
@@ -189,7 +223,7 @@ const hasUsableLocation =
     ? Boolean(job.country)
     : Boolean(job.city || job.region || job.country);
 
-const jsonLd: Record<string, unknown> | null = closed || dupCanonicalSlug || !hasUsableLocation
+const jsonLd: Record<string, unknown> | null = isTombstone || dupCanonicalSlug || !hasUsableLocation
   ? null
   : {
       "@context": "https://schema.org/",
@@ -270,7 +304,7 @@ const companyPageExists = openJobs.some((j) => j.companySlug === job.companySlug
 // same pages as the JobPosting: a tombstone or a duplicate shouldn't be
 // advertising a hierarchy it isn't part of.
 const breadcrumbJsonLd =
-  closed || dupCanonicalSlug
+  isTombstone || dupCanonicalSlug
     ? null
     : {
         "@context": "https://schema.org",
@@ -313,7 +347,7 @@ const metaDescription = `${descBits.join(" — ")}.`.slice(0, 300);
 <Base
   title={pageTitle}
   description={metaDescription}
-  noindex={closed}
+  noindex={isTombstone}
   canonicalOverride={dupCanonicalSlug ? url(`/jobs/${dupCanonicalSlug}/`) : undefined}
 >
   <article class="job-detail">
@@ -322,6 +356,19 @@ const metaDescription = `${descBits.join(" — ")}.`.slice(0, 300);
       <p class="closed-banner" role="status">
         This role has closed — it no longer appears on {job.companyName}'s careers site.
         {similar.length > 0 && "Similar open roles are listed below."}
+      </p>
+    )}
+    {/* Deliberately not the closed wording: this requisition is still up. What
+        expired is the board's willingness to list it — see MAX_JOB_AGE_DAYS.
+        Say which, so someone arriving from an old link can judge for
+        themselves rather than being told something untrue. */}
+    {agedOut && (
+      <p class="closed-banner" role="status">
+        This role has been open for more than {MAX_JOB_AGE_DAYS} days, so it's no longer
+        listed on the board — a requisition nobody has refreshed in that long is often
+        no longer live. It's still on {job.companyName}'s careers site and you can
+        still apply.
+        {similar.length > 0 && " Fresher roles are listed below."}
       </p>
     )}
     <h1>{job.title}</h1>
