@@ -21,7 +21,7 @@ export const NON_CITY: ReadonlySet<string> = new Set(
    czech republic,czechia,greece,romania,hungary,new zealand,south africa,argentina,
    colombia,chile,turkey,türkiye,vietnam,thailand,indonesia,philippines,malaysia,
    estonia,ukraine,serbia,croatia,bulgaria,slovakia,slovenia,lithuania,latvia,
-   nigeria,kenya,egypt,saudi arabia,pakistan,
+   nigeria,kenya,egypt,saudi arabia,pakistan,cyprus,malta,luxembourg,iceland,
    europe,emea,apac,latam,namer,noram,north america,south america,americas,asia,
    asia pacific,africa,oceania,worldwide,international,global,anywhere,
    amer,amers,nam,eu,eea,uki,anz,mena,dach,benelux,nordics,apj,japac,sea,
@@ -162,7 +162,13 @@ export function canonicalCity(raw?: string | null): string | undefined {
   s = s
     .replace(/^[A-Z]{2}-[A-Z]{2}-\s*/, "")
     .replace(new RegExp(`^(?:${PREFIX_WORDS})\\s*[-–—:]\\s*`, "i"), "")
-    .replace(/^[A-Z]{2}\s+(?=\p{Lu}\p{Ll})/u, ""); // "GA Atlanta 1050 …"
+    // "GA Atlanta 1050 …" — a state code in front of the city. Skipped when
+    // the two letters are themselves a known city ("SF Office", "SF
+    // Headquarters"), where stripping them threw the city away and left the
+    // building word behind.
+    .replace(/^([A-Z]{2})\s+(?=\p{Lu}\p{Ll})/u, (m, code: string) =>
+      ALIASES[code.toLowerCase()] ? m : "",
+    );
 
   // Trailing building/site detail: "London - The River Building HQ",
   // "Hyderabad - Phoenix Equinox Tower 2". Spaced hyphen only, so
@@ -193,6 +199,15 @@ export function canonicalCity(raw?: string | null): string | undefined {
   const cased = titleCase(s);
   // Re-check aliases after casing so "SAN FRANCISCO BAY AREA" lands too.
   return ALIASES[cased.toLowerCase()] ?? cased;
+}
+
+/**
+ * Does the alias table vouch for this string as a city? Lets callers accept a
+ * short token they'd otherwise have to reject as a state or timezone code —
+ * "SF" is a city, "CA" and "EST" are not.
+ */
+export function isKnownCityAlias(s: string): boolean {
+  return Boolean(ALIASES[s.trim().toLowerCase()]);
 }
 
 /** URL slug for a canonical city name: "São Paulo" → "sao-paulo". */
