@@ -1,6 +1,7 @@
 ---
 import "../styles/global.css";
 import { url } from "../lib/url.ts";
+import { generatedAt } from "../lib/data.ts";
 
 interface Props {
   title: string;
@@ -42,6 +43,12 @@ const path = canonicalOverride ?? Astro.url.pathname;
 const canonicalPath = path.endsWith("/") || /\.[a-z]+$/i.test(path) ? path : `${path}/`;
 const canonical = new URL(canonicalPath, Astro.site).href;
 const ogImage = new URL(url("/og-default.png"), Astro.site).href;
+
+const updated = new Date(generatedAt).toLocaleDateString("en-US", {
+  year: "numeric",
+  month: "short",
+  day: "numeric",
+});
 ---
 
 <!doctype html>
@@ -143,6 +150,7 @@ const ogImage = new URL(url("/og-default.png"), Astro.site).href;
           frontierroles.com · AI engineering roles pulled nightly from company career sites —
           first-party postings, never scraped aggregators.
         </p>
+        <p class="updated">Updated {updated} · refreshed nightly</p>
       </div>
     </footer>
   </body>
