@@ -4,7 +4,7 @@ import JobCard from "../components/JobCard.astro";
 import JobFilters from "../components/JobFilters.astro";
 import { url } from "../lib/url.ts";
 import { buildFilterOptions } from "../lib/filterOptions.ts";
-import { openJobs, generatedAt } from "../lib/data.ts";
+import { openJobs } from "../lib/data.ts";
 import { jsonLdScript } from "../lib/jsonld.ts";
 
 const jobs = openJobs; // newest first (see lib/data)
@@ -54,11 +54,6 @@ const jsonLd = [
   },
 ];
 
-const updated = new Date(generatedAt).toLocaleDateString("en-US", {
-  year: "numeric",
-  month: "short",
-  day: "numeric",
-});
 ---
 
 <Base title="AI Engineering Jobs — RAG, agents, evals, inference" noBrandSuffix>
@@ -86,14 +81,6 @@ const updated = new Date(generatedAt).toLocaleDateString("en-US", {
     noun="open roles"
     {...filterOptions}
   >
-    {/* Sits with the result count rather than at the foot of the page. The
-        argument for the foot was that freshness is a question you only ask
-        after reading the listings — true on a desktop, but the homepage is
-        ~13 phone screens tall, so at the foot it was a claim almost nobody
-        reached. "No ghost jobs" is the board's whole pitch; the date that
-        backs it belongs where the scanning starts. */}
-    <p class="updated">Updated {updated} · refreshed nightly</p>
-
     <ul class="jobs" id="jobs">
       {initialJobs.map((job, i) => (
         <JobCard job={job} href={url(`/jobs/${job.slug}/`)} eager={i < 6} />
