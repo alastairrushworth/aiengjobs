@@ -1095,3 +1095,78 @@ Amiqus,personio,amiqus,amiqus.co,growth
 Keelvar,personio,keelvar,keelvar.com,growth
 Teamwork.com,personio,teamwork,teamwork.com,late
 Output Sports,personio,output-sports,outputsports.com,early
+
+# ===========================================================================
+# AI-first additions, verified 2026-08-13. Third sweep of the YC directory
+# (yc-oss API, Active status + isHiring + AI/ML-tagged), cross-referenced
+# against the existing seed list by name and domain. 524 untried candidates
+# were probed against Greenhouse/Lever/Ashby; ~90 boards resolved, and each
+# was identity-checked by pulling live posting content and comparing it to
+# the YC one-liner/industry -- not just the board display name. That caught
+# a fresh batch of same-slug impostors: greenhouse:turing is the *existing*
+# Turing already above (turingsaas.com is a different, unmatched company),
+# ashby:atomic is Atomic venture studio (not the investment-account API co),
+# ashby:eventual is a home-insurance startup (not the AI data engine, which
+# is really daft.ai), ashby:vector is freight-ops software (not adtech),
+# greenhouse:reflex is a retail-labor staffing startup (not reflex.dev),
+# ashby:sweep reads as enterprise data governance (not the JetBrains coding
+# assistant), greenhouse:osmosis is a medical-education platform (not the RL
+# company), greenhouse:mesh is a crypto payments startup (not accrual SaaS),
+# and greenhouse:raven is RA Capital's biotech incubator (not manufacturing
+# AI). All were dropped. Every company below was confirmed live with an
+# AI/ML-relevant role posted at time of adding.
+# ===========================================================================
+# --- greenhouse (2026-08 AI additions) ---
+Navier AI,greenhouse,navierai,navier.ai,early
+# --- ashby (2026-08 AI additions) ---
+Anara,ashby,anara,anara.com,early
+Anima,ashby,anima,animahealth.com,growth
+Aurelian,ashby,aurelian,aurelian.com,growth
+AuthZed,ashby,authzed,authzed.com,growth
+Blee,ashby,blee,blee.com,growth
+Brainbase Labs,ashby,brainbaselabs,brainbaselabs.com,early
+Cambio,ashby,cambio,cambio.ai,growth
+Capy,ashby,capy,capy.ai,early
+Centralize,ashby,centralize,usecentralize.com,early
+Codes Health,ashby,codes-health,codeshealth.com,growth
+Conductor,ashby,conductor,conductor.build,early
+Conveo,ashby,conveo,conveo.ai,growth
+Cosine,ashby,cosine,cosine.sh,early
+Dedalus Labs,ashby,dedalus-labs,dedaluslabs.ai,early
+Deepnote,ashby,deepnote,deepnote.com,early
+DiligenceSquared,ashby,diligencesquared,diligencesquared.com,early
+Finto,ashby,finto,gofinto.com,early
+Fleetline,ashby,fleetline,fleetline.ai,early
+Glimpse,ashby,glimpse,tryglimpse.com,growth
+GovDash,ashby,govdash,govdash.com,growth
+Greenboard,ashby,greenboard,greenboard.com,growth
+Heron Data,ashby,herondata,herondata.io,growth
+Hyperbound,ashby,hyperbound,hyperbound.ai,growth
+Hyperspell,ashby,hyperspell,hyperspell.com,early
+Innate,ashby,innate,innate.bot,early
+Invert,ashby,invert,invertbio.com,growth
+Julius,ashby,julius,julius.ai,early
+Knowtex,ashby,knowtex,knowtex.ai,early
+MangoDesk,ashby,mangodesk,mangodesk.com,early
+Metriport,ashby,metriport,metriport.com,growth
+OffDeal,ashby,offdeal,offdeal.io,growth
+OneChronos,ashby,onechronos,onechronos.com,growth
+Outset,ashby,outset,outset.ai,growth
+Parallel Bio,ashby,parallel-bio,parallel.bio,growth
+Pivot Robotics,ashby,pivotrobotics,pivotrobotics.com,early
+Popl,ashby,popl,popl.co,growth
+Reacher,ashby,reacher,reacherapp.com,early
+Reality Defender,ashby,realitydefender,realitydefender.com,growth
+Recall.ai,ashby,recall,recall.ai,growth
+Replo,ashby,replo,replo.app,growth
+Rollstack,ashby,rollstack,rollstack.com,growth
+Saturn,ashby,saturn,saturnos.com,growth
+SnapMagic,ashby,snapmagic,snapmagic.com,growth
+Subsets,ashby,subsets,subsets.com,early
+Tekton Dynamics,ashby,tekton-dynamics,tekton-dynamics.com,early
+Thera,ashby,thera,getthera.com,growth
+Thunder Compute,ashby,thundercompute,thundercompute.com,early
+Tuesday Labs,ashby,tuesday-labs,tuesdaylabs.com,early
+# --- lever (2026-08 AI additions) ---
+Kinter,lever,kinter,kinter.ai,growth
+PostEra,lever,postera,postera.ai,growth
