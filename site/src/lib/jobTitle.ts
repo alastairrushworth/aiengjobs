@@ -30,6 +30,40 @@ import { countryName } from "./format.ts";
 const TITLE_BUDGET = 50;
 const MIN_ROLE_CHARS = 24;
 
+/**
+ * Backstop on role + suffix, brand excluded.
+ *
+ * Deliberately loose. Two leaks pushed 395 indexable titles past the ~70
+ * characters Google renders, 11 past 120, and one to 203: an unbounded suffix
+ * (fixed by MAX_PLACE_CHARS) and an unbounded collision allowance (fixed by
+ * ending the NEXT_ALLOWANCE ladder at a finite rung). This catches whatever
+ * those two miss.
+ *
+ * It is NOT set to TITLE_BUDGET, which was the first thing tried. Doing that
+ * caps the role name at the budget *before* the collision loop has run, which
+ * is the one thing this file exists to prevent — it re-merged the two Anduril
+ * "Staff Robotics Software Engineer, Air Vehicle …" roles under one title. A
+ * long title beats two distinct jobs sharing one, so the ceiling has to sit
+ * above what disambiguation actually costs (~74 characters on this corpus).
+ *
+ * Enforced by trimming the role name, never the suffix: the company is what
+ * makes a result identifiable in a SERP.
+ */
+const MAX_TITLE_CHARS = 110;
+
+/**
+ * Ceiling on the place half of the suffix. `locationRaw` is the last-resort
+ * candidate and arrives unbounded — "Mountain View, CALIFORNIA, United States"
+ * is 40 characters on its own, which left 129-character titles once the
+ * company was added.
+ *
+ * Trimming can in principle make two postings that differ only in the tail of
+ * their location render the same title. That is the case the comment in
+ * `suffixOf` already describes and accepts: such pages stay distinct by URL,
+ * and one of the set is normally a `duplicateOf` canonical anyway.
+ */
+const MAX_PLACE_CHARS = 18;
+
 function truncateRole(title: string, room: number): string {
   if (title.length <= room) return title;
   const cut = title.slice(0, room - 1);
@@ -69,12 +103,31 @@ export function buildJobTitles(jobs: Job[]): Map<string, string> {
     ),
   ];
 
-  // For each candidate string, how many colliding postings would still share it.
+  const trimPlace = (where: string) => truncateRole(where, MAX_PLACE_CHARS);
+
+  // For each candidate string, how many colliding postings would still share
+  // it — counted for the full string and for its trimmed form, because the two
+  // don't always agree. "Any location, United States" and "Any location,
+  // Canada" are distinct at full length and identical once trimmed, so
+  // trimming unconditionally would undo the disambiguation this map exists to
+  // provide (it did, and the Coalition regression test caught it).
   const placeCount = new Map<string, number>();
+  const trimmedCount = new Map<string, number>();
   for (const j of jobs) {
-    for (const where of placeCandidates(j)) {
+    const candidates = placeCandidates(j);
+    for (const where of candidates) {
       const k = `${j.title}·${j.companyName}·${where}`;
       placeCount.set(k, (placeCount.get(k) ?? 0) + 1);
+    }
+    // Deduped per posting, because the two maps are compared against each other
+    // below and have to count the same thing: postings, not candidate slots.
+    // "Mountain View, United States" and "Mountain View, CALIFORNIA, United
+    // States" are two candidates of one job that trim to one string, so
+    // counting them separately made every trimmed form look twice as shared as
+    // it was and the comparison never trimmed anything.
+    for (const t of new Set(candidates.map(trimPlace))) {
+      const k = `${j.title}·${j.companyName}·${t}`;
+      trimmedCount.set(k, (trimmedCount.get(k) ?? 0) + 1);
     }
   }
 
@@ -83,7 +136,7 @@ export function buildJobTitles(jobs: Job[]): Map<string, string> {
     let where: string | undefined;
     if (dup) {
       const candidates = placeCandidates(j);
-      where =
+      const chosen =
         candidates.find(
           (c) => (placeCount.get(`${j.title}·${j.companyName}·${c}`) ?? 0) === 1,
         ) ??
@@ -91,6 +144,15 @@ export function buildJobTitles(jobs: Job[]): Map<string, string> {
         // field we render. Use the most specific string anyway; the pages stay
         // distinct by URL and one of them is usually a `duplicateOf` canonical.
         candidates[candidates.length - 1];
+      // Trim only where it costs nothing: if the trimmed form is shared by more
+      // postings than the full one was, the characters it saved were the ones
+      // telling two pages apart.
+      if (chosen) {
+        const trimmed = trimPlace(chosen);
+        const full = placeCount.get(`${j.title}·${j.companyName}·${chosen}`) ?? 0;
+        const short = trimmedCount.get(`${j.title}·${j.companyName}·${trimmed}`) ?? 0;
+        where = short <= full ? trimmed : chosen;
+      }
     }
     return [j.companyName, where]
       .filter(Boolean)
@@ -101,11 +163,20 @@ export function buildJobTitles(jobs: Job[]): Map<string, string> {
   const suffixes = new Map(jobs.map((j) => [j.slug, suffixOf(j)]));
 
   // Extra characters granted to a role name beyond the budget. Escalates only
-  // for titles that collide; Infinity means "give up and use the full title".
+  // for titles that collide, and stops at the last rung.
+  //
+  // That rung used to be Infinity — "give up and use the full title" — which is
+  // how one <title> reached 203 characters off a 163-character feed title. The
+  // reasoning for it still holds ("anything still colliding at full length is a
+  // genuine duplicate requisition, which data.ts canonicalizes onto one page
+  // anyway"), and that is exactly why the rung can be finite: the pages it
+  // gives up on are the ones already consolidated onto a canonical, so the
+  // collision it permits is between a page and a page Google has been told to
+  // ignore. 56 covers every real disambiguation on this corpus, which needs
+  // ~24.
   const NEXT_ALLOWANCE = new Map<number, number>([
     [0, 24],
     [24, 56],
-    [56, Infinity],
   ]);
   const allowance = new Map(jobs.map((j) => [j.slug, 0]));
 
@@ -114,7 +185,12 @@ export function buildJobTitles(jobs: Job[]): Map<string, string> {
     for (const j of jobs) {
       const suffix = suffixes.get(j.slug)!;
       const room = Math.max(MIN_ROLE_CHARS, TITLE_BUDGET - suffix.length) + allowance.get(j.slug)!;
-      titles.set(j.slug, `${truncateRole(j.title, room)}${suffix}`);
+      // The allowance below can reach Infinity, so the ceiling is applied here
+      // rather than trusted to the budget. MIN_ROLE_CHARS still wins over it:
+      // a role name cut to nothing names no job, and an unusually long company
+      // is the one case where overshooting MAX_TITLE_CHARS beats that.
+      const capped = Math.max(MIN_ROLE_CHARS, Math.min(room, MAX_TITLE_CHARS - suffix.length));
+      titles.set(j.slug, `${truncateRole(j.title, capped)}${suffix}`);
     }
     return titles;
   };
