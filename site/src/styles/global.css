@@ -164,9 +164,7 @@ a { color: inherit; text-decoration: none; }
 .hero .count { color: var(--accent-2); font-weight: 600; }
 
 /* Freshness stamp — last thing on the page, just above the footer rule. */
-/* Reads as a subtitle to the result count it now sits under, so it is
-   left-aligned with the listing rather than centred under the whole page. */
-.updated { font-size: 0.85rem; color: var(--muted); margin: -4px 0 14px; }
+.updated { font-size: 0.85rem; color: var(--muted); margin: 18px 0 0; }
 
 /* A phone's whole fold is 723px. At the desktop rhythm the hero alone took 210
    of it before the nav and the filter bar had their turn, and the first job

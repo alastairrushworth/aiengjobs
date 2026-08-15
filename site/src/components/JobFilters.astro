@@ -69,17 +69,9 @@ const showAllHidden = hasPager || total <= initial;
         {quiet ? "" : `Showing the ${shown} newest of ${total} ${noun}`}
       </span>
     </p>
-    {/* One chip per active filter, each its own way out. "Clear filters" is
-        still here, but all-or-nothing was the only granularity on offer: four
-        controls deep, undoing the one that was wrong meant finding it again in
-        a panel that had scrolled away, or starting over. */}
+    {/* One chip per active filter, each its own way out — undoing the one
+        that was wrong doesn't mean starting over. */}
     <div class="chips" id="chips"></div>
-    <button class="link-btn" id="clear" hidden>Clear filters</button>
-    {/* Phone-only way back to the controls. This bar is sticky at that width
-        (the panel itself is far too tall to pin), so from 8,000px down a
-        listing the filters are still one tap away instead of a scroll to the
-        top. Hidden above 700px, where the panel is the thing that sticks. */}
-    <button class="link-btn jump-filters" id="jump-filters">Filters</button>
   </div>
 
   <slot />
@@ -92,10 +84,6 @@ const showAllHidden = hasPager || total <= initial;
         measured against the data, not promised. A dead end here used to be the
         most common outcome of an ordinary two-word search. */}
     <p class="suggestions" id="suggestions"></p>
-    {/* The results bar carries a Clear too, but it sits above the fold of an
-        otherwise blank screen — repeat the way out where the eye already is.
-        Same words as that one: two labels for one action reads as two
-        different actions. */}
     <button class="btn-secondary" id="empty-clear">Clear filters</button>
   </div>
   <div class="show-more-wrap">
@@ -108,14 +96,10 @@ const showAllHidden = hasPager || total <= initial;
 <style>
   .results-bar { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
 
-  /* Above 700px the filter panel itself is pinned (see global.css), so this bar
-     scrolls away with the list and the jump button has nothing to do. */
-  .jump-filters { display: none; }
   @media (max-width: 700px) {
     /* A 50-card listing is ~10,600px tall on a phone and the panel is ~150px —
        a quarter of the fold — so the panel can't be what sticks. This line can:
-       it keeps the live count in view and carries the way back to the controls.
-       Sits directly under the 60px header. */
+       it keeps the live count in view. Sits directly under the 60px header. */
     .results-bar {
       position: sticky;
       top: 60px;
@@ -126,13 +110,7 @@ const showAllHidden = hasPager || total <= initial;
       backdrop-filter: blur(8px);
       border-bottom: 1px solid var(--border);
     }
-    /* One row, not two. The count and the button together needed 343px of a
-       335px content box, so the button wrapped and the sticky bar cost 72px of
-       the fold instead of 42. Letting the count line shrink (min-width:0 — a
-       flex item won't go below min-content otherwise) keeps them side by side;
-       a long status wraps inside the count instead of pushing the button off. */
-    .results-bar :global(.results-meta) { margin-bottom: 0; flex: 1 1 auto; min-width: 0; }
-    .jump-filters { display: inline; flex: none; margin-left: auto; }
+    .results-bar :global(.results-meta) { margin-bottom: 0; }
   }
 
   /* The chips themselves are styled in global.css, not here: this block is
@@ -209,10 +187,8 @@ const showAllHidden = hasPager || total <= initial;
   const empty = document.getElementById("empty")!;
   const suggestEl = document.getElementById("suggestions")!;
   const chipsEl = document.getElementById("chips")!;
-  const clearBtn = byId<HTMLButtonElement>("clear")!;
   const emptyClearBtn = byId<HTMLButtonElement>("empty-clear")!;
   const showAllBtn = byId<HTMLButtonElement>("show-all")!;
-  const jumpBtn = byId<HTMLButtonElement>("jump-filters")!;
   // "More filters" is a button + hidden panel, not a <details> — see the note
   // in FilterControls. This script is the only thing that opens and closes it.
   const disclosure = byId<HTMLButtonElement>("filter-disclosure");
@@ -595,15 +571,14 @@ const showAllHidden = hasPager || total <= initial;
     const capped = visible.length < matches.length;
     statusText.textContent = filtering
       ? capped
-        ? `Showing ${visible.length} of ${matches.length} matching roles`
-        : `${matches.length} of ${total} roles match`
+        ? `${visible.length} of ${matches.length} matching roles`
+        : `${matches.length} matching roles`
       : showAll
         ? `Showing all ${total} ${NOUN}`
         : `Showing the ${Math.min(INITIAL, total)} newest of ${total} ${NOUN}`;
 
     empty.hidden = matches.length !== 0;
     if (!matches.length) renderSuggestions(data);
-    clearBtn.hidden = !filtering;
     renderChips();
     // On a paged landing the unfiltered list is the pager's job — offering
     // "Show all 688 roles" there rebuilds the 15k-node document PAGE_SIZE
@@ -679,17 +654,7 @@ const showAllHidden = hasPager || total <= initial;
     apply();
     q.focus();
   }
-  clearBtn.addEventListener("click", clearFilters);
   emptyClearBtn.addEventListener("click", clearFilters);
-
-  // Phone-only (the button is display:none above 700px): open the disclosure if
-  // this page has one, bring the panel into view, then put the caret in the
-  // search box so the next keystroke goes where it was aimed.
-  jumpBtn.addEventListener("click", () => {
-    setMoreOpen(true);
-    q.scrollIntoView({ block: "center" });
-    q.focus({ preventScroll: true });
-  });
 
   // Hydrate state from the URL so filtered views are shareable + back-button safe.
   const params = new URLSearchParams(location.search);
