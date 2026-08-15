@@ -1,6 +1,8 @@
 import { readFileSync } from "node:fs";
 import { fetchRetry } from "./util/fetch.ts";
 import type { SiteSnapshot } from "@aiengjobs/shared";
+import { indexableSlugs } from "@aiengjobs/shared/indexable";
+import { submitIndexing } from "./googleIndexing.ts";
 import {
   INDEXNOW_ENDPOINT,
   INDEXNOW_KEY,
@@ -37,23 +39,33 @@ export interface UrlDelta {
   removed: string[];
 }
 
-/** Job URLs that appeared or disappeared between two snapshots. */
+/**
+ * Slugs that appeared or disappeared between two snapshots, under whichever
+ * definition of "present" the caller cares about.
+ *
+ * No usable previous snapshot (first run on a fresh box) means everything would
+ * look "new". Announcing 3,000 unchanged listings is noise, so treat it as
+ * nothing to report and let the next run pick up the real delta.
+ */
+function delta(
+  prev: SiteSnapshot | null,
+  next: SiteSnapshot,
+  present: (s: SiteSnapshot) => Set<string>,
+): UrlDelta {
+  if (!prev) return { added: [], removed: [] };
+  const before = present(prev);
+  const after = present(next);
+  return {
+    added: [...after].filter((s) => !before.has(s)).map(jobUrl),
+    removed: [...before].filter((s) => !after.has(s)).map(jobUrl),
+  };
+}
+
+/** Job URLs that opened or closed between two snapshots. */
 export function diffSnapshots(prevPath: string, nextPath: string): UrlDelta {
   const next = readSnapshot(nextPath);
   if (!next) throw new Error(`cannot read new snapshot at ${nextPath}`);
-  const prev = readSnapshot(prevPath);
-
-  const before = openSlugs(prev);
-  const after = openSlugs(next);
-
-  // No usable previous snapshot (first run on a fresh box) means everything
-  // would look "new". Announcing 3,000 unchanged listings is noise, so treat it
-  // as nothing to report and let the next run pick up the real delta.
-  if (!prev) return { added: [], removed: [] };
-
-  const added = [...after].filter((s) => !before.has(s)).map(jobUrl);
-  const removed = [...before].filter((s) => !after.has(s)).map(jobUrl);
-  return { added, removed };
+  return delta(readSnapshot(prevPath), next, openSlugs);
 }
 
 /**
@@ -98,23 +110,44 @@ export async function submitIndexNow(urls: string[]): Promise<boolean> {
 
 /**
  * Diff two snapshots and announce what changed. Wired into the nightly refresh
- * (see scripts/refresh.sh), which hands over its pre-refresh copy.
+ * (see scripts/publish.sh), which hands over its pre-refresh copy.
+ *
+ * Two announcements, on two different deltas, because the two APIs are asking
+ * different questions. IndexNow wants "this URL changed", so it takes the
+ * open/closed delta. Google's Indexing API is licensed only for pages carrying
+ * JobPosting markup, so it takes the delta of pages that actually carry it —
+ * which additionally catches a role ageing out or losing to a duplicate, both
+ * of which strip the markup while leaving the role open at the ATS.
  */
 export async function notify(prevPath: string, nextPath: string): Promise<void> {
-  const { added, removed } = diffSnapshots(prevPath, nextPath);
+  const next = readSnapshot(nextPath);
+  if (!next) throw new Error(`cannot read new snapshot at ${nextPath}`);
+  const prev = readSnapshot(prevPath);
+
+  const { added, removed } = delta(prev, next, openSlugs);
   if (added.length === 0 && removed.length === 0) {
     console.log("Notify: no job URLs changed.");
-    return;
+  } else {
+    // Removals first: a dead listing in someone's search results is worse than
+    // a new one arriving a minute late.
+    const urls = [...removed, ...added].slice(0, MAX_URLS_PER_RUN);
+    const capped = removed.length + added.length - urls.length;
+    const ok = await submitIndexNow(urls);
+    console.log(
+      `Notify: ${added.length} new, ${removed.length} closed` +
+        (capped > 0 ? `, ${capped} not announced (per-run cap)` : "") +
+        ` — IndexNow ${ok ? "accepted" : "failed"}.`,
+    );
   }
 
-  // Removals first: a dead listing in someone's search results is worse than a
-  // new one arriving a minute late.
-  const urls = [...removed, ...added].slice(0, MAX_URLS_PER_RUN);
-  const capped = removed.length + added.length - urls.length;
-  const ok = await submitIndexNow(urls);
+  const indexable = delta(prev, next, indexableSlugs);
+  const google = await submitIndexing(indexable.added, indexable.removed);
   console.log(
-    `Notify: ${added.length} new, ${removed.length} closed` +
-      (capped > 0 ? `, ${capped} not announced (per-run cap)` : "") +
-      ` — IndexNow ${ok ? "accepted" : "failed"}.`,
+    `Notify: ${indexable.added.length} gained JobPosting markup, ${indexable.removed.length} lost it` +
+      ` — Indexing API accepted ${google.updated} updated, ${google.deleted} deleted` +
+      (google.failed > 0 ? `, ${google.failed} rejected` : "") +
+      (google.skipped > 0 ? `, ${google.skipped} skipped` : "") +
+      (google.stopped ? ` (stopped: ${google.stopped})` : "") +
+      ".",
   );
 }
