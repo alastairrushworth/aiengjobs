@@ -130,6 +130,16 @@ const POLICY_PAREN = new RegExp(`^(.+?)\\s*\\((?:${POLICY})\\)$`, "i");
 const POLICY_BARE = new RegExp(`^(?:${POLICY})\\s+([\\p{L}][\\p{L}\\p{M}\\s'’-]{1,30})$`, "iu");
 /** Nothing but a policy word — genuinely carries no location. */
 const POLICY_ONLY = new RegExp(`^(?:${POLICY})$`, "i");
+/**
+ * The synonyms feeds use for "remote". `remoteType` only ever tested for
+ * "hybrid" and "remote", so a role located "Virtual" fell through to the
+ * `else if (loc)` branch and came out **onsite** — a fully-virtual role
+ * badged On-site on its card and in its Work type fact, and pushed down the
+ * JobPosting path that then wants a jobLocation it has no way to supply.
+ * POLICY above already knows these words; this is the same list minus the two
+ * that were already handled.
+ */
+const REMOTE_SYNONYM = /\b(?:virtual|wfh|work from home|telecommute)\b/i;
 /** A policy word, or a "could be anywhere" word, loose in a segment we couldn't
  *  parse into <policy> + <place>. Whatever else the segment says, it isn't
  *  naming one city. */
@@ -184,7 +194,8 @@ export function parseLocation(
   let remoteType: RemoteType | undefined = declaredRemote;
   if (!remoteType) {
     if (/\bhybrid\b/.test(lower)) remoteType = "hybrid";
-    else if (remoteHint === true || /\bremote\b/.test(lower)) remoteType = "remote";
+    else if (remoteHint === true || /\bremote\b/.test(lower) || REMOTE_SYNONYM.test(lower))
+      remoteType = "remote";
     // "Europe", "AMER", "EMEA" name a hiring territory, not a workplace — a
     // role listed only there isn't on-site anywhere, so don't badge it as such.
     else if (MULTI_COUNTRY_REGION.has(lower)) remoteType = "remote";
