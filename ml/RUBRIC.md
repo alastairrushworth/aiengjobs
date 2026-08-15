@@ -8,16 +8,24 @@ lines that the audit applied consistently but never documented.
 
 **These changes alter decisions on rows already labelled `rubric: "v4"`:**
 
-| Change | Effect on existing labels |
-|---|---|
-| Thin-advert rule (new) | Makes ~16 near-arbitrary calls derivable; may flip a few |
-| Retrieval modelling carved out of data engineering | ~9 rows to re-read; several likely flip back IN, incl. the four ServiceNow agentic-search rows (generative indexing, but a search-engine requirements list) |
-| QA carve-in where the role builds the eval framework | Up to 6 rows to re-read, incl. Sana "QA Engineer (Agents)" |
-| Team description may name the ML-platform workload | ~3 rows to re-read, incl. Together AI cluster provisioning — though the execution/operations split may still hold it OUT |
+The re-audit has since been run: 81 rows in the four affected classes were re-read,
+8 were re-labelled, and the results are recorded below against what v4.1 predicted.
 
-Rows labelled under v4 were labelled under v4.0. Re-audit those four classes before
-treating the corpus as uniformly v4.1. The affected rows are greppable: they carry
-`prev_label`, `ambiguous: true` and a "Contested:" clause in the reason.
+| Change | Predicted | Actually happened |
+|---|---|---|
+| Thin-advert rule (new) | ~16 arbitrary calls made derivable | Confirmed, plus the rule needed correcting: it must trigger on *insufficiency*, not length. 1 flip (Ambi Robotics, in→out) |
+| Retrieval modelling carved out of data engineering | ~9 rows, several flipping back IN | **0 flips.** Tested against the ServiceNow adverts the rule was written from, the requirements test holds them OUT. Rule qualified accordingly |
+| QA carve-in where the role builds the eval framework | up to 6 rows | 3 flips back IN (Sana, ICE, Autodesk); Cerebras, DNB, LSEG and Verto confirmed OUT |
+| Team description may name the ML-platform workload | ~3 rows | **0 flips.** The execution-versus-operations split governs where the two rules meet, as anticipated |
+
+Net effect on the corpus: 812 in / 4,601 out. The re-audit also found 3 rows whose v4
+call was made on *less text than the advert contained*, because batch rendering had
+trimmed the team description away — all three Zoox rows are now correctly at high
+confidence, and one v4 reason that asserted "no frontier workload is named" has been
+corrected because Triton, TensorRT and CUDA were named.
+
+Rows still labelled `rubric: "v4"` were labelled under v4.0 but fall outside the four
+classes above, so no rule that changed in v4.1 reaches them.
 
 Written down but not changed in v4.1 (they were already being applied): where the
 serving runtime ends, the FDE requirements test, and the quant exception.
@@ -92,8 +100,18 @@ phrases — so they were decided by instinct. Zoox "Manager, RL Algorithms & Dec
 (513 chars, body lists only which teams you would work with) went IN and Zoox "Staff
 Data Scientist — Behavior Evaluation" (520 chars) went OUT, on nothing but the title.
 
+**Trigger on insufficiency, not on length.** (Corrected in v4.1 after the re-audit.)
+A short advert that still resolves the domain test is decided by its content, at
+normal confidence — Zoox "Perception Mapping" is 968 characters and says it will
+"design, train, validate, and integrate ML models that detect semantic map
+elements", which settles the question without any need for the title. Conversely
+Shield AI "Object Detection and Tracking" is 1,483 characters and resolves *against*
+inclusion: real-time detection, sensor fusion and state estimation with no learned
+model anywhere. Reach for the fallback below only when the content genuinely does not
+resolve.
+
 When the role content — excluding company boilerplate, benefits, pay bands and legal
-text — is under roughly 1,500 characters:
+text — is under roughly 1,500 characters **and does not resolve the domain test**:
 
 - **The title and team become admissible evidence**, because they are the only
   evidence there is. This is the one place in the rubric where that is true.
@@ -272,6 +290,17 @@ Weigh the **responsibilities** section above everything else. Specifically:
   plumbing. Training the embedder, designing the retrieval objective and measuring
   grounding are model work. Retrieval quality is the dominant lever on RAG system
   quality, and v4 was placing the people who own it outside the board.
+
+  **Building the learned component, not operating an index that contains one.**
+  (Qualified in v4.1 after the re-audit, which tested this rule against the advert it
+  was written from and found it did not flip.) ServiceNow's four "Agentic Search
+  Infrastructure Engineer" postings name semantic-ID indexing driven by next-token
+  prediction — but that is one bullet of six, the other five are ingestion, enrichment,
+  multi-modal indexing, index lifecycle and capacity planning, and the required skill
+  is Lucene, Solr, Elasticsearch or OpenSearch. Apply the requirements test: the ad
+  asks for a search infrastructure engineer, so it stays **OUT**. Operating an index
+  that happens to contain learned representations is plumbing; owning the model that
+  produces them is not.
 
   This does **not** reopen search relevance or recommendation. When the deliverable is
   the ranking quality of a search or recsys product, the domain test still governs and
