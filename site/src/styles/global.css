@@ -345,10 +345,27 @@ a { color: inherit; text-decoration: none; }
     font-size: 0.8rem;
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     /* Stands in for the literal space in "Remote 271" — whitespace-only text
        nodes don't lay out between flex items. */
     gap: 5px;
   }
+  /* The track must never set the page's min-content width. Its three buttons
+     are `white-space: nowrap`, and <main> is a flex item of a column-flex body,
+     so the widest thing in here becomes a floor the whole document can't go
+     below: at 320px that forced 30px of horizontal scroll on all 140 listing
+     pages carrying this control — a WCAG 1.4.10 Reflow failure — while the
+     tuning note above still read "fits at 390". It fit because the note was
+     written when On-site read 913; it reads 1855 now, and the measured slack at
+     360px was down to 6px.
+     Re-tuning the padding to this week's digits is what put it here, so these
+     three lines make the row *shrinkable* instead: min-width:0 defeats the
+     automatic minimum size (a flex item won't go below min-content otherwise),
+     and equal shares mean the track divides whatever width it gets. No count
+     growth can reintroduce page-level scroll. */
+  .seg { flex: 1 1 100%; min-width: 0; }
+  .seg-track { min-width: 0; }
+  .seg-btn { flex: 1 1 auto; min-width: 0; }
   /* Same thumb target as the segment it sits beside. */
   .more-btn {
     min-height: 44px;
@@ -357,6 +374,25 @@ a { color: inherit; text-decoration: none; }
     padding: 0 12px;
     font-size: 0.8rem;
   }
+}
+/* The shrink guard above stops the page scrolling, but a shrunk track clips its
+   own labels, and "On-si…" is a worse control than one without a tally. So
+   below the width where the counts genuinely stop fitting, the count is what
+   goes: it's the least load-bearing part of the row — the label is what names
+   the filter, the chip above the listing says what's applied, and the results
+   line announces how many matched.
+
+   375px, from measurement rather than taste. The filter panel's content box is
+   roughly the viewport minus 62px; the track needs 273px with counts and 194px
+   without. So counts fit from ~335px up, and the threshold sits above that on
+   purpose: at 375 there is ~40px of slack for the counts to grow into, where at
+   340 there would be ~5px and we'd be back to re-tuning this every time the
+   board does. Every common phone width from 375 up (375, 390, 393, 412, 414,
+   428) keeps its counts; 320 and 360 trade them for labels that always fit.
+
+   The element stays in the DOM, so updateSegCounts() keeps writing to it. */
+@media (max-width: 374px) {
+  .seg-n { display: none; }
 }
 /* min-width:0 or the flex basis is a lie: a flex item's default min-width is
    min-content, and a select's min-content is its longest option ("Hong Kong SAR
