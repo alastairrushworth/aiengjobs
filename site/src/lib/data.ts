@@ -1,6 +1,13 @@
 import snapshot from "../data/snapshot.json";
 import type { SiteSnapshot, Job } from "@aiengjobs/shared";
-import { canonicalCity } from "@aiengjobs/shared/city";
+import {
+  MAX_JOB_AGE_DAYS,
+  canonicalByDupKey,
+  duplicateOfIn,
+  jobAgeDays,
+  listedJobs,
+  withCanonicalCity,
+} from "@aiengjobs/shared/indexable";
 
 // The single place the untyped snapshot JSON crosses into typed code, with a
 // cheap shape assertion so a malformed nightly export fails the build loudly
@@ -35,17 +42,6 @@ export const companies = data.companies;
 
 const postedTs = (j: Job): number => (j.postedAt ? Date.parse(j.postedAt) || 0 : 0);
 
-// The snapshot is produced by whatever engine version last ran nightly,
-// so the site canonicalizes city names on read rather than trusting the file.
-// Without this the site is one nightly export behind its own rules — enough to
-// split /ai-jobs-bangalore from /ai-jobs-bengaluru and to publish a junk
-// addressLocality in the JobPosting markup. canonicalCity is idempotent, so a
-// snapshot that's already clean passes through untouched.
-const withCanonicalCity = (j: Job): Job => {
-  const city = canonicalCity(j.city);
-  return city === j.city ? j : { ...j, city };
-};
-
 /**
  * Roles stop being listed once they pass this age, even though the ATS still
  * carries them and the nightly run still re-verifies them.
@@ -55,27 +51,19 @@ const withCanonicalCity = (j: Job): Job => {
  * live opportunity, and applying to one is the exact experience the board
  * exists to avoid. Every feed supplies postedAt, so this is measured, not
  * guessed. Aged-out roles fall out of the listings, the sitemap and the feeds
- * together, and their pages 404 into the copy that already explains it.
+ * together, and their pages tombstone into the copy that already explains it.
+ *
+ * Defined in shared/indexable.ts, because crossing this line also strips the
+ * JobPosting markup — which the engine has to know about before it submits a
+ * URL to Google's Indexing API. Re-exported here so the site's many callers
+ * keep importing it from the module that owns the listings.
  */
-export const MAX_JOB_AGE_DAYS = 90;
+export { MAX_JOB_AGE_DAYS };
 
-const ageDays = (j: Job): number | null => {
-  const posted = j.postedAt ? Date.parse(j.postedAt) : NaN;
-  if (!Number.isFinite(posted)) return null;
-  return (Date.parse(data.generatedAt) - posted) / 86_400_000;
-};
+const ageDays = (j: Job): number | null => jobAgeDays(j, data.generatedAt);
 
 /** Open roles, newest first (roles without a posted date sink to the bottom). */
-export const openJobs: Job[] = data.jobs
-  .filter((j) => !j.isClosed)
-  // An unknown posting date can't be shown as fresh on a board that sells
-  // freshness. No feed currently omits it, so this excludes nothing today.
-  .filter((j) => {
-    const age = ageDays(j);
-    return age !== null && age <= MAX_JOB_AGE_DAYS;
-  })
-  .map(withCanonicalCity)
-  .sort((a, b) => postedTs(b) - postedTs(a));
+export const openJobs: Job[] = listedJobs(data);
 
 /** Recently-closed roles — rendered as noindexed tombstone pages, not listed. */
 export const closedJobs: Job[] = data.jobs.filter((j) => j.isClosed).map(withCanonicalCity);
@@ -123,15 +111,13 @@ export const agedOutJobs: Job[] = data.jobs
 // applicable — they just point their canonical at it, skip the JobPosting
 // markup and stay out of the sitemap, so Google consolidates them deliberately
 // instead of picking one arbitrarily and calling the others duplicate content.
-const dupKey = (j: Job) => [j.title, j.companySlug, j.locationRaw ?? ""].join(" ");
-const canonicalByKey = new Map<string, string>();
-for (const j of openJobs) {
-  // openJobs is newest-first, so the first slug seen for a key is the newest.
-  if (!canonicalByKey.has(dupKey(j))) canonicalByKey.set(dupKey(j), j.slug);
-}
+//
+// The keying itself lives in shared/indexable.ts: losing to a duplicate strips
+// a page's JobPosting markup, so the engine has to reach the same verdict
+// before it submits anything to Google's Indexing API.
+const canonicalByKey = canonicalByDupKey(openJobs);
 
 /** The slug of the posting this one duplicates, or null when it's canonical. */
 export function duplicateOf(job: Job): string | null {
-  const canonical = canonicalByKey.get(dupKey(job));
-  return canonical && canonical !== job.slug ? canonical : null;
+  return duplicateOfIn(canonicalByKey, job);
 }

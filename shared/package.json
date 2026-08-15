@@ -7,6 +7,7 @@
     "./taxonomy": "./taxonomy.ts",
     "./text": "./text.ts",
     "./city": "./city.ts",
-    "./fx": "./fx.ts"
+    "./fx": "./fx.ts",
+    "./indexable": "./indexable.ts"
   }
 }
