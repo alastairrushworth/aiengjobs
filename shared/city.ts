@@ -133,6 +133,26 @@ const PREFIX_WORDS =
   "singapore|australia|netherlands|spain|italy|poland|brazil|mexico|israel|" +
   "switzerland|sweden|emea|apac|amer|namer|latam|europe|remote";
 
+/**
+ * Abbreviations that open a real place name. They look exactly like the ISO
+ * codes the loop below strips — "ST. LOUIS" is `[A-Z]{2}` then a dot — so
+ * without this they'd be eaten and "Saint Louis" would become "Louis".
+ */
+const PLACE_ABBREV: ReadonlySet<string> = new Set(["st", "ste", "mt", "mtn", "ft", "pt", "sta"]);
+
+/**
+ * A named building left where a city should be: "Divyasree Technopolis",
+ * "London The Stanley Building". Rejected rather than salvaged — picking which
+ * leading word is the city is how "Cape Town Building" becomes "Cape". The
+ * role keeps its country, so it still gets a JobPosting; it just doesn't claim
+ * a locality we'd be making up.
+ *
+ * "area" is here for "Bengaluru-EPIP Industrial Area". The metro-area strings
+ * that also end in it ("Bay Area", "San Francisco Bay Area") never reach this
+ * test — they're resolved by the alias table on the way in.
+ */
+const BUILDING_TAIL = /^(?:building|towers?[a-z0-9]*|plaza|technopolis|campus|area)$/i;
+
 const stripDiacritics = (s: string) => s.normalize("NFD").replace(/\p{M}+/gu, "");
 
 /** Title-case a token run, preserving intentional mixed case (McLean, DeKalb). */
@@ -154,21 +174,48 @@ export function canonicalCity(raw?: string | null): string | undefined {
   let s = String(raw).trim();
   if (!s) return undefined;
 
-  // "Chicago; New York" / "London | Paris" → the first one wins. Hyphens are NOT
-  // separators: "Kitchener-Waterloo" is one place.
-  s = s.split(/[;|]|\s\/\s/)[0]!.trim();
+  // Decoration an ATS bolted on the front: "*hq", "•London".
+  s = s.replace(/^[*#•·]+\s*/, "").trim();
 
-  // Leading location codes: "US-CA-Menlo Park", "UK - London", "India - Bangalore".
-  s = s
-    .replace(/^[A-Z]{2}-[A-Z]{2}-\s*/, "")
-    .replace(new RegExp(`^(?:${PREFIX_WORDS})\\s*[-–—:]\\s*`, "i"), "")
-    // "GA Atlanta 1050 …" — a state code in front of the city. Skipped when
-    // the two letters are themselves a known city ("SF Office", "SF
-    // Headquarters"), where stripping them threw the city away and left the
-    // building word behind.
-    .replace(/^([A-Z]{2})\s+(?=\p{Lu}\p{Ll})/u, (m, code: string) =>
-      ALIASES[code.toLowerCase()] ? m : "",
-    );
+  // Resolve the whole string before any stripping touches it. Two reasons:
+  // "ST. LOUIS" would have its "ST." read as a location code by the loop
+  // below, and "In-Office" would have its "-Office" read as site detail and
+  // come back as "In" — both are answered outright by the tables.
+  const early = ALIASES[s.toLowerCase()];
+  if (early) return early;
+  if (PLACEHOLDER.has(s.toLowerCase())) return undefined;
+
+  // "Chicago; New York" / "London | Paris" / "SF or NYC" → the first one wins.
+  // Hyphens are NOT separators: "Kitchener-Waterloo" is one place.
+  s = s.split(/[;|]|\s\/\s|\s+or\s+/i)[0]!.trim();
+
+  s = s.replace(new RegExp(`^(?:${PREFIX_WORDS})\\s*[-–—:]\\s*`, "i"), "");
+
+  // Leading location codes, however many are stacked and whatever separates
+  // them: "US-CA-Menlo Park", "IND-Bangalore-TowerE", "USA.VA.Reston",
+  // "IND:AP:Hyderabad", "NLD Amsterdam", "GA Atlanta 1050 …". Workday and
+  // Oracle feeds emit COUNTRY-REGION-SITE codes and the city is somewhere in
+  // the middle, so this loops rather than matching one fixed shape.
+  //
+  // Two guards: a code that is itself a known city stays put ("SF Office" —
+  // stripping it threw the city away and left the building word behind), and
+  // PLACE_ABBREV covers the ones that open a real name.
+  let strippedCode = false;
+  for (;;) {
+    const m = s.match(/^([A-Z]{2,3})(?:\s*[-.:]\s*|\s+(?=\p{Lu}\p{Ll}))/u);
+    if (!m) break;
+    const code = m[1]!.toLowerCase();
+    if (ALIASES[code] || PLACE_ABBREV.has(code)) break;
+    s = s.slice(m[0].length).trim();
+    strippedCode = true;
+  }
+
+  // What follows a location code is "City-Site": "Bangalore-TowerE",
+  // "Taguig City-CitiPlaza", "Sydney-Blue-Street", "Pune-Equifax Analytics-PEC".
+  // Gated on having actually stripped a code, because that's the only signal
+  // that separates a structured feed value from a genuine hyphenated name —
+  // "Kitchener-Waterloo" and "Tel Aviv-Yafo" never reach this line.
+  if (strippedCode && s.includes("-")) s = s.split("-")[0]!.trim();
 
   // Trailing building/site detail: "London - The River Building HQ",
   // "Hyderabad - Phoenix Equinox Tower 2". Spaced hyphen only, so
@@ -179,7 +226,10 @@ export function canonicalCity(raw?: string | null): string | undefined {
   s = s
     .replace(/\s*\([^)]*\)\s*$/, "")
     .replace(/\s+\d{2,}\s+.*$/, "")
-    .replace(/,?\s+(office|campus|site|hq|headquarters)$/i, "")
+    // Trailing site word, however it's attached: "New York Office",
+    // "Bengaluru-HQ", "Montreal-HQ". The hyphen form arrives without a space,
+    // so the spaced-hyphen split above never sees it.
+    .replace(/(?:[,\-–—]\s*|\s+)(office|campus|site|hq|head\s?office|headquarters)$/i, "")
     .replace(/\s{2,}/g, " ")
     .trim();
 
@@ -187,6 +237,9 @@ export function canonicalCity(raw?: string | null): string | undefined {
 
   const key = s.toLowerCase();
   if (PLACEHOLDER.has(key)) return undefined;
+
+  // A building name where a city should be — see BUILDING_TAIL.
+  if (BUILDING_TAIL.test(s.split(/\s+/).pop()!)) return undefined;
 
   const aliased = ALIASES[key];
   if (aliased) return aliased;

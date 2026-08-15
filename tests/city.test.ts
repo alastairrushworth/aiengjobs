@@ -75,6 +75,62 @@ describe("canonicalCity", () => {
     expect(canonicalCity("Tel Aviv-Yafo")).toBe("Tel Aviv");
   });
 
+  // All of these were reaching `addressLocality` in the published JobPosting
+  // markup — 29 canonical roles across 19 distinct junk values.
+  it("strips stacked location codes whatever separates them", () => {
+    expect(canonicalCity("USA.VA.Reston")).toBe("Reston");
+    expect(canonicalCity("IND.Pune")).toBe("Pune");
+    expect(canonicalCity("VNM.Da Nang")).toBe("Da Nang");
+    expect(canonicalCity("IND:AP:Hyderabad")).toBe("Hyderabad");
+    expect(canonicalCity("NLD Amsterdam")).toBe("Amsterdam");
+  });
+
+  it("keeps only the city from a COUNTRY-City-Site feed code", () => {
+    expect(canonicalCity("IND-Bangalore-TowerE")).toBe("Bangalore");
+    expect(canonicalCity("IND-Bangalore-A")).toBe("Bangalore");
+    expect(canonicalCity("AUS-Sydney-Blue-Street")).toBe("Sydney");
+    expect(canonicalCity("CHN-Beijing-Oriental Plaza")).toBe("Beijing");
+    expect(canonicalCity("PHL-Taguig City-CitiPlaza")).toBe("Taguig City");
+    expect(canonicalCity("IND-Pune-Equifax Analytics-PEC")).toBe("Pune");
+  });
+
+  it("strips a site word attached by a hyphen, not just a space", () => {
+    expect(canonicalCity("Bengaluru-HQ")).toBe("Bangalore"); // via the alias
+    expect(canonicalCity("Montreal-HQ")).toBe("Montreal");
+  });
+
+  it("rejects a building name standing in for a city", () => {
+    expect(canonicalCity("IND-BLR-Divyasree Technopolis")).toBeUndefined();
+    expect(canonicalCity("London The Stanley Building")).toBeUndefined();
+    expect(canonicalCity("Bengaluru Luxor North Tower")).toBeUndefined();
+    expect(canonicalCity("Bengaluru-EPIP Industrial Area")).toBeUndefined();
+    expect(canonicalCity("*hq")).toBeUndefined();
+    // …but the metro-area aliases end in the same word and must still resolve.
+    expect(canonicalCity("Bay Area")).toBe("San Francisco");
+    expect(canonicalCity("SAN FRANCISCO BAY AREA")).toBe("San Francisco");
+  });
+
+  it("takes the first city of an either/or location", () => {
+    expect(canonicalCity("SF or NYC")).toBe("San Francisco");
+    expect(canonicalCity("San Francisco or NYC")).toBe("San Francisco");
+  });
+
+  // The whole risk of the rules above: they must not eat real names that
+  // happen to look like codes or site detail. A throwaway version of this fix
+  // turned every one of these into rubble.
+  it("leaves real place names that look like codes or site detail alone", () => {
+    expect(canonicalCity("Sault Ste. Marie")).toBe("Sault Ste. Marie");
+    expect(canonicalCity("St. Louis")).toBe("Saint Louis");
+    expect(canonicalCity("ST. LOUIS")).toBe("Saint Louis");
+    expect(canonicalCity("Ramat Gan")).toBe("Ramat Gan");
+    expect(canonicalCity("Le Plessis-Robinson")).toBe("Le Plessis-Robinson");
+    expect(canonicalCity("Menlo Park")).toBe("Menlo Park");
+    expect(canonicalCity("Kitchener-Waterloo")).toBe("Kitchener-Waterloo");
+    // "SF" is a known city, so it survives the code loop and the site word
+    // after it is what gets stripped.
+    expect(canonicalCity("SF Office")).toBe("San Francisco");
+  });
+
   it("is idempotent — safe to apply at ingest and again at export", () => {
     for (const raw of [
       "UK - London",
