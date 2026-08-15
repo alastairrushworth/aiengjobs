@@ -14,10 +14,17 @@ const name = process.argv[2];
 const fullIdx = process.argv.indexOf("--full");
 const fullId = fullIdx > -1 ? process.argv[fullIdx + 1] : null;
 
-const gold = new Map(
-  fs.readFileSync(path.join(ML, "gold/gold.jsonl"), "utf8")
-    .trim().split("\n").map((l) => JSON.parse(l)).map((g) => [g.id, g]),
-);
+// Metadata for the header line. gold.jsonl wins where both have the row (it
+// carries stratum/band, which is useful context); labels.jsonl covers the rest,
+// so the same viewer works for batches drawn from either file.
+const meta = new Map();
+for (const f of ["gold/labels.jsonl", "gold/gold.jsonl"]) {
+  for (const l of fs.readFileSync(path.join(ML, f), "utf8").trim().split("\n")) {
+    const r = JSON.parse(l);
+    meta.set(r.id, { ...(meta.get(r.id) ?? {}), ...r });
+  }
+}
+const gold = meta;
 
 const read = (id) => fs.readFileSync(path.join(ML, "ads", `${id}.txt`), "utf8");
 
@@ -58,7 +65,10 @@ for (const id of ids) {
   console.log(`\n${"=".repeat(78)}`);
   console.log(`ID: ${id}`);
   console.log(`${g.company} — ${g.title}   [${g.location ?? "?"}]`);
-  console.log(`prev: ${g.label} (${g.confidence})  stratum=${g.stratum}  reason: ${g.reason}`);
+  console.log(
+    `prev: ${g.label} (${g.confidence}) [${g.rubric ?? "?"}]` +
+      `${g.stratum ? `  stratum=${g.stratum}` : ""}  reason: ${g.reason}`,
+  );
   console.log(`adv chars: ${body.length}${start === -1 ? "  (no responsibilities marker found)" : ""}`);
   console.log("-".repeat(78));
   if (start > 420) console.log(`[INTRO] ${intro}\n`);
