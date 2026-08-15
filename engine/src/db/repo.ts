@@ -23,18 +23,28 @@ export function upsertCompany(db: DatabaseSync, c: CompanyInput): string {
   return id;
 }
 
+/** A source we deliberately do not poll, pending a fix. Distinct from 'retired',
+ *  which is what happens to a source dropped from the seed file: retirement
+ *  closes the jobs left behind, whereas pausing leaves them to age out on their
+ *  own, because the board is expected back. */
+export type SourceStatus = "active" | "paused";
+
 export function upsertSource(
   db: DatabaseSync,
   cid: string,
   provider: AtsProvider,
   endpoint: string,
+  status: SourceStatus = "active",
 ): string {
   const id = sourceId(cid, provider);
+  // status is written on conflict too, so toggling the seed file's `paused`
+  // flag takes effect on the next seed in BOTH directions — a source that is
+  // paused today goes back to 'active' the moment the flag is removed.
   db.prepare(
     `INSERT INTO sources (id, company_id, ats_provider, endpoint_url, status)
-     VALUES (?, ?, ?, ?, 'active')
-     ON CONFLICT(id) DO UPDATE SET endpoint_url=excluded.endpoint_url, status='active'`,
-  ).run(id, cid, provider, endpoint);
+     VALUES (?, ?, ?, ?, ?)
+     ON CONFLICT(id) DO UPDATE SET endpoint_url=excluded.endpoint_url, status=excluded.status`,
+  ).run(id, cid, provider, endpoint, status);
   return id;
 }
 
@@ -53,15 +63,20 @@ export function retireSourcesExcept(
   keepIds: string[],
   minFraction: number,
 ): number | null {
-  const { active } = db
-    .prepare(`SELECT COUNT(*) AS active FROM sources WHERE status = 'active'`)
-    .get() as unknown as { active: number };
-  if (active > 0 && keepIds.length < active * minFraction) return null;
+  // 'paused' counts as live here: a paused source is still listed in the seed
+  // file and still expected back, so it belongs in the denominator, and — more
+  // importantly — it has to remain retirable. Dooming only 'active' rows would
+  // strand a paused source (and its open jobs) forever the moment its row was
+  // deleted from the file, which is the exact leak retirement exists to close.
+  const { live } = db
+    .prepare(`SELECT COUNT(*) AS live FROM sources WHERE status IN ('active','paused')`)
+    .get() as unknown as { live: number };
+  if (live > 0 && keepIds.length < live * minFraction) return null;
 
   const placeholders = keepIds.map(() => "?").join(",") || "NULL";
   const doomed = db
     .prepare(
-      `SELECT id FROM sources WHERE status = 'active' AND id NOT IN (${placeholders})`,
+      `SELECT id FROM sources WHERE status IN ('active','paused') AND id NOT IN (${placeholders})`,
     )
     .all(...keepIds) as unknown as { id: string }[];
   if (doomed.length === 0) return 0;

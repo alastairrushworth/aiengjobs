@@ -50,13 +50,22 @@ export function seed(): void {
 
   const db = openDb();
   const seeded: string[] = [];
+  const paused: string[] = [];
   let companies = 0;
   let skipped = 0;
   for (const line of lines) {
-    const [name, provider, atsSlug, domain, stage] = splitCsvRow(line);
+    const [name, provider, atsSlug, domain, stage, flag] = splitCsvRow(line);
     if (!name || !provider || !atsSlug) {
       skipped++;
       continue;
+    }
+    // Optional 6th column. `paused` keeps the company and its jobs but stops the
+    // nightly run polling a board we already know is broken — see the
+    // "PAUSED FEEDS" note in companies.csv. Anything else in this column is a
+    // typo, and a typo that silently meant "poll it anyway" would be invisible.
+    const status = flag === "paused" ? "paused" : "active";
+    if (flag && flag !== "paused") {
+      console.warn(`  ! ${name}: unknown flag "${flag}" in column 6, treating as active`);
     }
     const connector = getConnector(provider as AtsProvider);
     if (!connector) {
@@ -77,7 +86,10 @@ export function seed(): void {
       atsToken: atsSlug,
       stage: stage || undefined,
     });
-    seeded.push(upsertSource(db, cid, provider as AtsProvider, connector.endpoint(atsSlug)));
+    seeded.push(
+      upsertSource(db, cid, provider as AtsProvider, connector.endpoint(atsSlug), status),
+    );
+    if (status === "paused") paused.push(`${name} (${provider}:${atsSlug})`);
     companies++;
   }
 
@@ -99,6 +111,16 @@ export function seed(): void {
     console.log(`Retired ${retired} sources no longer listed, and closed their open jobs`);
   }
 
+  // Printed every run rather than logged once at pause time: a paused feed is a
+  // TODO with no owner, and the only thing stopping it from becoming permanent
+  // is that it is impossible to run the seed without seeing it.
+  if (paused.length > 0) {
+    console.log(`\nPaused, NOT polled until the flag is removed (${paused.length}):`);
+    for (const p of paused) console.log(`  · ${p}`);
+  }
+
   db.close();
-  console.log(`Seeded ${companies} companies (${skipped} skipped) from ${CSV}`);
+  console.log(
+    `Seeded ${companies} companies (${skipped} skipped, ${paused.length} paused) from ${CSV}`,
+  );
 }
