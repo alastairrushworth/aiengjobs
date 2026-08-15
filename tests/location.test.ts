@@ -15,6 +15,18 @@ describe("parseLocation", () => {
     expect(parseLocation("San Francisco").remoteType).toBe("onsite");
   });
 
+  it("reads the synonyms for remote as remote", () => {
+    // Only "remote" and "hybrid" were tested for, so "Virtual" fell through to
+    // the on-site default and put an On-site badge on a fully-virtual role.
+    for (const raw of ["Virtual", "WFH", "Work from home", "Telecommute"]) {
+      expect(parseLocation(raw).remoteType, raw).toBe("remote");
+    }
+    // Hybrid still wins where both could apply.
+    expect(parseLocation("Hybrid").remoteType).toBe("hybrid");
+    // …and a real place is untouched by the new vocabulary.
+    expect(parseLocation("Virginia Beach").remoteType).toBe("onsite");
+  });
+
   it("resolves countries from city and country names", () => {
     expect(parseLocation("Spain").country).toBe("ES");
     expect(parseLocation("San Francisco").country).toBe("US");
