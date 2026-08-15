@@ -28,6 +28,7 @@ import {
   MAX_JOB_AGE_DAYS,
 } from "../../lib/data.ts";
 import type { Job } from "@aiengjobs/shared";
+import { hasUsableLocation } from "@aiengjobs/shared/indexable";
 
 export function getStaticPaths() {
   // <title> needs whole-corpus knowledge: it trims over-long feed titles, but
@@ -218,12 +219,11 @@ const dupCanonicalSlug = isTombstone ? null : duplicateOf(job);
 // applicantLocationRequirements (we derive it from country), everything else
 // needs a jobLocation. A posting with neither would be a guaranteed Search
 // Console error, so emit no JobPosting at all rather than a half-valid one.
-const hasUsableLocation =
-  job.remoteType === "remote"
-    ? Boolean(job.country)
-    : Boolean(job.city || job.region || job.country);
+// Shared with the engine, which must predict this page's verdict exactly before
+// submitting the URL to Google's Indexing API.
+const locatable = hasUsableLocation(job);
 
-const jsonLd: Record<string, unknown> | null = isTombstone || dupCanonicalSlug || !hasUsableLocation
+const jsonLd: Record<string, unknown> | null = isTombstone || dupCanonicalSlug || !locatable
   ? null
   : {
       "@context": "https://schema.org/",
