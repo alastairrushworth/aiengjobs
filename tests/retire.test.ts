@@ -59,4 +59,31 @@ describe("retireSourcesExcept", () => {
     expect(statusOf(db, "b")).toBe("retired");
     expect(closedOf(db, "b")).toBe(0); // direct postings are not feed-owned
   });
+
+  it("leaves a paused source alone while the seed still lists it", () => {
+    const db = dbWith(["a", "b"]);
+    db.prepare(`UPDATE sources SET status = 'paused' WHERE id = 'b'`).run();
+    expect(retireSourcesExcept(db, ["a", "b"], 0.5)).toBe(0);
+    expect(statusOf(db, "b")).toBe("paused");
+    expect(closedOf(db, "b")).toBe(0);
+  });
+
+  it("still retires a paused source once the seed stops listing it", () => {
+    // Dooming only 'active' rows would strand a paused source, and its open
+    // jobs, for good — nothing else would ever close them.
+    const db = dbWith(["a", "b"]);
+    db.prepare(`UPDATE sources SET status = 'paused' WHERE id = 'b'`).run();
+    expect(retireSourcesExcept(db, ["a"], 0.5)).toBe(1);
+    expect(statusOf(db, "b")).toBe("retired");
+    expect(closedOf(db, "b")).toBe(1);
+  });
+
+  it("counts paused sources in the truncated-file guard", () => {
+    // Paused sources are still listed in the file, so they belong in the
+    // denominator; excluding them would make the guard easier to trip.
+    const db = dbWith(["a", "b", "c", "d"]);
+    db.prepare(`UPDATE sources SET status = 'paused' WHERE id IN ('c','d')`).run();
+    expect(retireSourcesExcept(db, ["a"], 0.5)).toBeNull();
+    expect(statusOf(db, "d")).toBe("paused");
+  });
 });
