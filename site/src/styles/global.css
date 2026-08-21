@@ -177,10 +177,10 @@ a { color: inherit; text-decoration: none; }
   .hero p { font-size: 1rem; }
 }
 
-/* Filters — one wrapping row: search box, work segment, "More filters", and
-   (only while open) the selects on a full-width row below. This used to be a
-   three-row stack — search, pills, disclosure — which cost ~160px, all of it
-   sticky on desktop, riding on top of the listing it exists to narrow. */
+/* Filters — search box, work segment, the disclosure chevron, and (only while
+   open) the selects on a full-width row below. One line from 701px up and two
+   below it, never more: this began as a three-row stack costing ~160px, all of
+   it sticky on desktop, riding on top of the listing it exists to narrow. */
 .filters {
   display: flex;
   flex-flow: row wrap;
@@ -238,66 +238,73 @@ a { color: inherit; text-decoration: none; }
    opening the panel never moves the control that opened it. */
 .filters .toggles { flex: 1 1 100%; display: flex; flex-wrap: wrap; gap: 10px; }
 
-/* "More filters" — the selects live behind it, closed by default. A pill like
-   the segment beside it: same border, same muted-until-you-touch-it colour, so
-   the bar reads as one row of controls. */
+/* The disclosure the selects live behind, closed by default. The words "More
+   filters" were ~90px of a row that has to hold a search box and three segments
+   on a 390px phone, and they were the easiest ~90px to buy back: the chevron is
+   the only part of that button that ever said anything the panel below it
+   doesn't. The name survives as aria-label + title — announced, and on the
+   pointer devices where a bare glyph is ambiguous, hoverable.
+
+   A circle rather than the segment's stadium: it isn't a fourth work-type
+   button and shouldn't read as one, but it keeps the same border and the same
+   muted-until-you-touch-it colour so the row still reads as one set. */
 .more-btn {
   font: inherit;
   cursor: pointer;
   color: var(--muted);
-  font-size: 0.85rem;
   background: var(--surface-2);
   border: 1px solid var(--border-strong);
   border-radius: 999px;
-  padding: 7px 12px;
-  white-space: nowrap;
+  /* Square box: the chevron is the content, so nothing else sets the size. */
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
 }
-/* No glyph before the label: "⌕" is a rare codepoint most system stacks have no
-   glyph for, and it fell back to a hairline mark that read as a stray
-   character. The chevron after it is drawn from two borders for the same
-   reason — it says "there is more under here" without depending on a font. */
-.more-btn::after {
+/* Drawn from two borders rather than set in a font: "›" and "⌕" are codepoints
+   plenty of system stacks have no glyph for, and the one that used to sit here
+   fell back to a hairline mark that read as a stray character.
+   Right at rest, down while open — the direction is the state, which is the
+   whole job of a control with no label. */
+.more-btn::before {
   content: "";
-  display: inline-block;
-  width: 6px;
-  height: 6px;
-  margin: 0 1px 2px 8px;
+  width: 7px;
+  height: 7px;
+  /* The rotated square's ink sits right of centre; this recentres it. */
+  margin-left: -2px;
   border-right: 1.5px solid currentColor;
   border-bottom: 1.5px solid currentColor;
-  transform: rotate(45deg);
-  vertical-align: middle;
+  transform: rotate(-45deg);
 }
 /* The rotation is the only transform transition on the site that wasn't behind
    this query. Gated rather than removed — the chevron turning is what says the
    panel opened. */
 @media (prefers-reduced-motion: no-preference) {
-  .more-btn::after { transition: transform 0.15s ease; }
+  .more-btn::before { transition: transform 0.15s ease; }
 }
-.more-btn[aria-expanded="true"]::after { transform: rotate(225deg) translate(-2px, -2px); }
+.more-btn[aria-expanded="true"]::before {
+  margin: -2px 0 0;
+  transform: rotate(45deg);
+}
 .more-btn:hover,
 .more-btn:focus-visible { color: var(--text); border-color: var(--accent); }
-.more-btn[aria-expanded="true"] { color: var(--text); }
+.more-btn[aria-expanded="true"] {
+  color: var(--text);
+  border-color: var(--accent);
+}
 
 /* Work location: the one question a select answers worse — three answers that
    fit on one line, wanted first by most visitors, so it's one tap away. The
    buttons are fused into a single bordered track rather than floating pills:
    per-pill borders and gaps were ~70px of width, and the group reads as one
    control instead of three stray buttons. */
-.seg { display: flex; align-items: center; gap: 8px; }
-/* The button labels already say what they are ("Remote", "Hybrid"), so the
-   group caption is a desktop luxury — it aids scanning where there's room and
-   costs width of a 390px fold where there isn't. The accessible name comes
-   from the group's aria-label either way, so nothing is lost below 701px. */
-.seg-label {
-  display: none;
-  color: var(--muted);
-  font-size: 0.74rem;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-@media (min-width: 701px) {
-  .seg-label { display: inline; }
-}
+/* No caption: the buttons already say "Remote" and "Hybrid", so a small-caps
+   "Work" over them was the row restating what the row says. The group's
+   accessible name is its aria-label, which never depended on drawing it. */
+.seg { display: flex; align-items: center; min-width: 0; }
 .seg-track {
   display: flex;
   border: 1px solid var(--border-strong);
@@ -331,66 +338,42 @@ a { color: inherit; text-decoration: none; }
 }
 .seg-btn:disabled { opacity: 0.4; cursor: default; }
 .seg-btn:disabled:hover { color: var(--muted); }
-.seg-n { color: var(--muted); font-size: 0.78em; font-variant-numeric: tabular-nums; }
-.seg-btn[aria-pressed="true"] .seg-n { color: inherit; opacity: 0.8; }
-/* Taller for a thumb (WCAG 2.5.5 asks 44px) and narrower so the row still
-   fits: at 390px the fused track ("Remote 271 | Hybrid 184 | On-site 913")
-   has to clear a ~326px content box with room for a five-digit count. */
+/* Two rows on a phone, never three: search on the first, the segment and the
+   chevron sharing the second. The segment used to claim `flex-basis: 100%`,
+   which put the disclosure on a third row of its own — 44px of a 723px fold
+   spent on one button.
+
+   Taller for a thumb (WCAG 2.5.5 asks 44px) and tighter horizontally so three
+   labels and a 44px square still clear a 320px viewport — measured slack there
+   is ~3px per label, growing to 16px at 360 and 27px at 390. Nothing in these
+   three words is ever going to change, so that margin stays true. */
 @media (max-width: 700px) {
   .seg-btn {
     min-height: 44px;
-    padding: 0 10px;
+    padding: 0 8px;
     font-size: 0.8rem;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    /* Stands in for the literal space in "Remote 271" — whitespace-only text
-       nodes don't lay out between flex items. */
-    gap: 5px;
   }
-  /* The track must never set the page's min-content width. Its three buttons
-     are `white-space: nowrap`, and <main> is a flex item of a column-flex body,
-     so the widest thing in here becomes a floor the whole document can't go
-     below: at 320px that forced 30px of horizontal scroll on all 140 listing
-     pages carrying this control — a WCAG 1.4.10 Reflow failure — while the
-     tuning note above still read "fits at 390". It fit because the note was
-     written when On-site read 913; it reads 1855 now, and the measured slack at
-     360px was down to 6px.
-     Re-tuning the padding to this week's digits is what put it here, so these
-     three lines make the row *shrinkable* instead: min-width:0 defeats the
-     automatic minimum size (a flex item won't go below min-content otherwise),
-     and equal shares mean the track divides whatever width it gets. No count
-     growth can reintroduce page-level scroll. */
-  .seg { flex: 1 1 100%; min-width: 0; }
-  .seg-track { min-width: 0; }
+  /* A basis, and a small one — not `auto`. Wrapping is decided on flex *base*
+     sizes, not on what an item shrinks to, so a segment whose base is its own
+     content width claims the whole line at 320px and pushes the chevron onto a
+     third row anyway. 130px keeps the pair on one line down to a ~220px
+     viewport; the segment then grows into whatever the line has left over.
+
+     min-width:0 on all three is the other half of it. A flex item's automatic
+     minimum size is its min-content width, and these buttons are
+     `white-space: nowrap` inside a <main> that is itself a flex item of a
+     column-flex body — so the widest thing in here becomes a floor the whole
+     document can't go below. At 320px that once forced 30px of horizontal
+     scroll on all 140 listing pages carrying this control, a WCAG 1.4.10
+     Reflow failure. Shrinkable, the track just divides what it's given. */
+  .seg { flex: 1 1 130px; min-width: 0; }
+  .seg-track { flex: 1 1 auto; min-width: 0; }
   .seg-btn { flex: 1 1 auto; min-width: 0; }
-  /* Same thumb target as the segment it sits beside. */
-  .more-btn {
-    min-height: 44px;
-    display: inline-flex;
-    align-items: center;
-    padding: 0 12px;
-    font-size: 0.8rem;
-  }
-}
-/* The shrink guard above stops the page scrolling, but a shrunk track clips its
-   own labels, and "On-si…" is a worse control than one without a tally. So
-   below the width where the counts genuinely stop fitting, the count is what
-   goes: it's the least load-bearing part of the row — the label is what names
-   the filter, the chip above the listing says what's applied, and the results
-   line announces how many matched.
-
-   375px, from measurement rather than taste. The filter panel's content box is
-   roughly the viewport minus 62px; the track needs 273px with counts and 194px
-   without. So counts fit from ~335px up, and the threshold sits above that on
-   purpose: at 375 there is ~40px of slack for the counts to grow into, where at
-   340 there would be ~5px and we'd be back to re-tuning this every time the
-   board does. Every common phone width from 375 up (375, 390, 393, 412, 414,
-   428) keeps its counts; 320 and 360 trade them for labels that always fit.
-
-   The element stays in the DOM, so updateSegCounts() keeps writing to it. */
-@media (max-width: 374px) {
-  .seg-n { display: none; }
+  /* Square thumb target, matching the segment's height beside it. */
+  .more-btn { width: 44px; height: 44px; }
 }
 /* min-width:0 or the flex basis is a lie: a flex item's default min-width is
    min-content, and a select's min-content is its longest option ("Hong Kong SAR

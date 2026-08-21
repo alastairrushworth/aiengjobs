@@ -37,10 +37,11 @@ const hasSelects =
   shows("city", cities.length);
 ---
 
-{/* One wrapping row, not a stack: search box, work segment, "More filters",
-    and — only while it's open — the selects on a full-width row of their own.
-    The stacked layout spent three rows (~160px, all of them sticky on desktop)
-    saying what this says in one. */}
+{/* One wrapping row, not a stack: search box, work segment, the disclosure
+    chevron, and — only while it's open — the selects on a full-width row of
+    their own. All three fit one desktop line and two phone lines; the stacked
+    layout spent three rows (~160px, all of them sticky on desktop) saying
+    what this says in one. */}
 <div class="filters">
   {/* The one control that stays whatever else moves. It's the fastest way to
       narrow 2,000 roles and the only one that can say a thing the selects and
@@ -57,22 +58,33 @@ const hasSelects =
       gaps and per-pill borders were ~70px of width, which is the margin this
       row lives or dies by on a phone.
 
+      Just the three labels: no "Work" caption over them (the buttons say
+      "Remote" and "Hybrid" — the caption was a fourth word for the row to
+      carry, and the accessible name still comes from aria-label) and no tally
+      inside them. The counts were the widest, least load-bearing part of the
+      control — the chip above the listing says what's applied and the results
+      line says how many matched, so all they bought was the width that pushed
+      this row onto a third line on a phone. They're still computed: a segment
+      that would return nothing is disabled rather than annotated.
+
       No "Any" button: the pressed segment toggles off when pressed again, and
       every active filter also carries a removable chip above the listing. */}
   {shows("work", works.length) && (
     <div class="seg" role="group" aria-label="Work location" data-filter="work">
-      <span class="seg-label">Work</span>
       <div class="seg-track">
         {works.map((w) => (
           <button type="button" class="seg-btn" data-value={w.id} aria-pressed="false">
-            {w.label} <span class="seg-n">{w.count}</span>
+            {w.label}
           </button>
         ))}
       </div>
     </div>
   )}
 
-  {/* The dropdowns, closed by default behind a button at the end of the row.
+  {/* The dropdowns, closed by default behind a chevron at the end of the row.
+      Empty by design — the label is an aria-label and a title, and the whole
+      button is the drawn chevron: pointing right at rest, down while the panel
+      below it is open, so the control states which of the two it is.
       A <button> + hidden panel rather than <details>: the summary has to sit in
       this flex row while the panel opens onto a full-width row below it, and
       `details { display: contents }` is the only way to get that from a details
@@ -87,7 +99,9 @@ const hasSelects =
       id="filter-disclosure"
       aria-expanded="false"
       aria-controls="more-filters"
-    >More filters</button>
+      aria-label="More filters"
+      title="More filters"
+    ></button>
   )}
   {hasSelects && (
     <div class="toggles" id="more-filters" hidden>
