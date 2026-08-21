@@ -28,9 +28,10 @@ async function main(): Promise<void> {
       retag();
       break;
     case "relocate":
-      // Fills country onto postings that have none, using the current hint
-      // table — run once after editing pipeline/location.ts. Never overwrites,
-      // so the countries the retired LLM extractor supplied survive it.
+      // Fills country and region onto postings that have none, using the
+      // current hint and division tables — run once after editing
+      // pipeline/location.ts or pipeline/region.ts. Never overwrites, so the
+      // values the retired LLM extractor supplied survive it.
       // --dry-run reports what it would fill and writes nothing.
       relocate({ dryRun: process.argv.includes("--dry-run") });
       break;

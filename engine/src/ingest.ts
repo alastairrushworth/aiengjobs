@@ -340,6 +340,7 @@ export async function ingest(): Promise<void> {
           applyUrl: raw.applyUrl,
           locationRaw: norm.locationRaw,
           country: loc.country ?? undefined,
+          region: loc.region ?? undefined,
           city: loc.city ?? undefined,
           remoteType: loc.remoteType ?? undefined,
           seniority: inferSeniority(norm.title) ?? undefined,

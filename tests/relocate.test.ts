@@ -8,8 +8,16 @@ const SCHEMA = readFileSync("engine/src/db/schema.sql", "utf8");
 
 const dirs: string[] = [];
 
+interface Row {
+  id: string;
+  locationRaw: string | null;
+  country?: string | null;
+  region?: string | null;
+  city?: string | null;
+}
+
 /** A throwaway on-disk database — relocate opens it through AIENGJOBS_DB. */
-function makeDb(rows: [id: string, locationRaw: string | null, country: string | null][]): string {
+function makeDb(rows: Row[]): string {
   const dir = mkdtempSync(join(tmpdir(), "relocate-"));
   dirs.push(dir);
   const path = join(dir, "test.db");
@@ -21,26 +29,30 @@ function makeDb(rows: [id: string, locationRaw: string | null, country: string |
   db.prepare(
     "INSERT INTO sources (id, company_id, ats_provider, endpoint_url) VALUES ('src', 'co', 'greenhouse', 'https://x')",
   ).run();
-  for (const [id, locationRaw, country] of rows) {
+  for (const r of rows) {
     db.prepare(
       `INSERT INTO jobs (id, company_id, source_id, slug, title, normalized_title,
-                         apply_url, location_raw, country, is_direct, is_closed, last_seen_at)
-       VALUES (?, 'co', 'src', ?, 'AI Engineer', 'ai engineer', 'https://x/apply', ?, ?, 0, 0, '2026-08-01T00:00:00Z')`,
-    ).run(id, id, locationRaw, country);
+                         apply_url, location_raw, country, region, city,
+                         is_direct, is_closed, last_seen_at)
+       VALUES (?, 'co', 'src', ?, 'AI Engineer', 'ai engineer', 'https://x/apply', ?, ?, ?, ?, 0, 0, '2026-08-01T00:00:00Z')`,
+    ).run(r.id, r.id, r.locationRaw, r.country ?? null, r.region ?? null, r.city ?? null);
   }
   db.close();
   return path;
 }
 
-function countries(path: string): Record<string, string | null> {
+function read(path: string, column: "country" | "region"): Record<string, string | null> {
   const db = new DatabaseSync(path, { readOnly: true });
-  const rows = db.prepare("SELECT id, country FROM jobs ORDER BY id").all() as unknown as {
+  const rows = db.prepare(`SELECT id, ${column} AS v FROM jobs ORDER BY id`).all() as unknown as {
     id: string;
-    country: string | null;
+    v: string | null;
   }[];
   db.close();
-  return Object.fromEntries(rows.map((r) => [r.id, r.country]));
+  return Object.fromEntries(rows.map((r) => [r.id, r.v]));
 }
+
+const countries = (path: string): Record<string, string | null> => read(path, "country");
+const regions = (path: string): Record<string, string | null> => read(path, "region");
 
 /** db/index.ts resolves AIENGJOBS_DB once, at load, so each run needs a fresh
  *  module registry to pick up this test's database. */
@@ -59,9 +71,9 @@ afterEach(() => {
 describe("relocate", () => {
   it("fills a blank country from the current hint table", async () => {
     const path = makeDb([
-      ["sf", "sf", null],
-      ["belfast", "Belfast", null],
-      ["nyc", "NYC Office", null],
+      { id: "sf", locationRaw: "sf" },
+      { id: "belfast", locationRaw: "Belfast" },
+      { id: "nyc", locationRaw: "NYC Office" },
     ]);
 
     await run(path);
@@ -75,10 +87,10 @@ describe("relocate", () => {
     // "Chengdu" → CN, "Quito, Ecuador" → EC — losing more markup than the pass
     // recovers, so a row that has a country is never touched.
     const path = makeDb([
-      ["chengdu", "Chengdu", "CN"],
-      ["quito", "Quito, Ecuador", "EC"],
+      { id: "chengdu", locationRaw: "Chengdu", country: "CN" },
+      { id: "quito", locationRaw: "Quito, Ecuador", country: "EC" },
       // Stored value disagrees with what the parser would say: still untouched.
-      ["odd", "London", "FR"],
+      { id: "odd", locationRaw: "London", country: "FR" },
     ]);
 
     await run(path);
@@ -88,8 +100,8 @@ describe("relocate", () => {
 
   it("leaves a row alone when the location yields no country", async () => {
     const path = makeDb([
-      ["nowhere", "European Union", null],
-      ["blank", null, null],
+      { id: "nowhere", locationRaw: "European Union" },
+      { id: "blank", locationRaw: null },
     ]);
 
     await run(path);
@@ -98,10 +110,68 @@ describe("relocate", () => {
   });
 
   it("writes nothing on a dry run", async () => {
-    const path = makeDb([["sf", "sf", null]]);
+    const path = makeDb([{ id: "sf", locationRaw: "sf" }]);
 
     await run(path, { dryRun: true });
 
     expect(countries(path)).toEqual({ sf: null });
+  });
+});
+
+describe("relocate regions", () => {
+  it("fills a blank region from the location and the stored city", async () => {
+    const path = makeDb([
+      { id: "austin", locationRaw: "Austin, TX", country: "US", city: "Austin" },
+      { id: "blr", locationRaw: "Bengaluru, Karnataka, India", country: "IN", city: "Bengaluru" },
+      // No division in the string — the city table supplies it.
+      { id: "mpk", locationRaw: "Menlo Park", country: "US", city: "Menlo Park" },
+    ]);
+
+    await run(path);
+
+    expect(regions(path)).toEqual({ austin: "TX", blr: "Karnataka", mpk: "CA" });
+  });
+
+  it("derives a region against a country the extractor supplied", async () => {
+    // The row's own country and city are used, not a re-parse of its location:
+    // re-parsing "Cupertino Office" finds no country, but the stored US does.
+    const path = makeDb([
+      { id: "hq", locationRaw: "Cupertino Office", country: "US", city: "Cupertino" },
+    ]);
+
+    await run(path);
+
+    expect(regions(path)).toEqual({ hq: "CA" });
+    expect(countries(path)).toEqual({ hq: "US" });
+  });
+
+  it("never overwrites a region already stored", async () => {
+    const path = makeDb([
+      { id: "pinned", locationRaw: "Austin, TX", country: "US", city: "Austin", region: "XX" },
+    ]);
+
+    await run(path);
+
+    expect(regions(path)).toEqual({ pinned: "XX" });
+  });
+
+  it("fills country and region together in one pass", async () => {
+    const path = makeDb([{ id: "sf", locationRaw: "San Francisco, CA" }]);
+
+    await run(path);
+
+    expect(countries(path)).toEqual({ sf: "US" });
+    expect(regions(path)).toEqual({ sf: "CA" });
+  });
+
+  it("leaves the region blank where no division can be read", async () => {
+    const path = makeDb([
+      { id: "de", locationRaw: "Munich, BY, Germany", country: "DE", city: "Munich" },
+      { id: "gb", locationRaw: "London, United Kingdom", country: "GB", city: "London" },
+    ]);
+
+    await run(path);
+
+    expect(regions(path)).toEqual({ de: null, gb: null });
   });
 });
