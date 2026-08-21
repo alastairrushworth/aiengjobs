@@ -452,11 +452,16 @@ const showAllHidden = hasPager || total <= initial;
   }
 
   /**
-   * The same rule as the selects, for the chips. Server-rendered these are
-   * whole-scope totals, and they start lying the moment anything else is set:
-   * with London chosen, "Remote 271" describes the board while the button it
-   * sits on would return 6. A count that describes a different set than the
-   * control acts on is worse than no count at all.
+   * The same rule as the selects, for the segmented buttons: how many roles
+   * would this button return *given everything else that's set*? The buttons
+   * no longer draw the number — it was the widest part of the narrowest row —
+   * but they still act on it, because zero is the one value worth showing: a
+   * button that can only produce an empty list is disabled, so the segment is
+   * three answers you can take rather than three you have to try.
+   *
+   * Measured against the other filters, not the whole board. With London
+   * chosen, a board-wide "Remote" tally describes 271 roles while the button
+   * it sits on would return 6.
    */
   function updateSegCounts(data: JobEntry[], tests: Record<string, (j: JobEntry) => boolean>) {
     for (const seg of segs) {
@@ -467,8 +472,6 @@ const showAllHidden = hasPager || total <= initial;
       const pool = data.filter((j) => others.every((fn) => fn(j)));
       for (const btn of seg.querySelectorAll<HTMLButtonElement>(".seg-btn")) {
         const n = pool.filter(segTest(key, btn.dataset.value!)).length;
-        const slot = btn.querySelector(".seg-n");
-        if (slot) slot.textContent = String(n);
         // Disabled rather than hidden: these sit in a wrapped row, and removing
         // one reflows the rest to different places on every keystroke. Pressed
         // buttons stay live so there's always a way back out of a dead end.
