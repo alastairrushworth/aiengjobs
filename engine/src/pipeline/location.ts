@@ -4,10 +4,12 @@ import {
   isKnownCityAlias,
   MULTI_COUNTRY_REGION,
 } from "@aiengjobs/shared/city";
+import { inferRegion } from "./region.ts";
 
 export interface LocationInfo {
   remoteType?: RemoteType;
   country?: string;
+  region?: string;
   city?: string;
 }
 
@@ -217,6 +219,10 @@ export function parseLocation(
   // this point. The fallback runs only where the raw string yielded nothing, so
   // it can supply a country the feed omitted but never overturn one it stated.
   const country = (loc ? inferCountry(loc) : undefined) ?? (city ? inferCountry(city) : undefined);
+  // Last, because it reads both of the above: a division is only meaningful
+  // against a known country, and the city is the fallback when the feed writes
+  // nothing but a place name.
+  const region = loc ? inferRegion(loc, country, city) : undefined;
 
-  return { remoteType, country, city };
+  return { remoteType, country, region, city };
 }
