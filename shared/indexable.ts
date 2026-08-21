@@ -90,15 +90,21 @@ export function duplicateOfIn(canonical: Map<string, string>, job: Job): string 
 }
 
 /**
- * Google requires a resolvable location: TELECOMMUTE roles need
- * applicantLocationRequirements (derived from country), everything else needs a
- * jobLocation. A posting with neither would be a guaranteed Search Console
- * error, so the page emits no JobPosting at all rather than a half-valid one.
+ * Google requires a resolvable location, and in both shapes that means a
+ * country. TELECOMMUTE roles need applicantLocationRequirements, which is
+ * derived from country. Everything else needs a jobLocation, whose address has
+ * exactly one *required* field — addressCountry. addressLocality and
+ * addressRegion are recommended, not sufficient.
+ *
+ * Accepting a city alone is what produced Search Console's "Missing field
+ * addressCountry (in jobLocation.address)": on the board the day it was
+ * reported, 46 roles knew their city and not their country and each published a
+ * PostalAddress Google rejects. The rule was always meant to keep half-valid
+ * markup off the site — a posting without a country now emits no JobPosting at
+ * all, which is the outcome the paragraph above already promised.
  */
 export function hasUsableLocation(job: Job): boolean {
-  return job.remoteType === "remote"
-    ? Boolean(job.country)
-    : Boolean(job.city || job.region || job.country);
+  return Boolean(job.country);
 }
 
 /** Slugs whose pages carry JobPosting markup: listed, canonical, and locatable. */
