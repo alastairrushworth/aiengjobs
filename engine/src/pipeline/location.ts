@@ -4,10 +4,12 @@ import {
   isKnownCityAlias,
   MULTI_COUNTRY_REGION,
 } from "@aiengjobs/shared/city";
+import { inferRegion } from "./region.ts";
 
 export interface LocationInfo {
   remoteType?: RemoteType;
   country?: string;
+  region?: string;
   city?: string;
 }
 
@@ -28,7 +30,13 @@ const COUNTRY_HINTS: [RegExp, string][] = [
     /\b(san francisco|new york|seattle|austin|boston|chicago|los angeles|denver|atlanta|miami|palo alto|menlo park|mountain view|sunnyvale|cupertino|san jose|san diego|san mateo|redwood city|oakland|berkeley|santa clara|bellevue|kirkland|redmond|washington,? d\.?c\.?|portland|philadelphia|phoenix|dallas|houston|salt lake city|pittsburgh|minneapolis|nashville|raleigh|durham|ann arbor|boulder|irvine|pasadena|culver city|brooklyn|manhattan)\b/i,
     "US",
   ],
-  [/\b(united kingdom|u\.?k\.?|england|scotland|wales|london|manchester|edinburgh|bristol|oxford)\b/i, "GB"],
+  // Belfast, Glasgow, Leeds and Cardiff are peers of the cities already listed
+  // and were simply missing; each cost its roles their JobPosting. Birmingham
+  // and Cambridge stay out on purpose — Alabama and Massachusetts have both.
+  [
+    /\b(united kingdom|u\.?k\.?|england|scotland|wales|northern ireland|london|manchester|edinburgh|bristol|oxford|belfast|glasgow|leeds|cardiff)\b/i,
+    "GB",
+  ],
   [/\b(canada|toronto|vancouver|montr[eé]al|ottawa|calgary|waterloo|quebec)\b/i, "CA"],
   [/\b(germany|berlin|munich|münchen|frankfurt|hamburg|cologne|köln|stuttgart)\b/i, "DE"],
   [/\b(france|paris|lyon|toulouse|grenoble)\b/i, "FR"],
@@ -130,6 +138,16 @@ const POLICY_PAREN = new RegExp(`^(.+?)\\s*\\((?:${POLICY})\\)$`, "i");
 const POLICY_BARE = new RegExp(`^(?:${POLICY})\\s+([\\p{L}][\\p{L}\\p{M}\\s'’-]{1,30})$`, "iu");
 /** Nothing but a policy word — genuinely carries no location. */
 const POLICY_ONLY = new RegExp(`^(?:${POLICY})$`, "i");
+/**
+ * The synonyms feeds use for "remote". `remoteType` only ever tested for
+ * "hybrid" and "remote", so a role located "Virtual" fell through to the
+ * `else if (loc)` branch and came out **onsite** — a fully-virtual role
+ * badged On-site on its card and in its Work type fact, and pushed down the
+ * JobPosting path that then wants a jobLocation it has no way to supply.
+ * POLICY above already knows these words; this is the same list minus the two
+ * that were already handled.
+ */
+const REMOTE_SYNONYM = /\b(?:virtual|wfh|work from home|telecommute)\b/i;
 /** A policy word, or a "could be anywhere" word, loose in a segment we couldn't
  *  parse into <policy> + <place>. Whatever else the segment says, it isn't
  *  naming one city. */
@@ -184,16 +202,27 @@ export function parseLocation(
   let remoteType: RemoteType | undefined = declaredRemote;
   if (!remoteType) {
     if (/\bhybrid\b/.test(lower)) remoteType = "hybrid";
-    else if (remoteHint === true || /\bremote\b/.test(lower)) remoteType = "remote";
+    else if (remoteHint === true || /\bremote\b/.test(lower) || REMOTE_SYNONYM.test(lower))
+      remoteType = "remote";
     // "Europe", "AMER", "EMEA" name a hiring territory, not a workplace — a
     // role listed only there isn't on-site anywhere, so don't badge it as such.
     else if (MULTI_COUNTRY_REGION.has(lower)) remoteType = "remote";
     else if (loc) remoteType = "onsite";
   }
 
-  const country = loc ? inferCountry(loc) : undefined;
   const firstSegment = loc.split(/[,|/]/)[0]?.trim();
   const city = firstSegment ? canonicalCity(placeSegment(firstSegment)) : undefined;
+  // The raw string first, then the canonicalized city as a fallback. Feeds
+  // routinely write the location as an office name or an in-house abbreviation
+  // ("sf", "SF Office", "NYC Office") that the hint table cannot match, but
+  // which canonicalCity has already resolved to "San Francisco" / "New York" by
+  // this point. The fallback runs only where the raw string yielded nothing, so
+  // it can supply a country the feed omitted but never overturn one it stated.
+  const country = (loc ? inferCountry(loc) : undefined) ?? (city ? inferCountry(city) : undefined);
+  // Last, because it reads both of the above: a division is only meaningful
+  // against a known country, and the city is the fallback when the feed writes
+  // nothing but a place name.
+  const region = loc ? inferRegion(loc, country, city) : undefined;
 
-  return { remoteType, country, city };
+  return { remoteType, country, region, city };
 }

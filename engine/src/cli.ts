@@ -2,6 +2,7 @@ import { initDb } from "./db/index.ts";
 import { seed } from "./seed.ts";
 import { ingest } from "./ingest.ts";
 import { retag, reclassify } from "./retag.ts";
+import { relocate } from "./relocate.ts";
 import { exportSnapshot } from "./export/exportSnapshot.ts";
 import { notify } from "./notify.ts";
 import { fetchLogos } from "./logos.ts";
@@ -25,6 +26,14 @@ async function main(): Promise<void> {
       // LLM-free backfill of skills/filter rules onto existing rows — run once
       // after changing the taxonomy, tag evidence rules, or OUT heuristics.
       retag();
+      break;
+    case "relocate":
+      // Fills country and region onto postings that have none, using the
+      // current hint and division tables — run once after editing
+      // pipeline/location.ts or pipeline/region.ts. Never overwrites, so the
+      // values the retired LLM extractor supplied survive it.
+      // --dry-run reports what it would fill and writes nothing.
+      relocate({ dryRun: process.argv.includes("--dry-run") });
       break;
     case "reclassify":
       // LLM backfill: re-decides borderline-confidence live jobs under the
@@ -56,7 +65,7 @@ async function main(): Promise<void> {
     }
     default:
       console.log(
-        "Usage: tsx src/cli.ts <db:init | seed | ingest | export | retag | reclassify | refresh | notify>",
+        "Usage: tsx src/cli.ts <db:init | seed | ingest | export | retag | relocate | reclassify | refresh | notify>",
       );
       process.exit(1);
   }

@@ -101,6 +101,41 @@ export const INDEXNOW_KEY =
 export const INDEXNOW_ENDPOINT =
   process.env.INDEXNOW_ENDPOINT ?? "https://api.indexnow.org/indexnow";
 
+// --- Google Indexing API ----------------------------------------------------
+// Google's answer to IndexNow, which it doesn't participate in. It licenses the
+// Indexing API for exactly two content types — JobPosting and BroadcastEvent —
+// so a job board is the intended user, and a closed role can be pulled from
+// Google Jobs the same night instead of waiting for a re-crawl.
+//
+// Two constraints shape everything below. Submitting a URL that carries no
+// JobPosting markup is the documented way to lose API access, so notify.ts
+// filters with shared/indexable.ts rather than announcing every open role. And
+// unlike IndexNow's public host key, this one is a real credential: a service
+// account private key, held in the GOOGLE_INDEXING_KEY secret and never logged.
+//
+// Accepts the JSON itself (how the GitHub Actions secret arrives) or a path to
+// the downloaded key file (convenient when testing by hand). Unset = feature
+// off, which is what every environment except the nightly runner wants.
+export const GOOGLE_INDEXING_KEY = process.env.GOOGLE_INDEXING_KEY ?? "";
+
+// Google's onboarding default is 200 publish requests per day per project, and
+// URL_UPDATED and URL_DELETED both draw on it. Measured nightly churn is ~190
+// at the board's current size, so the default is spent most nights — raise this
+// to whatever the approved quota turns out to be. The daily allowance resets at
+// midnight Pacific; the refresh cron lands mid-afternoon Pacific, so one run
+// always draws on a single day's bucket.
+// Read defensively: an unset GitHub Actions `vars.` reference expands to an
+// empty string rather than disappearing, and Number("") is 0 — which would
+// silently cap the run at nothing instead of falling back to the default.
+const quotaEnv = process.env.GOOGLE_INDEXING_QUOTA?.trim();
+const quotaOverride = quotaEnv ? Number(quotaEnv) : NaN;
+export const GOOGLE_INDEXING_QUOTA =
+  Number.isFinite(quotaOverride) && quotaOverride > 0 ? Math.floor(quotaOverride) : 200;
+
+export const GOOGLE_INDEXING_ENDPOINT =
+  process.env.GOOGLE_INDEXING_ENDPOINT ??
+  "https://indexing.googleapis.com/v3/urlNotifications:publish";
+
 // --- Classifier configuration -----------------------------------------------
 // Classification runs locally: a fine-tuned ModernBERT encoder under ONNX
 // Runtime (see pipeline/encoder.ts). No API key, no per-posting network call.

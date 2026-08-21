@@ -23,19 +23,72 @@ export function upsertCompany(db: DatabaseSync, c: CompanyInput): string {
   return id;
 }
 
+/** A source we deliberately do not poll, pending a fix. Distinct from 'retired',
+ *  which is what happens to a source dropped from the seed file: retirement
+ *  closes the jobs left behind, whereas pausing leaves them to age out on their
+ *  own, because the board is expected back. */
+export type SourceStatus = "active" | "paused";
+
 export function upsertSource(
   db: DatabaseSync,
   cid: string,
   provider: AtsProvider,
   endpoint: string,
+  status: SourceStatus = "active",
 ): string {
   const id = sourceId(cid, provider);
+  // status is written on conflict too, so toggling the seed file's `paused`
+  // flag takes effect on the next seed in BOTH directions — a source that is
+  // paused today goes back to 'active' the moment the flag is removed.
   db.prepare(
     `INSERT INTO sources (id, company_id, ats_provider, endpoint_url, status)
-     VALUES (?, ?, ?, ?, 'active')
-     ON CONFLICT(id) DO UPDATE SET endpoint_url=excluded.endpoint_url, status='active'`,
-  ).run(id, cid, provider, endpoint);
+     VALUES (?, ?, ?, ?, ?)
+     ON CONFLICT(id) DO UPDATE SET endpoint_url=excluded.endpoint_url, status=excluded.status`,
+  ).run(id, cid, provider, endpoint, status);
   return id;
+}
+
+/**
+ * Retire every active source not in `keepIds`, closing the jobs they left
+ * behind. `closeStaleJobs` only ever touches sources that were polled this run,
+ * so a board that stops being polled would otherwise strand its open jobs on
+ * the site indefinitely — nothing else would ever close them.
+ *
+ * Returns the number of sources retired, or null if the retirement was refused
+ * because `keepIds` covers less than `minFraction` of the active sources — the
+ * signature of a truncated seed file rather than a deliberate removal.
+ */
+export function retireSourcesExcept(
+  db: DatabaseSync,
+  keepIds: string[],
+  minFraction: number,
+): number | null {
+  // 'paused' counts as live here: a paused source is still listed in the seed
+  // file and still expected back, so it belongs in the denominator, and — more
+  // importantly — it has to remain retirable. Dooming only 'active' rows would
+  // strand a paused source (and its open jobs) forever the moment its row was
+  // deleted from the file, which is the exact leak retirement exists to close.
+  const { live } = db
+    .prepare(`SELECT COUNT(*) AS live FROM sources WHERE status IN ('active','paused')`)
+    .get() as unknown as { live: number };
+  if (live > 0 && keepIds.length < live * minFraction) return null;
+
+  const placeholders = keepIds.map(() => "?").join(",") || "NULL";
+  const doomed = db
+    .prepare(
+      `SELECT id FROM sources WHERE status IN ('active','paused') AND id NOT IN (${placeholders})`,
+    )
+    .all(...keepIds) as unknown as { id: string }[];
+  if (doomed.length === 0) return 0;
+
+  const ids = doomed.map((r) => r.id);
+  const marks = ids.map(() => "?").join(",");
+  db.prepare(`UPDATE sources SET status = 'retired' WHERE id IN (${marks})`).run(...ids);
+  db.prepare(
+    `UPDATE jobs SET is_closed = 1
+     WHERE is_direct = 0 AND is_closed = 0 AND source_id IN (${marks})`,
+  ).run(...ids);
+  return ids.length;
 }
 
 export interface PollTarget {
