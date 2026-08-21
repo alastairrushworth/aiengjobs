@@ -12,10 +12,12 @@ interface GhJob {
   content?: string; // HTML-entity-encoded
 }
 
-// Greenhouse serves EU-data-residency boards from a separate API host
-// (boards-api.eu.greenhouse.io, fronted by job-boards.eu.greenhouse.io). Those
+// Greenhouse serves EU-data-residency boards from a separate API host. Those
 // boards 404 on the default US host, so we fall back to the EU host on a 404.
-const GH_HOSTS = ["boards-api.greenhouse.io", "boards-api.eu.greenhouse.io"];
+// The EU host is boards.eu.greenhouse.io — NOT boards-api.eu.greenhouse.io,
+// which does not resolve: every US 404 then spent the full retry budget failing
+// DNS and surfaced as "fetch failed", hiding the real "this board is gone".
+const GH_HOSTS = ["boards-api.greenhouse.io", "boards.eu.greenhouse.io"];
 const boardUrl = (host: string, slug: string) =>
   `https://${host}/v1/boards/${slug}/jobs?content=true`;
 

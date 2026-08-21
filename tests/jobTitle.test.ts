@@ -87,6 +87,52 @@ describe("buildJobTitles", () => {
     expect(titleOf(jobs, "a")).toBe(titleOf(jobs, "b"));
   });
 
+  it("bounds the title even when the collision loop gives up", () => {
+    // The unlimited allowance is the escape hatch for roles that still collide
+    // at full length. It used to mean "render all 163 characters of the feed
+    // title", which produced a 203-character <title>.
+    const monster =
+      "Research Lead / Principal Scientist & Manager Post-Training · Alignment · " +
+      "Reinforcement Learning Autodesk AI Lab: London · San Francisco · Toronto · Remote (US/CA/EU) -";
+    const jobs = [
+      job({ slug: "a", title: monster, companyName: "Autodesk" }),
+      job({ slug: "b", title: `${monster} II`, companyName: "Autodesk" }),
+    ];
+    for (const slug of ["a", "b"]) {
+      expect(titleOf(jobs, slug).length).toBeLessThanOrEqual(110);
+    }
+  });
+
+  it("bounds the location half of the suffix", () => {
+    // locationRaw is the last-resort disambiguator and arrives unbounded; this
+    // one is 40 characters and pushed the rendered title to 129.
+    const jobs = [
+      job({
+        slug: "a",
+        title: "Staff Machine Learning Engineer, Agentic App Platform",
+        companyName: "ServiceNow",
+        city: "Mountain View",
+        locationRaw: "Mountain View, CALIFORNIA, United States",
+      }),
+      job({
+        slug: "b",
+        title: "Staff Machine Learning Engineer, Agentic App Platform",
+        companyName: "ServiceNow",
+        city: "Mountain View",
+        locationRaw: "Mountain View, CALIFORNIA, United States (Remote)",
+      }),
+    ];
+    expect(titleOf(jobs, "a").length).toBeLessThanOrEqual(110);
+  });
+
+  it("keeps a short place whole rather than trimming to the ceiling", () => {
+    const jobs = [
+      job({ slug: "a", title: "ML Engineer", companyName: "Faculty", city: "London" }),
+      job({ slug: "b", title: "ML Engineer", companyName: "Faculty", city: "Leeds" }),
+    ];
+    expect(titleOf(jobs, "a")).toBe("ML Engineer · Faculty · London");
+  });
+
   it("terminates when a truncation can never disambiguate", () => {
     const jobs = Array.from({ length: 3 }, (_, i) =>
       job({ slug: `s${i}`, title: "A".repeat(300), companyName: "Acme" }),

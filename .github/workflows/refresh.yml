@@ -171,6 +171,15 @@ jobs:
           GIT_AUTHOR_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
           GIT_COMMITTER_NAME: github-actions[bot]
           GIT_COMMITTER_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
+          # publish.sh ends by announcing changed URLs. IndexNow needs no
+          # credential (its key is public by design); Google's Indexing API
+          # needs the service-account key, and its absence simply turns that
+          # half off rather than failing the run.
+          GOOGLE_INDEXING_KEY: ${{ secrets.GOOGLE_INDEXING_KEY }}
+          # A repository variable, so the cap can follow whatever quota Google
+          # approves without a code change. Unset falls back to their 200/day
+          # onboarding default.
+          GOOGLE_INDEXING_QUOTA: ${{ vars.GOOGLE_INDEXING_QUOTA }}
 
   # Rebuild and publish the site. Invoked directly rather than left to the push
   # event: commits made with GITHUB_TOKEN deliberately do not trigger workflows.
