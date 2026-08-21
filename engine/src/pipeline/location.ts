@@ -28,7 +28,13 @@ const COUNTRY_HINTS: [RegExp, string][] = [
     /\b(san francisco|new york|seattle|austin|boston|chicago|los angeles|denver|atlanta|miami|palo alto|menlo park|mountain view|sunnyvale|cupertino|san jose|san diego|san mateo|redwood city|oakland|berkeley|santa clara|bellevue|kirkland|redmond|washington,? d\.?c\.?|portland|philadelphia|phoenix|dallas|houston|salt lake city|pittsburgh|minneapolis|nashville|raleigh|durham|ann arbor|boulder|irvine|pasadena|culver city|brooklyn|manhattan)\b/i,
     "US",
   ],
-  [/\b(united kingdom|u\.?k\.?|england|scotland|wales|london|manchester|edinburgh|bristol|oxford)\b/i, "GB"],
+  // Belfast, Glasgow, Leeds and Cardiff are peers of the cities already listed
+  // and were simply missing; each cost its roles their JobPosting. Birmingham
+  // and Cambridge stay out on purpose — Alabama and Massachusetts have both.
+  [
+    /\b(united kingdom|u\.?k\.?|england|scotland|wales|northern ireland|london|manchester|edinburgh|bristol|oxford|belfast|glasgow|leeds|cardiff)\b/i,
+    "GB",
+  ],
   [/\b(canada|toronto|vancouver|montr[eé]al|ottawa|calgary|waterloo|quebec)\b/i, "CA"],
   [/\b(germany|berlin|munich|münchen|frankfurt|hamburg|cologne|köln|stuttgart)\b/i, "DE"],
   [/\b(france|paris|lyon|toulouse|grenoble)\b/i, "FR"],
@@ -202,9 +208,15 @@ export function parseLocation(
     else if (loc) remoteType = "onsite";
   }
 
-  const country = loc ? inferCountry(loc) : undefined;
   const firstSegment = loc.split(/[,|/]/)[0]?.trim();
   const city = firstSegment ? canonicalCity(placeSegment(firstSegment)) : undefined;
+  // The raw string first, then the canonicalized city as a fallback. Feeds
+  // routinely write the location as an office name or an in-house abbreviation
+  // ("sf", "SF Office", "NYC Office") that the hint table cannot match, but
+  // which canonicalCity has already resolved to "San Francisco" / "New York" by
+  // this point. The fallback runs only where the raw string yielded nothing, so
+  // it can supply a country the feed omitted but never overturn one it stated.
+  const country = (loc ? inferCountry(loc) : undefined) ?? (city ? inferCountry(city) : undefined);
 
   return { remoteType, country, city };
 }

@@ -125,6 +125,30 @@ describe("indexableSlugs", () => {
     expect([...idx].sort()).toEqual(["located", "remote-with-country"]);
   });
 
+  it("excludes an on-site role that knows its city but not its country", () => {
+    // addressCountry is the only required field of jobLocation.address, so a
+    // city on its own builds a PostalAddress Search Console rejects: "Missing
+    // field addressCountry (in jobLocation.address)" — 46 live roles were
+    // publishing exactly that. No country, no markup.
+    const idx = indexableSlugs(
+      snapshot([
+        job("city-and-country", { locationRaw: "Belfast, UK" }),
+        job("city-only", { locationRaw: "Tysons", city: "Tysons", country: undefined }),
+        job("region-only", {
+          locationRaw: "Bavaria",
+          city: undefined,
+          region: "Bavaria",
+          country: undefined,
+        }),
+        // No city, but a country is enough on its own — an address of nothing
+        // but addressCountry is valid.
+        job("country-only", { locationRaw: "Japan", city: undefined, country: "JP" }),
+      ]),
+    );
+
+    expect([...idx].sort()).toEqual(["city-and-country", "country-only"]);
+  });
+
   it("excludes tombstones — closed and aged-out roles alike", () => {
     const idx = indexableSlugs(
       snapshot([

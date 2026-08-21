@@ -215,10 +215,11 @@ const pageUrl = new URL(url(`/jobs/${job.slug}/`), Astro.site).href;
 // listing for the role instead of six.
 const dupCanonicalSlug = isTombstone ? null : duplicateOf(job);
 
-// Google requires a resolvable location: TELECOMMUTE roles need
-// applicantLocationRequirements (we derive it from country), everything else
-// needs a jobLocation. A posting with neither would be a guaranteed Search
-// Console error, so emit no JobPosting at all rather than a half-valid one.
+// Google requires a resolvable location, and both shapes need a country:
+// TELECOMMUTE roles turn it into applicantLocationRequirements, everything else
+// into jobLocation.address, where addressCountry is the only required field.
+// A posting without one would be a guaranteed Search Console error, so emit no
+// JobPosting at all rather than a half-valid one.
 // Shared with the engine, which must predict this page's verdict exactly before
 // submitting the URL to Google's Indexing API.
 const locatable = hasUsableLocation(job);
@@ -257,22 +258,25 @@ const jsonLd: Record<string, unknown> | null = isTombstone || dupCanonicalSlug |
       directApply: false,
     };
 if (jsonLd) {
+  // Unconditional on both branches: `locatable` above has already established
+  // that job.country is set, and it is the one field Google actually requires
+  // of either shape. Guarding it again would only re-open the gap that put
+  // "Missing field addressCountry" in Search Console — an address built from
+  // whichever of city/region/country happened to be present.
   if (job.remoteType === "remote") {
     jsonLd.jobLocationType = "TELECOMMUTE";
-    if (job.country) {
-      jsonLd.applicantLocationRequirements = {
-        "@type": "Country",
-        name: country ?? job.country,
-      };
-    }
-  } else if (job.city || job.region || job.country) {
+    jsonLd.applicantLocationRequirements = {
+      "@type": "Country",
+      name: country ?? job.country,
+    };
+  } else {
     jsonLd.jobLocation = {
       "@type": "Place",
       address: {
         "@type": "PostalAddress",
         ...(job.city ? { addressLocality: job.city } : {}),
         ...(job.region ? { addressRegion: job.region } : {}),
-        ...(job.country ? { addressCountry: job.country } : {}),
+        addressCountry: job.country,
       },
     };
   }

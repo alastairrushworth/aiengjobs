@@ -33,6 +33,58 @@ describe("parseLocation", () => {
     expect(parseLocation("Remote - US").country).toBe("US");
   });
 
+  it("falls back to the canonicalized city when the raw string hides the place", () => {
+    // Feeds write the office, not the city. The hint table cannot match "sf" or
+    // "NYC Office", but canonicalCity has already turned them into real city
+    // names by the time the country is inferred — and without a country a role
+    // publishes no JobPosting at all.
+    const cases: [string, string][] = [
+      ["sf", "US"],
+      ["SF Office", "US"],
+      ["NYC Office", "US"],
+      ["SF Headquarters", "US"],
+      ["Glasgow Campus", "GB"],
+    ];
+    for (const [raw, country] of cases) expect(parseLocation(raw).country, raw).toBe(country);
+  });
+
+  it("reads a two-letter code as the country's own region, not a US state", () => {
+    // Why the US-state check runs after the hint table rather than before it:
+    // in this corpus UT is Utrecht, CT is Catalonia, ON is Ontario and IN is
+    // India far more often than they are Utah, Connecticut, Ontario NY or
+    // Indiana. Reordering the two reads all four as American.
+    expect(parseLocation("Nieuwegein, UT, Netherlands").country).toBe("NL");
+    expect(parseLocation("Barcelona, CT, Spain").country).toBe("ES");
+    expect(parseLocation("Toronto, ON, CA, Remote, Canada").country).toBe("CA");
+    expect(parseLocation("IN-Bengaluru").country).toBe("IN");
+  });
+
+  it("adds a country from the city but never overturns one", () => {
+    // The fallback fires only where the raw string yielded nothing, so a feed
+    // that names its country keeps it whatever the city suggests.
+    expect(parseLocation("Cambridge").country).toBeUndefined();
+    expect(parseLocation("Cambridge, MA").country).toBe("US");
+    expect(parseLocation("Cambridge, UK").country).toBe("GB");
+  });
+
+  it("covers the UK cities the hint table had skipped", () => {
+    for (const [raw, country] of [
+      ["Belfast", "GB"],
+      ["Glasgow", "GB"],
+      ["Leeds", "GB"],
+      ["Cardiff", "GB"],
+    ] as [string, string][]) {
+      expect(parseLocation(raw).country, raw).toBe(country);
+    }
+  });
+
+  it("leaves an ambiguous city's country unset rather than guessing", () => {
+    // Both have a well-known US namesake, so neither can be claimed for the UK
+    // on the city name alone.
+    expect(parseLocation("Birmingham").country).toBeUndefined();
+    expect(parseLocation("Cambridge").country).toBeUndefined();
+  });
+
   it("leaves country unset when the feed gives no usable signal", () => {
     for (const raw of ["Remote", "Europe", "AMER", ""]) {
       expect(parseLocation(raw).country).toBeUndefined();
