@@ -23,10 +23,35 @@ const MAX_URLS_PER_RUN = 2_000;
 const jobUrl = (slug: string): string =>
   `${SITE_ORIGIN}${SITE_BASE}/jobs/${slug}/`;
 
+/**
+ * Read a snapshot, distinguishing "not there" from "there but broken".
+ *
+ * Both used to return null, and for the *previous* snapshot null means "nothing
+ * to compare against, announce nothing" — which is right on a first run and
+ * wrong on a corrupt file. A truncated prev-snapshot.json therefore produced a
+ * run that logged "no job URLs changed" and exited 0, indistinguishable from a
+ * quiet night, while every new role went unannounced.
+ */
 function readSnapshot(path: string): SiteSnapshot | null {
+  let text: string;
   try {
-    return JSON.parse(readFileSync(path, "utf8")) as SiteSnapshot;
-  } catch {
+    text = readFileSync(path, "utf8");
+  } catch (e) {
+    // An empty or missing file is the documented first-run case (refresh.sh
+    // writes an empty one when there is no published branch to diff against).
+    if ((e as NodeJS.ErrnoException).code !== "ENOENT") {
+      console.warn(`  ! could not read snapshot at ${path}: ${(e as Error).message}`);
+    }
+    return null;
+  }
+  if (!text.trim()) return null;
+  try {
+    return JSON.parse(text) as SiteSnapshot;
+  } catch (e) {
+    console.warn(
+      `  ! snapshot at ${path} is present but unreadable (${(e as Error).message}) — ` +
+        `treating it as absent, so nothing will be announced this run.`,
+    );
     return null;
   }
 }

@@ -23,21 +23,25 @@ async function main(): Promise<void> {
       await exportSnapshot();
       break;
     case "retag":
-      // LLM-free backfill of skills/filter rules onto existing rows — run once
-      // after changing the taxonomy, tag evidence rules, or OUT heuristics.
+      // Inference-free backfill of skills, filter rules and pay currency onto
+      // existing rows — run once after changing the taxonomy, tag evidence
+      // rules, OUT heuristics, or the salary parser in pipeline/comp.ts.
       retag();
       break;
     case "relocate":
-      // Fills country and region onto postings that have none, using the
-      // current hint and division tables — run once after editing
-      // pipeline/location.ts or pipeline/region.ts. Never overwrites, so the
-      // values the retired LLM extractor supplied survive it.
+      // Fills country, region and city onto postings that have none, using the
+      // current hint, division and canonicalization tables — run once after
+      // editing pipeline/location.ts, pipeline/region.ts or shared/city.ts.
+      // Country and region are only ever filled, never overwritten, so the
+      // values the retired LLM extractor supplied survive it; a stored city is
+      // replaced only where the current rules reject it outright.
       // --dry-run reports what it would fill and writes nothing.
       relocate({ dryRun: process.argv.includes("--dry-run") });
       break;
     case "reclassify":
-      // LLM backfill: re-decides borderline-confidence live jobs under the
-      // current extract.ts prompt — run once after a classification prompt change.
+      // Re-decides every live posting with the local ONNX encoder — run once
+      // after a classifier change. Rewrites the board in bulk; see the warning
+      // on the function itself before pointing it at a database you care about.
       await reclassify();
       break;
     case "refresh":

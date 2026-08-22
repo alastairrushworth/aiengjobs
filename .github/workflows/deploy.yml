@@ -41,6 +41,10 @@ jobs:
         run: npm run check -w @aiengjobs/site
       - name: Typecheck MCP server
         run: npm run typecheck -w @aiengjobs/mcp
+      # tests/ and shared/ belong to no workspace, so nothing above reaches
+      # them. vitest strips their types with esbuild rather than checking them.
+      - name: Typecheck tests + shared
+        run: npx tsc --noEmit -p tsconfig.json
       - name: Run tests
         run: npm test
 

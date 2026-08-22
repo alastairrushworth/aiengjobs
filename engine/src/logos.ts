@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { randomUUID } from "node:crypto";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
-import { fetchRetry } from "./util/fetch.ts";
+import { fetchRetry, isPublicHttpUrl } from "./util/fetch.ts";
 import { mapPool } from "./util/concurrency.ts";
 import type { SiteSnapshot } from "@aiengjobs/shared";
 
@@ -208,7 +208,11 @@ export function manifestUrls(html: string, base: URL): string[] {
   for (const href of hrefs) {
     try {
       const abs = new URL(href, base).href;
-      if (!/^https?:/.test(abs) || seen.has(abs)) continue;
+      // These hrefs come out of a third party's markup, so they get the same
+      // treatment as any other untrusted URL the engine is asked to fetch: web
+      // schemes only, and nothing aimed at loopback, a private range, or the
+      // link-local address where cloud metadata services live.
+      if (!isPublicHttpUrl(abs) || seen.has(abs)) continue;
       seen.add(abs);
       urls.push(abs);
     } catch {
@@ -348,7 +352,11 @@ export function candidates(html: string, base: URL): string[] {
         continue;
       }
       const abs = new URL(href, base).href;
-      if (!/^https?:/.test(abs) || seen.has(abs)) continue;
+      // These hrefs come out of a third party's markup, so they get the same
+      // treatment as any other untrusted URL the engine is asked to fetch: web
+      // schemes only, and nothing aimed at loopback, a private range, or the
+      // link-local address where cloud metadata services live.
+      if (!isPublicHttpUrl(abs) || seen.has(abs)) continue;
       seen.add(abs);
       urls.push(abs);
     } catch {
@@ -415,9 +423,16 @@ async function tryFetchImage(url: string): Promise<{ buf: Buffer; probe: Probe }
  * Favicons are often shipped as multi-resolution .ico (a 256px Discord icon is
  * 279KB) or as absurd masters (one logo arrives at 4110x4110). Both get served
  * on company pages, so they're worth normalising — but not worth adding a native
- * image dependency for. Uses whatever the host already has and returns the
- * original untouched when there's nothing available, so the fetch works
- * everywhere and merely produces heavier files on a bare box.
+ * image dependency for.
+ *
+ * Shells out to `sips`, which is macOS-only and is the one tool this reaches
+ * for; the docstring used to say "whatever the host already has", which implied
+ * a fallback chain that has never existed. On Linux the spawn fails and the
+ * original bytes are returned untouched, so `npm run logos` still works there —
+ * it just stores heavier files, and leaves .ico as .ico. That is fine because
+ * this is an occasional by-hand command, not part of the nightly run; if it ever
+ * moves onto the runner, add an ImageMagick/`vips` branch here rather than
+ * letting it silently no-op.
  */
 const MAX_LOGO_PX = 256;
 const NORMALIZE_OVER_BYTES = 60_000;

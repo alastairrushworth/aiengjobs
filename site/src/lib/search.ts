@@ -174,8 +174,10 @@ export function isFiltering(s: FilterState): boolean {
  * which is what makes "United Kingdom (170)" mean "and how many if I pick this
  * one" rather than "how many ignoring everything you've already chosen".
  */
-export function buildTests(s: FilterState): Record<string, (j: JobEntry) => boolean> {
-  const terms = buildTerms(s.q.trim());
+export function buildTests(
+  s: FilterState,
+  terms: RegExp[] = buildTerms(s.q.trim()),
+): Record<string, (j: JobEntry) => boolean> {
   const levels = expandLevel(s.level);
   return {
     q: (j) => terms.every((re) => re.test(searchBlob(j))),
@@ -189,9 +191,13 @@ export function buildTests(s: FilterState): Record<string, (j: JobEntry) => bool
 
 /** Matching jobs, most relevant first when there's a query and newest-first otherwise. */
 export function filterJobs(data: JobEntry[], s: FilterState): JobEntry[] {
-  const tests = Object.values(buildTests(s));
-  const matches = data.filter((j) => tests.every((fn) => fn(j)));
+  // Compiled once and shared with buildTests. This used to build the same
+  // matchers twice per call, and `relaxations` calls filterJobs once per active
+  // filter — so an empty result set recompiled the query up to a dozen times
+  // while the visitor was still typing.
   const terms = buildTerms(s.q.trim());
+  const tests = Object.values(buildTests(s, terms));
+  const matches = data.filter((j) => tests.every((fn) => fn(j)));
   if (!terms.length) return matches;
   // Decorated sort so ties keep the incoming order — which is newest-first, and
   // is the tiebreak anyone would want among equally relevant roles.

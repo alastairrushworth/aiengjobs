@@ -33,7 +33,7 @@ const feed = (...blocks: string[]) =>
 
 /** Stub fetch per host: "com" / "de" -> {status, body}. */
 function stubFetch(byHost: Record<string, { status?: number; body?: string }>) {
-  vi.spyOn(globalThis, "fetch").mockImplementation(async (input: RequestInfo | URL) => {
+  vi.spyOn(globalThis, "fetch").mockImplementation(async (input: Parameters<typeof fetch>[0]) => {
     const url = String(input);
     const key = url.includes("personio.com") ? "com" : "de";
     const { status = 200, body = "" } = byHost[key] ?? { status: 307 };

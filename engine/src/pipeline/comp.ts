@@ -109,12 +109,28 @@ const PAY_CONTEXT_RE =
  *  posts put the range four lines below "salary ranges … are listed below:". */
 const PAY_WINDOW_CHARS = 400;
 
+/**
+ * What marks a number in a description as an amount of money.
+ *
+ * The optional letters in front of the symbol are what let the *second* bound
+ * of "CA$120,000 - CA$150,000" be recognised. Without them the range pattern
+ * matched `$120000`, then needed a digit where the "C" of the closing `CA$`
+ * was, backtracked, found no second bound, and fell through to the lone-figure
+ * path — which sees two amounts and gives up. The whole band was dropped, so
+ * every Canadian advert that labelled its currency *correctly* published no pay
+ * at all. Which spelling it is, is detectCurrency's job; this only decides that
+ * the digits beside it are money.
+ */
+const MONEY = "(?:(?:CA|NZ|HK|US|A|S|R)?[$£€]|\\b(?:USD|GBP|EUR|CAD|AUD|NZD|SGD|HKD|BRL)\\s*)";
+const FIGURE = "\\s?(\\d+(?:\\.\\d+)?)\\s*([kKmM])?";
+
 /** Only figures carrying a currency marker count — see parseSalaryFromDescription. */
-const CURRENCY_AMOUNT_RE = /(?:[$£€]|\b(?:USD|GBP|EUR)\s*)\s?(\d+(?:\.\d+)?)\s*([kKmM])?/g;
+const CURRENCY_AMOUNT_RE = new RegExp(`${MONEY}${FIGURE}`, "g");
 
 /** Two currency figures joined by a dash or "to" — an explicitly stated band. */
-const CURRENCY_RANGE_RE =
-  /(?:[$£€]|\b(?:USD|GBP|EUR)\s*)\s?(\d+(?:\.\d+)?)\s*([kKmM])?\s*(?:-|–|—|\bto\b)\s*(?:[$£€]|\b(?:USD|GBP|EUR)\s*)?\s?(\d+(?:\.\d+)?)\s*([kKmM])?/;
+const CURRENCY_RANGE_RE = new RegExp(
+  `${MONEY}${FIGURE}\\s*(?:-|–|—|\\bto\\b)\\s*${MONEY}?${FIGURE}`,
+);
 
 /**
  * A stricter period detector than parseSalaryText's. Over 400 characters of
@@ -143,15 +159,23 @@ function ratedPeriod(t: string): SalaryPeriod {
  * rather than pooling every figure it finds. Pooling was tried first and merged
  * unrelated amounts — a relocation bonus and a top-of-band salary in the same
  * window produced "$23,000–$336,000".
+ *
+ * `country` is the ISO-2 the location pipeline derived for the role, and it is
+ * consulted for one thing only: deciding which dollar a bare `$` is. See
+ * BARE_DOLLAR_BY_COUNTRY.
  */
-export function parseSalaryFromDescription(text?: string | null): ParsedSalary | null {
+export function parseSalaryFromDescription(
+  text?: string | null,
+  country?: string | null,
+): ParsedSalary | null {
   if (!text) return null;
   const clean = text.replace(/,/g, "").replace(/\b401\s*\(?k\)?\b/gi, "");
   // A post can say "competitive salary" long before it states a range, so try
   // every pay keyword and keep the first window that yields plausible figures.
   for (const kw of clean.matchAll(PAY_CONTEXT_RE)) {
     const window = clean.slice(kw.index, kw.index + PAY_WINDOW_CHARS);
-    const currency = detectCurrency(window);
+    const currency = detectCurrency(window, country);
+    if (!currency) continue; // two currencies in one window — see detectCurrency
     const period = ratedPeriod(window);
 
     const range = CURRENCY_RANGE_RE.exec(window);
@@ -180,10 +204,100 @@ export function parseSalaryFromDescription(text?: string | null): ParsedSalary |
   return null;
 }
 
-function detectCurrency(t: string): string {
-  if (/£|gbp/i.test(t)) return "GBP";
-  if (/€|eur/i.test(t)) return "EUR";
-  return "USD";
+/**
+ * What a bare `$` means, per country, where the local currency is *also*
+ * written with a plain dollar sign.
+ *
+ * Only these. A `$` in a British, French or German advert is a deliberate USD
+ * quote — those markets write £ and €, so the symbol carries information — and
+ * on the live board those roles (Perplexity in London, OpenAI in Paris, Cohere
+ * in the UK) really are quoted in dollars. A `$` in a Canadian or Singaporean
+ * advert carries none: it is the local convention, and reading it as USD is how
+ * 42 Canadian and 4 Singaporean roles came to be published ~38% over their real
+ * value, on the cards, in the /stats medians and in the JobPosting baseSalary.
+ */
+const BARE_DOLLAR_BY_COUNTRY: Record<string, string> = {
+  CA: "CAD",
+  AU: "AUD",
+  NZ: "NZD",
+  SG: "SGD",
+  HK: "HKD",
+};
+
+/**
+ * The currency a role's own country would quote in — the tie-break when an
+ * advert names more than one. Wider than BARE_DOLLAR_BY_COUNTRY on purpose:
+ * that one answers "which dollar", this one answers "which of the currencies
+ * this advert actually mentions is the local one".
+ *
+ * Only the currencies this parser can emit at all. A country absent here has no
+ * vote, which is the safe default.
+ */
+const LOCAL_CURRENCY: Record<string, string> = {
+  US: "USD",
+  GB: "GBP",
+  CA: "CAD",
+  AU: "AUD",
+  NZ: "NZD",
+  SG: "SGD",
+  HK: "HKD",
+  BR: "BRL",
+  // The euro area, as it appears on this board.
+  AT: "EUR", BE: "EUR", DE: "EUR", EE: "EUR", ES: "EUR", FI: "EUR", FR: "EUR",
+  GR: "EUR", HR: "EUR", IE: "EUR", IT: "EUR", LT: "EUR", LV: "EUR", LU: "EUR",
+  MT: "EUR", NL: "EUR", PT: "EUR", SI: "EUR", SK: "EUR", CY: "EUR",
+};
+
+/**
+ * Currencies a pay window names outright.
+ *
+ * Two traps are baked into these patterns. The word boundaries: `/€|eur/i`
+ * without one matched "Europe", which is how a San Francisco role and a Black
+ * Forest Labs advert that literally says "$180,000 USD" both came to be
+ * labelled EUR. And the lookbehinds: `A$` occurs inside `CA$` and `S$` inside
+ * `US$`, so without them Docker's "Canada: CA$243,250" reads as *two*
+ * currencies at once and the advert is discarded as ambiguous.
+ *
+ * The bare `$` is deliberately not on this list — it names nothing.
+ */
+const EXPLICIT_CURRENCIES: [RegExp, string][] = [
+  [/£|\bgbp\b/i, "GBP"],
+  [/€|\beur\b/i, "EUR"],
+  [/(?<![A-Za-z])CA\$|\bcad\b/i, "CAD"],
+  [/(?<![A-Za-z])A\$|\baud\b/i, "AUD"],
+  [/(?<![A-Za-z])NZ\$|\bnzd\b/i, "NZD"],
+  [/(?<![A-Za-z])S\$|\bsgd\b/i, "SGD"],
+  [/(?<![A-Za-z])HK\$|\bhkd\b/i, "HKD"],
+  [/(?<![A-Za-z])R\$|\bbrl\b/i, "BRL"],
+  [/(?<![A-Za-z])US\$|\busd\b/i, "USD"],
+];
+
+/**
+ * The currency a pay window is quoted in, or null when it can't be told.
+ *
+ * In order:
+ *
+ *  - Exactly one currency named outright: that one, whatever the country says.
+ *    Serve Robotics writes "Canada - ALL: $177k - $215k CAD" on a US-located
+ *    posting and means it.
+ *  - Several named, one of which is the role's own: that one. These adverts are
+ *    common and they quote the local band first, which is also the band the
+ *    range pattern grabs — EnCharge's "$180,000 to $240,000 USD ($175,000 to
+ *    $245,000 CAD)" on a US role is 180–240k USD.
+ *  - Several named, none of them local: **null**. Whichever currency won an
+ *    arbitrary ordering, the figures would belong to the other one about half
+ *    the time. A wrong salary is worse than no salary — the same call
+ *    location.ts makes about a wrong city — so the window is abandoned and the
+ *    loop tries the next one.
+ *  - Nothing but a bare `$`: the country decides, per BARE_DOLLAR_BY_COUNTRY,
+ *    falling back to USD.
+ */
+function detectCurrency(t: string, country?: string | null): string | null {
+  const local = country ? LOCAL_CURRENCY[country.toUpperCase()] : undefined;
+  const named = EXPLICIT_CURRENCIES.filter(([re]) => re.test(t)).map(([, code]) => code);
+  if (named.length === 1) return named[0]!;
+  if (named.length > 1) return local && named.includes(local) ? local : null;
+  return (country && BARE_DOLLAR_BY_COUNTRY[country.toUpperCase()]) || "USD";
 }
 
 /**

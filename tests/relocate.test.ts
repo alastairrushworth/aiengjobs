@@ -41,7 +41,7 @@ function makeDb(rows: Row[]): string {
   return path;
 }
 
-function read(path: string, column: "country" | "region"): Record<string, string | null> {
+function read(path: string, column: "country" | "region" | "city"): Record<string, string | null> {
   const db = new DatabaseSync(path, { readOnly: true });
   const rows = db.prepare(`SELECT id, ${column} AS v FROM jobs ORDER BY id`).all() as unknown as {
     id: string;
@@ -53,6 +53,7 @@ function read(path: string, column: "country" | "region"): Record<string, string
 
 const countries = (path: string): Record<string, string | null> => read(path, "country");
 const regions = (path: string): Record<string, string | null> => read(path, "region");
+const cities = (path: string): Record<string, string | null> => read(path, "city");
 
 /** db/index.ts resolves AIENGJOBS_DB once, at load, so each run needs a fresh
  *  module registry to pick up this test's database. */
@@ -173,5 +174,99 @@ describe("relocate regions", () => {
     await run(path);
 
     expect(regions(path)).toEqual({ de: null, gb: null });
+  });
+});
+
+describe("relocate cities", () => {
+  it("fills a blank city from the current canonicalization rules", async () => {
+    const path = makeDb([
+      { id: "hq", locationRaw: "*HQ - San Francisco, CA" },
+      { id: "sfo", locationRaw: "SF Office" },
+      { id: "hybrid", locationRaw: "Hybrid London" },
+    ]);
+
+    await run(path);
+
+    expect(cities(path)).toEqual({
+      hq: "San Francisco",
+      sfo: "San Francisco",
+      hybrid: "London",
+    });
+  });
+
+  /**
+   * The stored values this exists for. Each was a live addressLocality: a
+   * country or state code that an older engine left behind when it could not
+   * strip it, because the code was the whole value.
+   */
+  it("repairs a stored city the current rules reject", async () => {
+    const path = makeDb([
+      { id: "cn", locationRaw: "CN - Shanghai", city: "Cn" },
+      { id: "va", locationRaw: "VA - Reston, 11951 Freedom Dr Ste 900", city: "Va" },
+      { id: "sg", locationRaw: "SG - Singapore", city: "Sg" },
+      { id: "tlv", locationRaw: "TLV", city: "Tlv" },
+    ]);
+
+    await run(path);
+
+    expect(cities(path)).toEqual({
+      cn: "Shanghai",
+      va: "Reston",
+      sg: "Singapore",
+      tlv: "Tel Aviv",
+    });
+  });
+
+  it("clears a rejected city when the raw location yields no replacement", async () => {
+    // A role keeps its country either way, so it still publishes a JobPosting —
+    // it just stops claiming a locality that was never one.
+    const path = makeDb([
+      { id: "prov", locationRaw: "Ontario, CAN", city: "Ontario" },
+      { id: "na", locationRaw: "N/A", city: "N" },
+    ]);
+
+    await run(path);
+
+    expect(cities(path)).toEqual({ prov: null, na: null });
+  });
+
+  /**
+   * The guard that makes the pass safe to run. The retired LLM extractor filled
+   * cities that location_raw does not contain, and those are not reproducible —
+   * blanking them would cost more markup than the pass recovers.
+   */
+  it("never touches a stored city the current rules still accept", async () => {
+    const path = makeDb([
+      // Nothing in either raw string yields a city, but both stored values are
+      // canonical, so both survive untouched.
+      { id: "llm", locationRaw: "Remote", city: "Chengdu" },
+      { id: "ulm", locationRaw: "Ulm, BW, Germany", city: "Ulm" },
+    ]);
+
+    await run(path);
+
+    expect(cities(path)).toEqual({ llm: "Chengdu", ulm: "Ulm" });
+  });
+
+  it("writes no city on a dry run", async () => {
+    const path = makeDb([{ id: "cn", locationRaw: "CN - Shanghai", city: "Cn" }]);
+
+    await run(path, { dryRun: true });
+
+    expect(cities(path)).toEqual({ cn: "Cn" });
+  });
+
+  it("is idempotent — a second pass changes nothing", async () => {
+    const path = makeDb([
+      { id: "cn", locationRaw: "CN - Shanghai", city: "Cn" },
+      { id: "hq", locationRaw: "*HQ - San Francisco, CA" },
+      { id: "prov", locationRaw: "Ontario, CAN", city: "Ontario" },
+    ]);
+
+    await run(path);
+    const first = cities(path);
+    await run(path);
+
+    expect(cities(path)).toEqual(first);
   });
 });
