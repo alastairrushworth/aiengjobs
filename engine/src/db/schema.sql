@@ -49,7 +49,16 @@ CREATE TABLE IF NOT EXISTS jobs (
   salary_currency           TEXT,
   salary_period             TEXT,                       -- year|month|day|hour
   classification            TEXT NOT NULL DEFAULT 'out',-- in|out
-  classification_confidence REAL,
+  classification_confidence REAL,                       -- distance from the decision
+  -- The encoder's raw p(in scope). Distinct from the column above, which for a
+  -- title the heuristic recognised is a pinned constant rather than anything the
+  -- model said. This one is always the model's own number, so it is the only one
+  -- of the two that can be ordered by. Null where the heuristic ruled the title
+  -- OUT (inference is skipped), and on rows written before this column existed.
+  --
+  -- Added after the fact, so CREATE TABLE IF NOT EXISTS will not put it on the
+  -- nightly database — see the ALTER in db/index.ts.
+  model_score               REAL,
   is_direct                 INTEGER NOT NULL DEFAULT 0,
   is_closed                 INTEGER NOT NULL DEFAULT 0,
   -- is_new and is_featured used to live here. is_new was written as 1 on every

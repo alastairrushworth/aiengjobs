@@ -2,7 +2,7 @@
   "name": "aiengjobs",
   "private": true,
   "version": "0.0.0",
-  "description": "frontierroles.com — static job board (GitHub Pages) + nightly ingestion engine (GitHub Actions)",
+  "description": "frontierroles.com \u2014 static job board (GitHub Pages) + nightly ingestion engine (GitHub Actions)",
   "workspaces": [
     "shared",
     "site",
@@ -11,6 +11,7 @@
   ],
   "scripts": {
     "build": "npm run build -w @aiengjobs/site",
+    "og:preview": "tsx scripts/og-preview.ts",
     "dev": "npm run dev -w @aiengjobs/site",
     "typecheck": "npm run typecheck -w @aiengjobs/engine && npm run check -w @aiengjobs/site && npm run typecheck -w @aiengjobs/mcp && tsc --noEmit -p tsconfig.json",
     "test": "vitest run",

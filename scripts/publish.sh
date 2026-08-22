@@ -11,6 +11,11 @@ cd "$(dirname "$0")/.."
 
 SNAPSHOT=site/src/data/snapshot.json
 META=site/src/data/snapshot.meta.json
+# The record of what /daily/rss.xml has already announced. Committed for the
+# same reason META is, and load-bearing in a way META is not: it is the only
+# copy of that history, and re-deriving it from a later snapshot gives different
+# answers (see engine/src/export/dailyPicks.ts).
+PICKS=site/src/data/daily-picks.json
 PREV=data/prev-snapshot.json
 
 test -s "$SNAPSHOT" || { echo "no snapshot to publish" >&2; exit 1; }
@@ -34,8 +39,8 @@ commit="$(git commit-tree "$tree" -m "snapshot $(date -u +%FT%TZ)")"
 git push --force origin "$commit:refs/heads/snapshot"
 echo "snapshot published to refs/heads/snapshot"
 
-if ! git diff --quiet -- "$META"; then
-  git add "$META"
+if ! git diff --quiet -- "$META" "$PICKS"; then
+  git add "$META" "$PICKS"
   git commit -m "data: refresh snapshot ($(date -u +%FT%TZ))"
   # main can move while the multi-hour ingest runs (merged PRs), making a plain
   # push non-fast-forward. Rebase the one meta commit onto wherever main is now

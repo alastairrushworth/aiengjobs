@@ -58,6 +58,7 @@ npm run seed      -w @aiengjobs/engine   # load engine/seed/companies.csv
 npm run ingest    -w @aiengjobs/engine   # poll ATS feeds
 npm run export    -w @aiengjobs/engine   # write site/src/data/snapshot.json from the DB
 
+npm run og:preview                       # render share cards for a few awkward roles
 npm run typecheck                        # engine + site + mcp, then tests/ and shared/
 npm test                                 # vitest
 ```
@@ -90,6 +91,19 @@ Node 24+ (the engine uses `node:sqlite`, unflagged only from 23.4). CI installs 
 Live at [frontierroles.com](https://frontierroles.com), refreshed nightly: ~1,375 seeded
 sources, ~2,800 listed roles, a fine-tuned ONNX classifier, programmatic landing pages for
 clusters and cities, RSS feeds, and an MCP server. No newsletter and no payments.
+
+### Feeds and share cards
+
+- `/rss.xml` and `/<topic>/rss.xml` — everything new, per landing page.
+- `/daily/rss.xml` — the five strongest new roles a night, ranked by the classifier's
+  own `modelScore`. Chosen once at export time and written to
+  `site/src/data/daily-picks.json`, which is committed: the picks are history, and
+  re-deriving them from a later snapshot gives different answers as roles close.
+- Job links unfurl with a generated 1200×630 card carrying the role, employer, location
+  and pay. Built at build time by satori + resvg (`site/src/lib/og/`) for roles seen in
+  the last 30 days; older ones fall back to a card for their cluster. Every feed item
+  also carries the card as `<media:content>`, for posting tools that compose from the
+  feed rather than waiting for a platform to unfurl.
 
 ### Dependency notes
 

@@ -201,6 +201,7 @@ export interface JobUpsert {
   salaryPeriod?: string;
   classification: string;
   classificationConfidence?: number;
+  modelScore?: number;
   isDirect?: number;
   postedAt?: string;
   updatedAt?: string;
@@ -218,9 +219,9 @@ export function upsertJob(db: DatabaseSync, j: JobUpsert): void {
        id, company_id, source_id, external_id, slug, title, normalized_title,
        description_html, description_text, apply_url, location_raw, country, region, city,
        remote_type, seniority, salary_min, salary_max, salary_currency, salary_period,
-       classification, classification_confidence, is_direct, posted_at, updated_at,
+       classification, classification_confidence, model_score, is_direct, posted_at, updated_at,
        ingested_at, content_hash, dedup_key, last_seen_at, is_closed
-     ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,0)
+     ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,0)
      ON CONFLICT(id) DO UPDATE SET
        title=excluded.title, normalized_title=excluded.normalized_title,
        description_html=excluded.description_html, description_text=excluded.description_text,
@@ -230,6 +231,11 @@ export function upsertJob(db: DatabaseSync, j: JobUpsert): void {
        salary_min=excluded.salary_min, salary_max=excluded.salary_max,
        salary_currency=excluded.salary_currency, salary_period=excluded.salary_period,
        classification=excluded.classification, classification_confidence=excluded.classification_confidence,
+       -- COALESCE, not a plain overwrite: a re-poll whose content hash is
+       -- unchanged skips inference entirely and arrives here with no score, and
+       -- clobbering a real score with null on every such night would empty the
+       -- column for exactly the roles that have been on the board longest.
+       model_score=COALESCE(excluded.model_score, jobs.model_score),
        updated_at=excluded.updated_at, content_hash=excluded.content_hash,
        dedup_key=excluded.dedup_key, last_seen_at=excluded.last_seen_at, is_closed=0`,
   ).run(
@@ -255,6 +261,7 @@ export function upsertJob(db: DatabaseSync, j: JobUpsert): void {
     N(j.salaryPeriod),
     j.classification,
     N(j.classificationConfidence),
+    N(j.modelScore),
     j.isDirect ?? 0,
     N(j.postedAt),
     N(j.updatedAt),

@@ -14,6 +14,7 @@ import {
 } from "../../lib/format.ts";
 import { url } from "../../lib/url.ts";
 import { jsonLdScript } from "../../lib/jsonld.ts";
+import { ogImagePath } from "../../lib/og/policy.ts";
 import { buildJobTitles } from "../../lib/jobTitle.ts";
 import CompanyLogo from "../../components/CompanyLogo.astro";
 import { markupLogo } from "../../lib/logos.ts";
@@ -386,11 +387,20 @@ const descBits = [
   job.skills.length ? `Skills: ${job.skills.slice(0, 3).join(", ")}` : null,
 ].filter(Boolean);
 const metaDescription = `${descBits.join(" — ")}.`.slice(0, 300);
+
+// The card this role's links unfurl with. ogImagePath falls back through the
+// role's cluster to the site default, so this is always a URL the build emits.
+const ogImage = ogImagePath(job);
+const ogImageAlt = `${job.title} at ${job.companyName}${location ? `, ${location}` : ""}${
+  salary ? ` — ${salary}` : ""
+}`;
 ---
 
 <Base
   title={pageTitle}
   description={metaDescription}
+  ogImage={ogImage}
+  ogImageAlt={ogImageAlt}
   noindex={isTombstone}
   canonicalOverride={dupCanonicalSlug ? url(`/jobs/${dupCanonicalSlug}/`) : undefined}
 >
