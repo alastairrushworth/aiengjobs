@@ -308,6 +308,12 @@ export async function ingest(): Promise<void> {
         // There is no heuristic fallback below. encoderScore throws if the model
         // is missing or inference fails, which fails the run — deliberately.
         let cls: ClassifyResult;
+        // The model's own p(in scope), kept whichever way the decision goes.
+        // cls.confidence cannot stand in for it: on the heuristic-IN path below
+        // the title prior wins and reports its pinned constant, so the number
+        // the model actually produced is otherwise computed and discarded.
+        // Stays undefined only where inference is skipped altogether.
+        let modelScore: number | undefined;
         if (heuristicClass?.classification === "out") {
           tally.filtered++;
           cls = heuristicClass;
@@ -317,6 +323,7 @@ export async function ingest(): Promise<void> {
           // from. Decoding here would silently move the decision boundary for
           // any advert carrying an entity.
           const p = await encoderScore(id, raw.title, t.name, raw.locationRaw ?? "", text);
+          modelScore = p;
           tally.inferred++;
           if (heuristicClass?.classification === "in") {
             // Title looks IN. The model read the description, so let it veto an
@@ -379,6 +386,7 @@ export async function ingest(): Promise<void> {
           ...pay(raw, parseSalaryFromDescription(text, loc.country)),
           classification: cls.classification,
           classificationConfidence: cls.confidence,
+          modelScore,
           isDirect: 0,
           postedAt: raw.postedAt,
           updatedAt: raw.updatedAt,

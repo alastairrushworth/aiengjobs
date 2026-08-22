@@ -17,6 +17,13 @@ interface Props {
   feed?: string;
   feedTitle?: string;
   /**
+   * Share card for this page (already base-prefixed). Job pages pass their own
+   * generated card; everything else takes the site-wide default.
+   */
+  ogImage?: string;
+  /** Alt text for the share card — describes the image, not the page. */
+  ogImageAlt?: string;
+  /**
    * Point the canonical at a different page (already base-prefixed). Used by
    * duplicate ATS requisitions, which consolidate onto the newest of the set.
    */
@@ -32,6 +39,8 @@ const {
   next,
   feed,
   feedTitle,
+  ogImage: ogImagePath,
+  ogImageAlt,
   canonicalOverride,
 } = Astro.props;
 
@@ -42,7 +51,9 @@ const fullTitle = noBrandSuffix ? title : `${title} — frontierroles.com`;
 const path = canonicalOverride ?? Astro.url.pathname;
 const canonicalPath = path.endsWith("/") || /\.[a-z]+$/i.test(path) ? path : `${path}/`;
 const canonical = new URL(canonicalPath, Astro.site).href;
-const ogImage = new URL(url("/og-default.png"), Astro.site).href;
+// Absolute, always: every platform that unfurls a link resolves og:image
+// against nothing at all, so a site-relative path silently yields no image.
+const ogImage = new URL(ogImagePath ?? url("/og-default.png"), Astro.site).href;
 
 const updated = new Date(generatedAt).toLocaleDateString("en-US", {
   year: "numeric",
@@ -77,10 +88,19 @@ const updated = new Date(generatedAt).toLocaleDateString("en-US", {
     <meta property="og:url" content={canonical} />
     <meta property="og:site_name" content="frontierroles.com" />
     <meta property="og:image" content={ogImage} />
+    {/* Declared so a platform can reserve the right box before the image lands,
+        and so LinkedIn renders a large card rather than a thumbnail — it wants
+        to know the dimensions are ≥1200×627 without fetching first. Keep these
+        in step with OG_WIDTH/OG_HEIGHT in lib/og/render.ts. */}
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:type" content="image/png" />
+    {ogImageAlt && <meta property="og:image:alt" content={ogImageAlt} />}
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content={fullTitle} />
     <meta name="twitter:description" content={description} />
     <meta name="twitter:image" content={ogImage} />
+    {ogImageAlt && <meta name="twitter:image:alt" content={ogImageAlt} />}
     <!-- Google Analytics (gtag.js) — last in head so it never delays SEO tags -->
     <script async is:inline src="https://www.googletagmanager.com/gtag/js?id=G-F8NGE6G65G"></script>
     <script is:inline>
@@ -145,6 +165,7 @@ const updated = new Date(generatedAt).toLocaleDateString("en-US", {
           <a href={url("/machine-learning-engineer-jobs/")}>Core ML jobs</a>
           <a href={url("/remote-ai-jobs/")}>Remote AI jobs</a>
           <a href={url("/rss.xml")}>RSS</a>
+          <a href={url("/daily/rss.xml")}>Daily five</a>
         </nav>
         <p>
           frontierroles.com · AI engineering roles pulled nightly from company career sites —

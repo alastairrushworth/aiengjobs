@@ -5,6 +5,7 @@ import { openDb } from "../db/index.ts";
 import { canonicalCity } from "@aiengjobs/shared/city";
 import { stripHtml } from "../util/html.ts";
 import { fetchFxRates } from "../util/fx.ts";
+import { writeDailyPicks } from "./dailyPicks.ts";
 import type {
   SiteSnapshot,
   Job,
@@ -82,6 +83,7 @@ interface JobRow {
   salary_max: number | null;
   salary_currency: string | null;
   salary_period: string | null;
+  model_score: number | null;
   is_closed: number;
   posted_at: string | null;
   updated_at: string | null;
@@ -195,6 +197,12 @@ export async function exportSnapshot(): Promise<void> {
       ...orderedPay(r.salary_min, r.salary_max),
       salaryCurrency: r.salary_currency ?? undefined,
       salaryPeriod: (r.salary_period as SalaryPeriod) ?? undefined,
+      // The one classification number that leaves the engine. It is what
+      // /daily/rss.xml ranks on, and the reason it is this column and not
+      // classification_confidence is in shared/types.ts. Null on rows written
+      // before the column existed, and omitted rather than defaulted — a
+      // stand-in value here is an invented ranking.
+      modelScore: r.model_score ?? undefined,
       skills: sk.names,
       clusters: [...sk.clusters],
       ...(closed ? { isClosed: true } : {}),
@@ -219,6 +227,11 @@ export async function exportSnapshot(): Promise<void> {
   // Compact JSON — no whitespace, since this file moves over the wire on every
   // build and gets republished nightly.
   writeFileSync(SNAPSHOT_OUT, JSON.stringify(snapshot) + "\n", "utf8");
+
+  // After the snapshot is on disk: the picks are derived from it, and a fault
+  // in choosing them must not cost the export. writeDailyPicks swallows its own
+  // errors for the same reason.
+  writeDailyPicks(snapshot);
 
   const openCount = jobs.filter((j) => !j.isClosed).length;
   writeFileSync(

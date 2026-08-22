@@ -166,8 +166,12 @@ export async function reclassify(): Promise<void> {
       `(${jobs.length - candidates.length} ruled out by title heuristic).`,
   );
 
+  // model_score is written unconditionally, and it is what makes this pass the
+  // backfill for rows ingested before that column existed. Unlike
+  // classification_confidence below it is never the heuristic's constant — it is
+  // whatever the encoder just returned.
   const update = db.prepare(
-    `UPDATE jobs SET classification = ?, classification_confidence = ? WHERE id = ?`,
+    `UPDATE jobs SET classification = ?, classification_confidence = ?, model_score = ? WHERE id = ?`,
   );
   const counts = { in: 0, out: 0, promoted: 0, demoted: 0, failed: 0 };
 
@@ -199,7 +203,7 @@ export async function reclassify(): Promise<void> {
       // under ENCODER_THRESHOLD, so `reclassify && retag` silently dropped roles
       // that a plain ingest would have kept.
       const confidence = isIn && heuristicIn ? heuristic!.confidence : isIn ? p : 1 - p;
-      update.run(isIn ? "in" : "out", confidence, j.id);
+      update.run(isIn ? "in" : "out", confidence, p, j.id);
       setJobSkills(db, j.id, isIn ? tagHeuristic(j.text ?? "").skills : []);
       if (isIn) counts.in++;
       else counts.out++;
