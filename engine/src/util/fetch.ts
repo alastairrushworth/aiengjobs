@@ -9,6 +9,39 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
  *  bounds a chunked body that never ends. */
 const MAX_BYTES = 64 * 1024 * 1024;
 
+/**
+ * Hostnames and literal addresses that are never a public web server: loopback,
+ * link-local (which is where cloud metadata services live), and the RFC1918
+ * private ranges.
+ */
+const PRIVATE_HOST =
+  /^(?:localhost|.*\.localhost|127(?:\.\d{1,3}){3}|0\.0\.0\.0|10(?:\.\d{1,3}){3}|192\.168(?:\.\d{1,3}){2}|172\.(?:1[6-9]|2\d|3[01])(?:\.\d{1,3}){2}|169\.254(?:\.\d{1,3}){2}|\[?::1\]?|\[?fe80:.*\]?|\[?fc00:.*\]?|\[?fd[0-9a-f]{2}:.*\]?)$/i;
+
+/**
+ * Is this a plain http(s) URL pointing somewhere on the public internet?
+ *
+ * The engine follows URLs it found in third-party payloads — a SmartRecruiters
+ * `ref`, a `<link rel=icon href>` on a company's homepage — and those are
+ * attacker-influenced in principle. Whatever comes back is parsed and can end
+ * up published, so a request aimed at 169.254.169.254 or a private range is
+ * both an information leak and a fetch we would never want to make.
+ *
+ * A hostname check only, deliberately: resolving the name here would still lose
+ * to DNS rebinding, and defending against that means an agent that pins the
+ * resolved address per connection. This closes the literal-address door, which
+ * is the one an untrusted payload can actually reach through.
+ */
+export function isPublicHttpUrl(raw: string): boolean {
+  let u: URL;
+  try {
+    u = new URL(raw);
+  } catch {
+    return false;
+  }
+  if (u.protocol !== "https:" && u.protocol !== "http:") return false;
+  return !PRIVATE_HOST.test(u.hostname);
+}
+
 export interface FetchRetryOptions {
   /** Total attempts on HTTP 429 / timeout / network error (default 3). */
   attempts?: number;

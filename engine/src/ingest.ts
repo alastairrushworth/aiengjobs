@@ -5,8 +5,10 @@ import {
   upsertJob,
   setJobSkills,
   markSeen,
+  markSourcePolled,
   closeStaleJobs,
   pruneClosedJobs,
+  dropOutOfScopeText,
 } from "./db/repo.ts";
 import { getConnector } from "./connectors/index.ts";
 import type { RawPosting } from "./connectors/types.ts";
@@ -44,12 +46,24 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
  * loop into permanent failure, and the margin was thin (4h40m of the 5h budget
  * on 2026-08-01, with the seed list growing 744 → 853 sources in a day).
  *
- * So stop starting new sources at 200 minutes, log what was skipped, and exit
- * 0. The sources already polled are committed, `closeStaleJobs` still runs
- * against them alone, and the skipped ones keep yesterday's roles — the same
- * degradation an unreachable feed already gets. Coverage suffers for one night;
- * the state survives. */
-const BUDGET_MS = Number(process.env.INGEST_BUDGET_MS) || 200 * 60_000;
+ * So stop starting new sources at the budget, log what was skipped, and exit 0.
+ * The sources already polled are committed, `closeStaleJobs` still runs against
+ * them alone, and the skipped ones keep yesterday's roles — the same
+ * degradation an unreachable feed already gets.
+ *
+ * 240 minutes rather than the 200 this used to be. The seed list has since
+ * reached 1,373 sources and a full sweep no longer fits: the 2026-08-22 run
+ * polled 979 in 3h27m and skipped 392. 240 leaves an hour of the workflow's
+ * budget for export, the 205MB database upload and the snapshot push, which the
+ * same run got through in about two minutes.
+ *
+ * The budget alone cannot close that gap and is not meant to — at the measured
+ * ~4.9 sources/minute a full sweep wants ~280 minutes, past the workflow
+ * timeout. What makes a partial sweep *safe* is `listPollTargets` rotating on
+ * `last_polled_at`, so the sources this run drops are the ones the next run
+ * starts with. Coverage of any single night is partial; coverage across two is
+ * complete. Raise this, or split the sweep across runs, if that stops holding. */
+const BUDGET_MS = Number(process.env.INGEST_BUDGET_MS) || 240 * 60_000;
 
 // Apply links come from third-party feeds and end up as hrefs on the site —
 // only plain web URLs are acceptable (a javascript: link would be an XSS).
@@ -208,6 +222,15 @@ export async function ingest(): Promise<void> {
       continue;
     }
 
+    // Stamped before the fetch, so a source that throws still rotates to the
+    // back of the queue. See markSourcePolled.
+    //
+    // The wall clock rather than runStart, so sources stay ordered *within* a
+    // run too: a night that gets a third of the way through the backlog leaves
+    // the next one resuming from where it stopped, instead of all 979 tying on
+    // one timestamp and falling back to id order.
+    markSourcePolled(db, t.sourceId, new Date().toISOString());
+
     const tally = newTally();
     const fetchStart = Date.now();
     let postings: RawPosting[];
@@ -351,8 +374,9 @@ export async function ingest(): Promise<void> {
           // …and when the feed is silent, fall back to the description itself.
           // US pay-transparency law puts an explicit range in the body of a lot
           // of Workday/Greenhouse posts, and missing it renders "Not published"
-          // on a page that visibly publishes one.
-          ...pay(raw, parseSalaryFromDescription(text)),
+          // on a page that visibly publishes one. The country goes in because a
+          // bare "$" in a Canadian advert is CAD, not USD.
+          ...pay(raw, parseSalaryFromDescription(text, loc.country)),
           classification: cls.classification,
           classificationConfidence: cls.confidence,
           isDirect: 0,
@@ -383,6 +407,14 @@ export async function ingest(): Promise<void> {
   // else deletes rows, and each one holds the full advert twice — see
   // pruneClosedJobs for what that was costing the release asset.
   const pruned = pruneClosedJobs(db);
+  // The other half of that bill, and the larger one: adverts the classifier
+  // ruled out are open at their ATS for months, so pruning never reaches them,
+  // and nothing has ever read their description. See dropOutOfScopeText.
+  const emptied = dropOutOfScopeText(db);
+  // One VACUUM for both. It rewrites the whole file, so it is much too
+  // expensive to run twice, and without it SQLite keeps the freed pages for
+  // reuse and the file never shrinks.
+  if (pruned > 0 || emptied > 0) db.exec("VACUUM");
   db.close();
 
   const all = [...tallies.values()];
@@ -407,6 +439,7 @@ export async function ingest(): Promise<void> {
       ` feeds_failed=${failed} postings_errored=${sum((t) => t.errored)}` +
       (skippedForBudget > 0 ? ` feeds_skipped_for_budget=${skippedForBudget}` : "") +
       (pruned > 0 ? ` pruned=${pruned}` : "") +
+      (emptied > 0 ? ` text_dropped=${emptied}` : "") +
       ` elapsed=${dur(Date.now() - runStartedMs)}`,
   );
 
@@ -414,8 +447,9 @@ export async function ingest(): Promise<void> {
   // quiet hiring week. Still exit 0 — see BUDGET_MS.
   if (skippedForBudget > 0) {
     console.warn(
-      `\n::warning::ingest budget (${dur(BUDGET_MS)}) exhausted — ${skippedForBudget} source(s) not polled this run.` +
-        ` Their roles are untouched, not closed. Raise INGEST_BUDGET_MS or trim companies.csv if this persists.`,
+      `\n::warning::ingest budget (${dur(BUDGET_MS)}) exhausted — ${skippedForBudget} of ${targets.length} source(s) not polled this run.` +
+        ` Their roles are untouched, not closed, and they sort to the front of the next run (see listPollTargets).` +
+        ` Raise INGEST_BUDGET_MS or trim companies.csv if a full sweep stops fitting in two nights.`,
     );
   }
 

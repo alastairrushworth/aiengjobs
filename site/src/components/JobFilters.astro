@@ -198,7 +198,9 @@ const showAllHidden = hasPager || total <= initial;
     disclosure.setAttribute("aria-expanded", String(open));
     morePanel.hidden = !open;
   }
-  disclosure?.addEventListener("click", () => setMoreOpen(morePanel!.hidden));
+  // Boolean(), because `hidden` is `boolean | "until-found"` — a panel in the
+  // until-found state is still hidden, and should still open on a click.
+  disclosure?.addEventListener("click", () => setMoreOpen(Boolean(morePanel!.hidden)));
   // Pagination and a client-side filter describe the same roles two different
   // ways; only one of them can be right at a time.
   const pager = hasPager ? document.querySelector<HTMLElement>(".pager") : null;
@@ -544,19 +546,25 @@ const showAllHidden = hasPager || total <= initial;
       jobsEl.setAttribute("aria-busy", "true");
       jobsEl.classList.add("is-loading");
     }
+    const clearPending = () => {
+      jobsEl.removeAttribute("aria-busy");
+      jobsEl.classList.remove("is-loading");
+    };
     let data: JobEntry[];
     try {
       data = await loadData();
     } catch {
       dataPromise = null; // allow a retry on the next interaction
+      // Guarded like the success path below: a failed fetch that has already
+      // been superseded must not overwrite the newer render's status line, nor
+      // clear the pending state that render is still relying on.
+      if (seq !== applySeq) return;
       statusText.textContent = "Couldn't load the full job list — try again.";
-      jobsEl.removeAttribute("aria-busy");
-      jobsEl.classList.remove("is-loading");
+      clearPending();
       return;
     }
-    jobsEl.removeAttribute("aria-busy");
-    jobsEl.classList.remove("is-loading");
     if (seq !== applySeq) return; // superseded by a newer interaction
+    clearPending();
 
     const filtering = isFiltering(state);
     const terms = buildTerms(state.q.trim());

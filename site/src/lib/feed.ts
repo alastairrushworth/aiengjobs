@@ -8,9 +8,27 @@ import { url } from "./url.ts";
 // get the click, and a 3,000-word body per item makes the feed enormous.
 const MAX_ITEMS = 100;
 
+/**
+ * Characters XML 1.0 forbids outright, even escaped: the C0 controls other than
+ * tab, newline and carriage return, plus unpaired surrogates.
+ *
+ * Escaping is not enough for these — `&#1;` is just as illegal as a raw 0x01 —
+ * and one of them anywhere in the document makes the *whole feed* unparseable,
+ * not just its item. Titles, company names and locations all come from
+ * third-party ATS payloads, so "nothing has ever sent one" is a property of this
+ * month's data rather than of the format.
+ */
+const XML_ILLEGAL = new RegExp(
+  "[\\u0000-\\u0008\\u000B\\u000C\\u000E-\\u001F\\uFFFE\\uFFFF]" +
+    "|[\\uD800-\\uDBFF](?![\\uDC00-\\uDFFF])" +
+    "|(?<![\\uD800-\\uDBFF])[\\uDC00-\\uDFFF]",
+  "g",
+);
+
 /** Escape text for an XML text node or attribute value. */
 export function xmlEscape(s: string): string {
   return s
+    .replace(XML_ILLEGAL, "")
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")

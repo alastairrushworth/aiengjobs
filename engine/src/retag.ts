@@ -1,6 +1,7 @@
 import { openDb } from "./db/index.ts";
 import { setJobSkills } from "./db/repo.ts";
 import { ALL_SKILLS, tagHeuristic } from "./pipeline/tag.ts";
+import { parseSalaryFromDescription } from "./pipeline/comp.ts";
 import { classifyHeuristic } from "./pipeline/classify.ts";
 import { encoderAvailable, encoderScore } from "./pipeline/encoder.ts";
 import { ENCODER_DIR, ENCODER_THRESHOLD, ENCODER_VETO_CONFIDENCE } from "./config.ts";
@@ -15,6 +16,8 @@ const RECLASSIFY_CONCURRENCY = Number(process.env.INGEST_CONCURRENCY ?? 4);
  *
  * - Re-derives every in-scope job's skills from its stored description text
  *   (tags are deterministic given the text, so recomputing is lossless).
+ * - Repairs a pay currency the description parser now reads differently —
+ *   see relabelPay for why that is narrower than it sounds.
  * - Applies the OUT title heuristics to stored in-scope jobs (catches rules
  *   added since a job was ingested).
  * - Applies the confidence floor to stored INs. Heuristic INs are pinned at
@@ -40,14 +43,27 @@ export function retag(): void {
 
   const jobs = db
     .prepare(
-      `SELECT id, title, description_text AS text, classification_confidence AS conf
+      `SELECT id, title, description_text AS text, classification_confidence AS conf,
+              country, salary_min AS salaryMin, salary_max AS salaryMax,
+              salary_currency AS salaryCurrency
        FROM jobs WHERE classification = 'in'`,
     )
-    .all() as unknown as { id: string; title: string; text: string | null; conf: number | null }[];
+    .all() as unknown as {
+    id: string;
+    title: string;
+    text: string | null;
+    conf: number | null;
+    country: string | null;
+    salaryMin: number | null;
+    salaryMax: number | null;
+    salaryCurrency: string | null;
+  }[];
 
   const demote = db.prepare(`UPDATE jobs SET classification = 'out' WHERE id = ?`);
+  const setCurrency = db.prepare(`UPDATE jobs SET salary_currency = ? WHERE id = ?`);
   let retagged = 0;
   let demoted = 0;
+  let repriced = 0;
   for (const j of jobs) {
     const heuristicOut = classifyHeuristic(j.title)?.classification === "out";
     const belowFloor = (j.conf ?? 0) < ENCODER_THRESHOLD;
@@ -58,10 +74,47 @@ export function retag(): void {
       continue;
     }
     setJobSkills(db, j.id, tagHeuristic(j.text ?? "").skills);
+    const currency = relabelPay(j);
+    if (currency) {
+      setCurrency.run(currency, j.id);
+      repriced++;
+    }
     retagged++;
   }
   db.close();
-  console.log(`Retag complete. retagged=${retagged} demoted=${demoted}`);
+  console.log(`Retag complete. retagged=${retagged} demoted=${demoted} repriced=${repriced}`);
+}
+
+/**
+ * The currency a stored pay range should carry, or null to leave it alone.
+ *
+ * Narrow on purpose. Feed-supplied structured comp (Ashby, Workday) beats
+ * anything read out of prose, and a stored row does not record which of the two
+ * it came from — so the only rows this touches are ones where re-reading the
+ * description reproduces **the same figures** under a different currency. That
+ * is the signature of a description-derived range and nothing else: a feed's own
+ * range would have to coincide digit-for-digit with the prose to be caught, in
+ * which case relabelling it is right anyway.
+ *
+ * The defect it repairs: `detectCurrency` used to answer USD for any bare "$",
+ * so 42 Canadian and 4 Singaporean roles were stored ~38% over their real value
+ * — on the cards, in the /stats medians, and in the JobPosting baseSalary.
+ * Because `ingest` skips content-unchanged postings, those rows would carry the
+ * wrong currency until the employer next edited the advert.
+ */
+function relabelPay(j: {
+  text: string | null;
+  country: string | null;
+  salaryMin: number | null;
+  salaryMax: number | null;
+  salaryCurrency: string | null;
+}): string | null {
+  if (!j.salaryCurrency || (j.salaryMin === null && j.salaryMax === null)) return null;
+  const parsed = parseSalaryFromDescription(j.text, j.country);
+  if (!parsed || parsed.salaryCurrency === j.salaryCurrency) return null;
+  const sameFigures =
+    (parsed.salaryMin ?? null) === j.salaryMin && (parsed.salaryMax ?? null) === j.salaryMax;
+  return sameFigures ? (parsed.salaryCurrency ?? null) : null;
 }
 
 /**
@@ -134,9 +187,19 @@ export async function reclassify(): Promise<void> {
       );
       // A heuristic IN title keeps its prior unless the model is confidently OUT,
       // mirroring ingest.ts — the two paths must not disagree on the same posting.
-      const heuristicIn = classifyHeuristic(j.title)?.classification === "in";
+      const heuristic = classifyHeuristic(j.title);
+      const heuristicIn = heuristic?.classification === "in";
       const isIn = heuristicIn ? 1 - p < ENCODER_VETO_CONFIDENCE : p >= ENCODER_THRESHOLD;
-      update.run(isIn ? "in" : "out", isIn ? p : 1 - p, j.id);
+      // The *confidence* has to mirror ingest.ts too, and it used to not.
+      //
+      // When a heuristic IN survives the veto, ingest stores the heuristic's own
+      // 0.85 — the model never overturned it, so the model's number is not what
+      // the decision rests on. This stored the raw probability instead, which
+      // for a survivor sits anywhere in (0.3, 0.7). retag then demotes anything
+      // under ENCODER_THRESHOLD, so `reclassify && retag` silently dropped roles
+      // that a plain ingest would have kept.
+      const confidence = isIn && heuristicIn ? heuristic!.confidence : isIn ? p : 1 - p;
+      update.run(isIn ? "in" : "out", confidence, j.id);
       setJobSkills(db, j.id, isIn ? tagHeuristic(j.text ?? "").skills : []);
       if (isIn) counts.in++;
       else counts.out++;

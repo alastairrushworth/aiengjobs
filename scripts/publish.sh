@@ -23,7 +23,7 @@ if cmp -s "$PREV" "$SNAPSHOT"; then
   exit 0
 fi
 
-# The snapshot is ~22MB. Committing it nightly added a few MB to the repo every
+# The snapshot is ~32MB. Committing it nightly added a few MB to the repo every
 # night, and that cost scales with refresh frequency — which is exactly the knob
 # we want to be free to turn up. So publish it on a detached, single-commit
 # branch (force-pushed, so the remote never accumulates history) and commit only

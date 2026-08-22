@@ -91,7 +91,6 @@ export interface Job {
   /** Distinct clusters the skills roll up to — the browse facets. */
   clusters: ClusterId[];
 
-  isFeatured?: boolean;
   isDirect?: boolean;
   /** True when the role vanished from its feed — exported (recently-closed only)
    *  so the site can render a tombstone page instead of a 404. */

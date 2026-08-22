@@ -12,6 +12,24 @@ import { mapPool } from "../util/concurrency.ts";
 const PAGE = 100;
 const MAX_JOBS = 3000; // pagination safety cap
 const DETAIL_CONCURRENCY = 4;
+const API = "https://api.smartrecruiters.com/";
+
+/**
+ * The detail URL, taking the feed's own `ref` only when it points where it
+ * should.
+ *
+ * `ref` arrives in an untrusted payload and used to be passed to fetch verbatim,
+ * which made it an outbound-request primitive: whatever it named would be
+ * fetched, redirects followed, the body parsed as JSON and its `jobAd` sections
+ * published as a job description on the site. The workday connector already
+ * guards the equivalent field ("only accept plain absolute paths so a crafted
+ * value can't redirect the detail fetch") — this is the same rule, and the
+ * fallback URL is the one we would have built anyway.
+ */
+function detailUrl(slug: string, j: SrListItem): string {
+  const fallback = `${API}v1/companies/${slug}/postings/${j.id}`;
+  return j.ref?.startsWith(API) ? j.ref : fallback;
+}
 
 interface SrLocation {
   city?: string;
@@ -80,9 +98,7 @@ export const smartrecruiters: Connector = {
       // Detail carries the job ad + apply URL; degrade to list-only on failure.
       let detail: SrDetail | undefined;
       try {
-        const dr = await fetchRetry(
-          j.ref ?? `https://api.smartrecruiters.com/v1/companies/${slug}/postings/${j.id}`,
-        );
+        const dr = await fetchRetry(detailUrl(slug, j));
         if (dr.ok) detail = (await dr.json()) as SrDetail;
       } catch {
         detail = undefined;
