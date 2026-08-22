@@ -50,10 +50,19 @@ CREATE TABLE IF NOT EXISTS jobs (
   salary_period             TEXT,                       -- year|month|day|hour
   classification            TEXT NOT NULL DEFAULT 'out',-- in|out
   classification_confidence REAL,
-  is_featured               INTEGER NOT NULL DEFAULT 0,
   is_direct                 INTEGER NOT NULL DEFAULT 0,
-  is_new                    INTEGER NOT NULL DEFAULT 1,
   is_closed                 INTEGER NOT NULL DEFAULT 0,
+  -- is_new and is_featured used to live here. is_new was written as 1 on every
+  -- insert and never reset or read — the site answers "is this new?" from
+  -- posted_at (site/src/lib/format.ts) — and is_featured was only ever read by
+  -- the exporter's ORDER BY, where it sorted a column nothing sets. A column
+  -- that no code writes and no code reads is a claim the schema makes and the
+  -- engine does not keep.
+  --
+  -- No migration goes with this. CREATE TABLE IF NOT EXISTS leaves an existing
+  -- database alone, so the nightly one keeps both columns; each carries a NOT
+  -- NULL DEFAULT, so inserts that no longer name them still succeed. Fresh
+  -- databases simply never get them.
   posted_at                 TEXT,
   updated_at                TEXT,
   ingested_at               TEXT NOT NULL DEFAULT (datetime('now')),

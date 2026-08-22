@@ -17,9 +17,6 @@ import type { ClusterId } from "@aiengjobs/shared/taxonomy";
 
 const here = dirname(fileURLToPath(import.meta.url));
 
-// Display text for the snapshot. Re-derive from the stored HTML so list items and
-// paragraph breaks come through (stripHtml emits "• " bullets + newlines); fall
-// back to the stored plain text. Full text, no truncation — the site renders it.
 /** Pay bounds in the right order, dropping a range that cannot be one.
  *
  *  A single figure stays a single figure (min with no max is how "from $X" is
@@ -39,6 +36,10 @@ export function orderedPay(
   return { salaryMin: min ?? undefined, salaryMax: max ?? undefined };
 }
 
+/** Display text for the snapshot. Re-derive from the stored HTML so list items
+ *  and paragraph breaks come through (stripHtml emits "• " bullets + newlines);
+ *  fall back to the stored plain text. Full text, no truncation — the site
+ *  renders it. */
 function displayText(row: JobRow): string | undefined {
   if (row.description_html) return stripHtml(row.description_html);
   return row.description_text ?? undefined;
@@ -51,7 +52,7 @@ export const SNAPSHOT_OUT =
   join(here, "..", "..", "..", "site", "src", "data", "snapshot.json");
 
 // A few hundred bytes of run summary that IS committed to main, alongside the
-// ~22MB snapshot that isn't (see scripts/refresh.sh). It gives the Pages
+// ~32MB snapshot that isn't (see scripts/refresh.sh). It gives the Pages
 // build something to trigger on and leaves a readable history of nightly runs.
 export const SNAPSHOT_META_OUT =
   process.env.SNAPSHOT_META_OUT ??
@@ -100,14 +101,30 @@ interface CompanyRow {
 
 export async function exportSnapshot(): Promise<void> {
   const db = openDb();
+  const closedCutoff = new Date(
+    Date.now() - CLOSED_RETENTION_DAYS * 86_400_000,
+  ).toISOString();
 
   // Public fields only — internal provenance (ats_provider, ats_token) stays
   // out of the published snapshot.
+  //
+  // And only companies with a role in it. The seed list is far larger than the
+  // board: 1,395 companies shipped in the 2026-08-22 snapshot against 699 that
+  // any job referenced, so half the rows were dead weight in a file that moves
+  // over the wire on every build. They are also the one genuinely proprietary
+  // thing here — the list of which employers were worth wiring an ATS connector
+  // to — and publishing the misses hands that over for nothing in return.
   const companyRows = db
     .prepare(
-      "SELECT id, name, slug, domain, stage, size, logo_url, description FROM companies",
+      `SELECT id, name, slug, domain, stage, size, logo_url, description
+       FROM companies
+       WHERE id IN (
+         SELECT DISTINCT company_id FROM jobs
+         WHERE classification = 'in'
+           AND (is_closed = 0 OR (is_closed = 1 AND last_seen_at >= ?))
+       )`,
     )
-    .all() as unknown as CompanyRow[];
+    .all(closedCutoff) as unknown as CompanyRow[];
   const companies: Company[] = companyRows.map((c) => ({
     id: c.id,
     name: c.name,
@@ -119,16 +136,13 @@ export async function exportSnapshot(): Promise<void> {
     description: c.description ?? undefined,
   }));
 
-  const closedCutoff = new Date(
-    Date.now() - CLOSED_RETENTION_DAYS * 86_400_000,
-  ).toISOString();
   const rows = db
     .prepare(
       `SELECT j.*, c.name AS company_name, c.slug AS company_slug
        FROM jobs j JOIN companies c ON c.id = j.company_id
        WHERE j.classification = 'in'
          AND (j.is_closed = 0 OR (j.is_closed = 1 AND j.last_seen_at >= ?))
-       ORDER BY j.is_featured DESC, j.ingested_at DESC, j.id`,
+       ORDER BY j.ingested_at DESC, j.id`,
     )
     .all(closedCutoff) as unknown as JobRow[];
 

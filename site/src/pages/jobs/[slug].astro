@@ -21,7 +21,7 @@ import {
   openJobs,
   closedJobs,
   agedOutJobs,
-  companies,
+  companyBySlug,
   generatedAt,
   fxRates,
   duplicateOf,
@@ -35,9 +35,32 @@ export function getStaticPaths() {
   // only where the trim doesn't merge two distinct roles. See lib/jobTitle.
   const titles = buildJobTitles([...openJobs, ...closedJobs, ...agedOutJobs]);
 
+  // Two indexes over openJobs, built once.
+  //
+  // `related` runs for every page — 6,106 of them — and used to scan all 4,917
+  // open roles two or three times inside each call, which is tens of millions
+  // of comparisons for a handful of links. Both lookups are exact-match on a
+  // key, so a Map answers them in the same order the array would.
+  const byCompany = new Map<string, Job[]>();
+  for (const j of openJobs) {
+    const list = byCompany.get(j.companySlug);
+    if (list) list.push(j);
+    else byCompany.set(j.companySlug, [j]);
+  }
+  const byCluster = new Map<string, Job[]>();
+  const position = new Map<string, number>();
+  for (const [i, j] of openJobs.entries()) {
+    position.set(j.slug, i);
+    for (const c of j.clusters) {
+      const list = byCluster.get(c);
+      if (list) list.push(j);
+      else byCluster.set(c, [j]);
+    }
+  }
+
   const related = (job: Job) => {
-    const atCompany = openJobs
-      .filter((j) => j.companySlug === job.companySlug && j.slug !== job.slug)
+    const atCompany = (byCompany.get(job.companySlug) ?? [])
+      .filter((j) => j.slug !== job.slug)
       .slice(0, 3);
     const elsewhere = (j: Job) => j.companySlug !== job.companySlug && j.slug !== job.slug;
     // Shared cluster is the good match, but 343 open roles (8%) carry no
@@ -46,12 +69,29 @@ export function getStaticPaths() {
     // anyone who isn't sold on the company. The newest roles elsewhere are the
     // weaker signal and only get used when the strong one has nothing to say.
     // (Role family used to fill this gap; it went with the Role type filter.)
-    const byCluster = openJobs.filter(
-      (j) => elsewhere(j) && j.clusters.some((c) => job.clusters.includes(c)),
-    );
-    const similar = (
-      byCluster.length > 0 ? byCluster : openJobs.filter(elsewhere)
-    ).slice(0, 3);
+    //
+    // Picking the three has to stay a choice across *all* the job's clusters by
+    // recency, not the first three of its first cluster — that would silently
+    // re-rank every multi-cluster role. Each bucket is already newest-first, so
+    // the three newest overall are somewhere in the first three of each: gather
+    // that handful, then order it by position in openJobs.
+    const seen = new Set<string>();
+    const candidates: Job[] = [];
+    for (const c of job.clusters) {
+      let taken = 0;
+      for (const j of byCluster.get(c) ?? []) {
+        if (taken === 3) break;
+        if (!elsewhere(j)) continue;
+        taken++;
+        if (seen.has(j.slug)) continue;
+        seen.add(j.slug);
+        candidates.push(j);
+      }
+    }
+    const shared = candidates
+      .sort((a, b) => position.get(a.slug)! - position.get(b.slug)!)
+      .slice(0, 3);
+    const similar = shared.length > 0 ? shared : openJobs.filter(elsewhere).slice(0, 3);
     return { atCompany, similar };
   };
 
@@ -202,7 +242,7 @@ const descriptionHtml = blocks
   )
   .join("");
 
-const company = companies.find((c) => c.slug === job.companySlug);
+const company = companyBySlug.get(job.companySlug);
 const companySameAs = companyUrl(company?.domain);
 const markLogo = markupLogo(job.companySlug);
 const logoUrl = markLogo ? new URL(url(`/logos/${markLogo.file}`), Astro.site).href : null;

@@ -39,7 +39,7 @@ const detail = (over: Record<string, unknown> = {}) => ({
 /** Stub fetch with a router keyed on URL substring. */
 function stubFetch(routes: Array<[string, { status?: number; body?: unknown }]>) {
   const spy = vi.spyOn(globalThis, "fetch");
-  spy.mockImplementation(async (input: RequestInfo | URL) => {
+  spy.mockImplementation(async (input: Parameters<typeof fetch>[0]) => {
     const url = String(input);
     const hit = routes.find(([frag]) => url.includes(frag));
     const { status = 200, body = {} } = hit?.[1] ?? { status: 404 };

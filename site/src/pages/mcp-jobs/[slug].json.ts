@@ -1,5 +1,5 @@
 import type { APIRoute, GetStaticPaths } from "astro";
-import { companies, generatedAt } from "../../lib/data.ts";
+import { companyBySlug, generatedAt } from "../../lib/data.ts";
 import { url } from "../../lib/url.ts";
 import { mcpJobs, toMcpJob } from "../mcp-index.json.ts";
 import type { Job } from "@aiengjobs/shared";
@@ -12,8 +12,6 @@ import type { Job } from "@aiengjobs/shared";
 // Served full-fidelity — truncation is the client's call, not ours. The MCP
 // server trims to a token budget; a human or a script reading this directly
 // gets the whole advert.
-
-const companyBySlug = new Map(companies.map((c) => [c.slug, c]));
 
 export const getStaticPaths = (() =>
   mcpJobs.map((job) => ({

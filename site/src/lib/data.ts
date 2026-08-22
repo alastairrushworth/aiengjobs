@@ -40,6 +40,15 @@ export const generatedAt: string = data.generatedAt;
 export const fxRates: Record<string, number> = data.fxRates ?? {};
 export const companies = data.companies;
 
+/**
+ * Companies by slug. Every job page needs its employer's row, and looking that
+ * up with `companies.find` ran a linear scan of ~700 rows per page across ~6,100
+ * pages — the sort of thing that is free until it suddenly isn't.
+ */
+export const companyBySlug: ReadonlyMap<string, (typeof companies)[number]> = new Map(
+  data.companies.map((c) => [c.slug, c]),
+);
+
 const postedTs = (j: Job): number => (j.postedAt ? Date.parse(j.postedAt) || 0 : 0);
 
 /**

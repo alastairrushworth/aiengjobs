@@ -10,8 +10,19 @@
 //      the pages and understates every count on them.
 
 /**
- * Country, multi-country region and US state names that feeds — and the LLM
- * extractor — routinely drop into the city slot. Never a city.
+ * Country, multi-country region and first-level subdivision names that feeds —
+ * and the LLM extractor — routinely drop into the city slot. Never a city.
+ *
+ * Canadian and Australian subdivisions sit alongside the US states because the
+ * enterprise feeds write them the same way: "Ontario, CAN", "Remote, Ontario,
+ * Canada", "Alberta; British Columbia; Manitoba; …". Seven live roles carried
+ * one of those as their addressLocality.
+ *
+ * Note which names are *missing*, and keep them missing. "Washington" is not
+ * here because Washington DC is a city; "Victoria" and "New Brunswick" are not
+ * here because both name real cities elsewhere and neither has ever appeared in
+ * the city slot on this board. A subdivision only earns a place once it is
+ * demonstrably being used as one.
  */
 export const NON_CITY: ReadonlySet<string> = new Set(
   `united states,usa,us,u.s.,u.s.a.,united kingdom,uk,u.k.,england,scotland,wales,
@@ -31,7 +42,12 @@ export const NON_CITY: ReadonlySet<string> = new Set(
    massachusetts,michigan,minnesota,mississippi,missouri,montana,nebraska,nevada,
    new hampshire,new jersey,new mexico,new york state,north carolina,north dakota,
    ohio,oklahoma,oregon,pennsylvania,rhode island,south carolina,south dakota,
-   tennessee,texas,utah,vermont,virginia,west virginia,wisconsin,wyoming`
+   tennessee,texas,utah,vermont,virginia,west virginia,wisconsin,wyoming,
+   ontario,quebec,québec,british columbia,alberta,manitoba,saskatchewan,
+   nova scotia,newfoundland and labrador,prince edward island,
+   yukon,nunavut,northwest territories,
+   new south wales,queensland,western australia,south australia,
+   tasmania,australian capital territory,northern territory`
     .split(",")
     .map((s) => s.trim().toLowerCase()),
 );
@@ -101,6 +117,7 @@ const PLACEHOLDER = new Set([
 const ALIASES: Record<string, string> = {
   "new york city": "New York",
   nyc: "New York",
+  ny: "New York",
   "new york, ny": "New York",
   manhattan: "New York",
   "bay area": "San Francisco",
@@ -125,6 +142,12 @@ const ALIASES: Record<string, string> = {
   "st. louis": "Saint Louis",
   "greater london": "London",
   "central london": "London",
+  // Airport and business-park shorthands feeds use in place of the city, and
+  // the local-script name of one. Each was reaching addressLocality verbatim:
+  // "Tlv" on five roles, "Rtp" on three, "新北市" on one.
+  tlv: "Tel Aviv",
+  rtp: "Research Triangle Park",
+  新北市: "New Taipei",
 };
 
 // Country / region prefixes feeds bolt on: "India - Bangalore", "UK - London".
@@ -152,6 +175,25 @@ const PLACE_ABBREV: ReadonlySet<string> = new Set(["st", "ste", "mt", "mtn", "ft
  * test — they're resolved by the alias table on the way in.
  */
 const BUILDING_TAIL = /^(?:building|towers?[a-z0-9]*|plaza|technopolis|campus|area)$/i;
+
+/**
+ * ISO-3166 alpha-3 codes for the countries this board sees, as the *only*
+ * three-letter tokens that are never a city.
+ *
+ * A blanket "three letters isn't a city" rule would be wrong — Ulm is on the
+ * board — so the exclusion has to be a closed list, exactly like the state and
+ * province names above. These arrive when an enterprise feed writes
+ * "CAN - Ontario - Toronto" or "IND - NonGBS-Pune-Kharadi" and the code is the
+ * only thing that survives the strip.
+ */
+const COUNTRY_ALPHA3: ReadonlySet<string> = new Set(
+  `usa,can,gbr,irl,deu,fra,nld,esp,ita,prt,pol,che,aut,bel,dnk,nor,swe,fin,
+   cze,grc,rou,hun,bgr,hrv,srb,svk,svn,ltu,lva,est,ukr,tur,isr,are,sau,egy,
+   zaf,nga,ken,ind,pak,chn,hkg,twn,jpn,kor,sgp,mys,tha,vnm,idn,phl,aus,nzl,
+   bra,mex,arg,col,chl,per,ury`
+    .split(",")
+    .map((s) => s.trim()),
+);
 
 const stripDiacritics = (s: string) => s.normalize("NFD").replace(/\p{M}+/gu, "");
 
@@ -248,6 +290,25 @@ export function canonicalCity(raw?: string | null): string | undefined {
 
   // Anything still carrying digits, or absurdly long, isn't a city name.
   if (/\d/.test(s) || s.length > 40) return undefined;
+
+  // Short leftovers that are codes rather than places. The alias table has
+  // already had its say by this point, so "SF", "NY" and "TLV" are long gone;
+  // what reaches here is what the loop above could not strip because the code
+  // was the *whole* value — "CN", "AU", "SG", "VA", "DC", "CAN", "IND", each of
+  // which was published as a JobPosting addressLocality.
+  //
+  // The same rule location.ts already applies on its own path ("two-letter
+  // leftovers are state, province and timezone codes far more often than
+  // cities"), moved here so that re-canonicalizing a stored value gets it too —
+  // which is what lets exportSnapshot clean rows written by an older engine
+  // without a migration.
+  //
+  // No city is one character either. That is what "N/A" reduces to:
+  // parseLocation splits the raw location on "/" before this function ever sees
+  // it, so the "n/a" entry in PLACEHOLDER never gets a chance and the leading
+  // "N" arrived at addressLocality as a place name.
+  if (s.length < 3) return undefined;
+  if (s.length === 3 && COUNTRY_ALPHA3.has(key)) return undefined;
 
   const cased = titleCase(s);
   // Re-check aliases after casing so "SAN FRANCISCO BAY AREA" lands too.
