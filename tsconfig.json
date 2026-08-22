@@ -1,0 +1,28 @@
+{
+  // Type-checks the code no workspace owns: the vitest suite and the shared
+  // package it exercises.
+  //
+  // `npm run typecheck` covers engine, site and mcp, and each of those includes
+  // only its own src/. tests/ sits at the repo root and belongs to none of
+  // them, so ~3,800 lines of test code were compiled by vitest's esbuild — which
+  // strips types without checking them — and never type-checked at all. A test
+  // asserting against a field that no longer exists would pass silently.
+  //
+  // shared/ has no tsconfig of its own (it is a source-only package with no
+  // build step) and is otherwise only ever checked as a dependency of whoever
+  // imports it, which skips whatever nobody happens to import.
+  "compilerOptions": {
+    "target": "ES2023",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "lib": ["ES2023"],
+    "types": ["node"],
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "allowImportingTsExtensions": true,
+    "noEmit": true
+  },
+  "include": ["tests/**/*.ts", "shared/**/*.ts"]
+}

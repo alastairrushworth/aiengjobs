@@ -89,3 +89,37 @@ describe("manifestUrls", () => {
     ]);
   });
 });
+
+/**
+ * Icon hrefs are parsed out of a third party's homepage, so they are untrusted
+ * URLs the engine is about to fetch. Whatever comes back is decoded and, if it
+ * probes as an image, published — which makes an internal address both a
+ * request we would never want to make and a way to leak what answered.
+ */
+describe("candidates SSRF guard", () => {
+  const base = new URL("https://example.com/");
+  const link = (href: string) => `<link rel="icon" href="${href}">`;
+
+  it("drops icon hrefs aimed at loopback or a private range", () => {
+    for (const href of [
+      "http://169.254.169.254/latest/meta-data/",
+      "http://127.0.0.1/favicon.png",
+      "http://localhost:8080/favicon.png",
+      "http://10.0.0.5/icon.png",
+      "http://192.168.1.1/icon.png",
+      "http://172.16.4.9/icon.png",
+      "http://[::1]/icon.png",
+    ]) {
+      expect(candidates(link(href), base)).not.toContain(href);
+    }
+  });
+
+  it("still accepts an ordinary CDN-hosted icon", () => {
+    const href = "https://cdn.example.net/assets/apple-touch-icon.png";
+    expect(candidates(link(href), base)).toContain(href);
+  });
+
+  it("still accepts a relative href on the company's own host", () => {
+    expect(candidates(link("/favicon.svg"), base)).toContain("https://example.com/favicon.svg");
+  });
+});

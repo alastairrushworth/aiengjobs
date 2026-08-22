@@ -51,6 +51,15 @@ export function seed(): void {
   const db = openDb();
   const seeded: string[] = [];
   const paused: string[] = [];
+  // The company slug is derived, so two rows can collide on it — "Scale" on
+  // Greenhouse and "SCALE." on Lever both slugify to "scale". Sharing a slug is
+  // *correct* when it is one employer on two ATS platforms (the source id keeps
+  // those apart), and silent data loss when it is two employers: the second
+  // upsert overwrites the first's name and domain, and both boards' roles end up
+  // filed under one company page. No collision exists in today's 1,377 rows;
+  // this is here so the day one appears is not the day someone notices a company
+  // renamed itself.
+  const slugOwner = new Map<string, string>();
   let companies = 0;
   let skipped = 0;
   for (const line of lines) {
@@ -78,9 +87,19 @@ export function seed(): void {
     // Keep it verbatim as the token, but derive a clean slug for ids/URLs.
     // slugify is idempotent for the already-clean lowercase slugs, so existing
     // companies' slugs/ids are unchanged.
+    const slug = slugify(atsSlug);
+    const owner = slugOwner.get(slug);
+    if (owner && owner !== name) {
+      console.warn(
+        `  ! ${name} and ${owner} both reduce to the company slug "${slug}" — ` +
+          `they will share one company page and the later row's name wins. ` +
+          `Change one ats_slug, or add a distinct column if they are the same employer.`,
+      );
+    }
+    slugOwner.set(slug, name);
     const cid = upsertCompany(db, {
       name,
-      slug: slugify(atsSlug),
+      slug,
       domain: domain || undefined,
       atsProvider: provider as AtsProvider,
       atsToken: atsSlug,

@@ -93,10 +93,27 @@ const TTL_MS = 60 * 60 * 1000;
  */
 const FETCH_TIMEOUT_MS = 10_000;
 
+/**
+ * How long a board may be served after the last time it was actually confirmed
+ * fresh.
+ *
+ * The stale-board fallback below is right — an agent mid-task wants slightly old
+ * data with a date on it rather than a hard failure — but each fallback used to
+ * reset `fetchedAt`, which re-armed the hour-long TTL. A site that stayed
+ * unreachable therefore had its board served indefinitely, one quiet hour at a
+ * time, with nothing anywhere saying so. Six hours is generous next to a nightly
+ * rebuild and still bounded.
+ */
+const MAX_STALE_MS = 6 * 60 * 60 * 1000;
+
 interface CacheEntry {
   board: Board;
   etag: string | null;
+  /** When the TTL was last reset — either a fresh fetch or a 304. */
   fetchedAt: number;
+  /** When the origin last actually confirmed this copy. Only a real response
+   *  moves it, which is what bounds how stale the fallback can get. */
+  confirmedAt: number;
 }
 
 let cached: CacheEntry | null = null;
@@ -105,6 +122,22 @@ let inFlight: Promise<Board> | null = null;
 
 function isFresh(entry: CacheEntry, now: number): boolean {
   return now - entry.fetchedAt < TTL_MS;
+}
+
+/**
+ * Serve the copy we already hold, if it is still inside the staleness bound.
+ * Throws with the underlying reason when it is not — the caller has nothing
+ * better to offer, and answering with week-old roles is worse than saying so.
+ */
+function fallback(previous: CacheEntry | null, why: string): Board {
+  if (previous && Date.now() - previous.confirmedAt < MAX_STALE_MS) {
+    previous.fetchedAt = Date.now();
+    return previous.board;
+  }
+  const age = previous
+    ? ` The last copy was confirmed ${Math.round((Date.now() - previous.confirmedAt) / 3_600_000)}h ago, past the ${MAX_STALE_MS / 3_600_000}h staleness limit.`
+    : "";
+  throw new Error(`${why}${age}`);
 }
 
 async function fetchBoard(previous: CacheEntry | null): Promise<Board> {
@@ -122,29 +155,26 @@ async function fetchBoard(previous: CacheEntry | null): Promise<Board> {
     // returning a bad status, so the stale-board fallback has to be here as
     // well as below — this is the "site briefly unreachable" case the comment
     // further down describes, and it never reached that branch.
-    if (previous) {
-      previous.fetchedAt = Date.now();
-      return previous.board;
-    }
-    throw new Error(`Could not reach ${baseUrl()}: ${(e as Error).message}`);
+    return fallback(previous, `Could not reach ${baseUrl()}: ${(e as Error).message}`);
   }
 
   // Nothing changed — keep the parsed copy and reset its clock. This is the
-  // common path on revalidation and costs no parse and no body transfer.
+  // common path on revalidation and costs no parse and no body transfer. A 304
+  // *is* the origin confirming the copy, so it moves confirmedAt too.
   if (res.status === 304 && previous) {
     previous.fetchedAt = Date.now();
+    previous.confirmedAt = Date.now();
     return previous.board;
   }
 
   if (!res.ok) {
     // A stale board beats no board: if the site is briefly unreachable, an
     // agent mid-task should get slightly old data with a date attached rather
-    // than a hard failure.
-    if (previous) {
-      previous.fetchedAt = Date.now();
-      return previous.board;
-    }
-    throw new Error(`Could not load the job index from ${baseUrl()} (HTTP ${res.status}).`);
+    // than a hard failure. Bounded, though — see MAX_STALE_MS.
+    return fallback(
+      previous,
+      `Could not load the job index from ${baseUrl()} (HTTP ${res.status}).`,
+    );
   }
 
   const board = (await res.json()) as Board;
@@ -152,7 +182,8 @@ async function fetchBoard(previous: CacheEntry | null): Promise<Board> {
     throw new Error("The job index came back in an unexpected shape.");
   }
 
-  cached = { board, etag: res.headers.get("etag"), fetchedAt: Date.now() };
+  const now = Date.now();
+  cached = { board, etag: res.headers.get("etag"), fetchedAt: now, confirmedAt: now };
   return board;
 }
 

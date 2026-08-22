@@ -23,18 +23,27 @@ export function upsertCompany(db: DatabaseSync, c: CompanyInput): string {
   return id;
 }
 
-/** A source we deliberately do not poll, pending a fix. Distinct from 'retired',
- *  which is what happens to a source dropped from the seed file: retirement
- *  closes the jobs left behind, whereas pausing leaves them to age out on their
- *  own, because the board is expected back. */
-export type SourceStatus = "active" | "paused";
+/** Every state a source can be in.
+ *
+ *  'paused' is one we deliberately do not poll, pending a fix. Distinct from
+ *  'retired', which is what happens to a source dropped from the seed file:
+ *  retirement closes the jobs left behind, whereas pausing leaves them to age
+ *  out on their own, because the board is expected back.
+ *
+ *  'retired' is included even though `seed` cannot ask for it — retireSourcesExcept
+ *  writes it, so a type that stopped at 'active' | 'paused' described the input
+ *  rather than the column. */
+export type SourceStatus = "active" | "paused" | "retired";
+
+/** The statuses the seed file is allowed to request. */
+export type SeededSourceStatus = Extract<SourceStatus, "active" | "paused">;
 
 export function upsertSource(
   db: DatabaseSync,
   cid: string,
   provider: AtsProvider,
   endpoint: string,
-  status: SourceStatus = "active",
+  status: SeededSourceStatus = "active",
 ): string {
   const id = sourceId(cid, provider);
   // status is written on conflict too, so toggling the seed file's `paused`
@@ -101,12 +110,29 @@ export interface PollTarget {
   sourceId: string;
 }
 
+/**
+ * Sources to poll this run, **least-recently-polled first**.
+ *
+ * The order is load-bearing, not cosmetic. `ingest` stops starting new sources
+ * once it exhausts its wall-clock budget, and this query used to have no ORDER
+ * BY at all — so SQLite returned a stable order and the loop restarted from the
+ * same end every night. On 2026-08-22 that skipped 392 of 1,373 sources, and
+ * comparing consecutive nights showed the polled set growing as a strict
+ * superset: 948 sources retained, none dropped. The skip was not "coverage
+ * suffers for one night", it was a permanent blind spot, and the ~400 companies
+ * added at the tail of companies.csv had never once been polled.
+ *
+ * Never-polled sources go first so a newly seeded company enters the board on
+ * the next run rather than queueing behind the whole backlog; everything else
+ * rotates by age, which makes the budget cut land somewhere new each night.
+ */
 export function listPollTargets(db: DatabaseSync): PollTarget[] {
   const rows = db
     .prepare(
       `SELECT c.id AS cid, c.name, c.slug, c.domain, c.ats_provider, c.ats_token, s.id AS sid
        FROM companies c JOIN sources s ON s.company_id = c.id
-       WHERE s.status = 'active'`,
+       WHERE s.status = 'active'
+       ORDER BY s.last_polled_at IS NULL DESC, s.last_polled_at ASC, s.id`,
     )
     .all() as unknown as {
     cid: string;
@@ -126,6 +152,20 @@ export function listPollTargets(db: DatabaseSync): PollTarget[] {
     atsToken: r.ats_token ?? r.slug,
     sourceId: r.sid,
   }));
+}
+
+/**
+ * Record that this run *attempted* a source, which is what `listPollTargets`
+ * rotates on.
+ *
+ * Attempted, deliberately, not succeeded: a board that 404s every night would
+ * otherwise keep its ancient timestamp, sort to the front forever and hold the
+ * head of the queue against the sources behind it. Retirement and the `paused`
+ * flag are how a dead feed leaves the rotation; this column only answers "when
+ * did we last spend time on it".
+ */
+export function markSourcePolled(db: DatabaseSync, sourceId: string, ts: string): void {
+  db.prepare(`UPDATE sources SET last_polled_at = ? WHERE id = ?`).run(ts, sourceId);
 }
 
 export function getExistingJob(
@@ -161,6 +201,7 @@ export interface JobUpsert {
   salaryPeriod?: string;
   classification: string;
   classificationConfidence?: number;
+  modelScore?: number;
   isDirect?: number;
   postedAt?: string;
   updatedAt?: string;
@@ -178,9 +219,9 @@ export function upsertJob(db: DatabaseSync, j: JobUpsert): void {
        id, company_id, source_id, external_id, slug, title, normalized_title,
        description_html, description_text, apply_url, location_raw, country, region, city,
        remote_type, seniority, salary_min, salary_max, salary_currency, salary_period,
-       classification, classification_confidence, is_direct, posted_at, updated_at,
-       ingested_at, content_hash, dedup_key, last_seen_at, is_new, is_closed
-     ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,1,0)
+       classification, classification_confidence, model_score, is_direct, posted_at, updated_at,
+       ingested_at, content_hash, dedup_key, last_seen_at, is_closed
+     ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,0)
      ON CONFLICT(id) DO UPDATE SET
        title=excluded.title, normalized_title=excluded.normalized_title,
        description_html=excluded.description_html, description_text=excluded.description_text,
@@ -190,6 +231,11 @@ export function upsertJob(db: DatabaseSync, j: JobUpsert): void {
        salary_min=excluded.salary_min, salary_max=excluded.salary_max,
        salary_currency=excluded.salary_currency, salary_period=excluded.salary_period,
        classification=excluded.classification, classification_confidence=excluded.classification_confidence,
+       -- COALESCE, not a plain overwrite: a re-poll whose content hash is
+       -- unchanged skips inference entirely and arrives here with no score, and
+       -- clobbering a real score with null on every such night would empty the
+       -- column for exactly the roles that have been on the board longest.
+       model_score=COALESCE(excluded.model_score, jobs.model_score),
        updated_at=excluded.updated_at, content_hash=excluded.content_hash,
        dedup_key=excluded.dedup_key, last_seen_at=excluded.last_seen_at, is_closed=0`,
   ).run(
@@ -215,6 +261,7 @@ export function upsertJob(db: DatabaseSync, j: JobUpsert): void {
     N(j.salaryPeriod),
     j.classification,
     N(j.classificationConfidence),
+    N(j.modelScore),
     j.isDirect ?? 0,
     N(j.postedAt),
     N(j.updatedAt),
@@ -293,8 +340,10 @@ const PRUNE_AFTER_DAYS = 90;
  *  Left alone that is ~325k rows and roughly half a gigabyte within a year, all
  *  of it roles that closed months ago and are in no snapshot.
  *
- *  VACUUM is what actually returns the space; without it SQLite keeps the freed
- *  pages for reuse and the file never shrinks. */
+ *  Returns the number of rows deleted. Reclaiming the freed pages is the
+ *  caller's job: `ingest` runs one VACUUM covering this and
+ *  `dropOutOfScopeText` together, because VACUUM rewrites the whole file and
+ *  doing it twice in a row is pure waste. */
 export function pruneClosedJobs(
   db: DatabaseSync,
   afterDays = PRUNE_AFTER_DAYS,
@@ -309,6 +358,42 @@ export function pruneClosedJobs(
        RETURNING id`,
     )
     .all(cutoff) as { id: string }[];
-  if (rows.length > 0) db.exec("VACUUM");
+  return rows.length;
+}
+
+/**
+ * Drop the stored advert text from out-of-scope roles.
+ *
+ * `pruneClosedJobs` only ever reaches roles that *closed*, and that turns out to
+ * be the smaller half of the problem: on 2026-08-22 the database held 81,346
+ * rows of which 52,824 were open, while the published snapshot carried 6,106
+ * in-scope roles. The ~47,000 rows in between are open at their ATS and
+ * classified `out` — a "Senior Accountant" the encoder correctly rejected — and
+ * every one of them was keeping the full advert twice, as HTML and as text.
+ * Nothing reads either column for an OUT row: the exporter selects
+ * `classification = 'in'`, and the site never sees them. The release asset had
+ * reached 205 MB gzipped, downloaded, gunzipped, re-gzipped and re-uploaded
+ * every night, with a second copy in actions/cache against a 10 GB budget.
+ *
+ * What must survive is `content_hash`, which is a separate column and is the
+ * only thing ingest needs to keep skipping these postings. `retag` re-derives
+ * skills from `description_text`, but only for `classification = 'in'` rows, so
+ * it is unaffected. `reclassify` does read the text of every live row — running
+ * it after this scores the emptied rows on their title alone, which is why it
+ * refuses to run without the model and why it is a by-hand command against a
+ * copy. Re-ingesting an advert refills the column, so the loss is not permanent.
+ *
+ * Returns the number of rows emptied. Reclaiming the space is the caller's job,
+ * for the reason given on pruneClosedJobs.
+ */
+export function dropOutOfScopeText(db: DatabaseSync): number {
+  const rows = db
+    .prepare(
+      `UPDATE jobs SET description_html = NULL, description_text = NULL
+       WHERE classification = 'out'
+         AND (description_html IS NOT NULL OR description_text IS NOT NULL)
+       RETURNING id`,
+    )
+    .all() as { id: string }[];
   return rows.length;
 }

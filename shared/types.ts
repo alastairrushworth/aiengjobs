@@ -85,13 +85,24 @@ export interface Job {
    *  exporter only writes classification='in' jobs). */
   classification?: Classification;
   classificationConfidence?: number;
+  /**
+   * The encoder's raw p(in scope), 0..1 — always the model's own number, never a
+   * heuristic stand-in. Exported, unlike the two fields above.
+   *
+   * `classificationConfidence` is deliberately NOT this: it reports distance
+   * from the decision, and a title the heuristic recognised is pinned at a
+   * constant (see classify.ts) whatever the model thought. Ranking on that puts
+   * the roles whose titles were too ambiguous to match a pattern above the ones
+   * that matched — the opposite of what a "most likely an AI role" order means.
+   * Absent on rows ingested before the column existed.
+   */
+  modelScore?: number;
 
   /** Canonical skill names (from the taxonomy) extracted from title + description. */
   skills: string[];
   /** Distinct clusters the skills roll up to — the browse facets. */
   clusters: ClusterId[];
 
-  isFeatured?: boolean;
   isDirect?: boolean;
   /** True when the role vanished from its feed — exported (recently-closed only)
    *  so the site can render a tombstone page instead of a 404. */

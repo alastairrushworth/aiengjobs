@@ -49,3 +49,35 @@ describe("stripHtml", () => {
     expect(stripHtml("<p>a   b</p><p>c</p>")).toBe("a b\n\nc");
   });
 });
+
+/**
+ * Every tag the block rules do not name becomes a space, and most of what is
+ * left is inline — </a>, </b>, </strong>. Immediately before punctuation that
+ * left a visible gap, on 2,918 of the 4,915 descriptions the board carried.
+ */
+describe("stripHtml spacing around punctuation", () => {
+  it("closes the gap an inline tag leaves before a full stop", () => {
+    expect(stripHtml("<p>Learn more at the <b>careers site</b>.</p>")).toBe(
+      "Learn more at the careers site.",
+    );
+  });
+
+  it("does the same for the other closing marks", () => {
+    expect(stripHtml("<p>Ask <a href='#'>us</a>, or <a href='#'>them</a>!</p>")).toBe(
+      "Ask us, or them!",
+    );
+    expect(stripHtml("<p>Requirements<b></b>: three</p>")).toBe("Requirements: three");
+    expect(stripHtml("<p>(see <i>notes</i>)</p>")).toBe("(see notes)");
+  });
+
+  it("leaves ordinary spacing alone", () => {
+    expect(stripHtml("<p>Build agents. Ship fast.</p>")).toBe("Build agents. Ship fast.");
+  });
+
+  it("still keeps list and paragraph structure", () => {
+    // </p> is a paragraph boundary, so the blank line is meant to be there.
+    expect(stripHtml("<p>We use:</p><ul><li><b>RAG</b>.</li><li>Evals.</li></ul>")).toBe(
+      "We use:\n\n• RAG.\n• Evals.",
+    );
+  });
+});

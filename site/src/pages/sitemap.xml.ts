@@ -10,7 +10,25 @@ export const GET: APIRoute = ({ site }) => {
     const href = new URL(url(p.endsWith("/") ? p : `${p}/`), site).href;
     return href.endsWith("/") ? href : `${href}/`; // url("/") drops the base's slash
   };
-  const day = (iso?: string) => (iso ? iso.slice(0, 10) : undefined);
+  /**
+   * The date part of an ISO timestamp, and only if it really is one.
+   *
+   * `loc` is safe by construction — every URL goes through `new URL()`, which
+   * percent-encodes anything XML would object to. `lastmod` is not: it comes
+   * from `updatedAt`, which the Ashby and Greenhouse connectors pass through
+   * from the feed verbatim and which nothing downstream validates. (`postedAt`
+   * is incidentally protected, because a role whose posted date won't parse is
+   * dropped from `openJobs` before it gets here — `updatedAt` has no such
+   * guard.) Slicing to ten characters bounded the length and nothing else, so
+   * ten characters of `&`, `<` or `"` would make the whole document
+   * ill-formed — and a sitemap that fails to parse fails entirely, taking
+   * every URL in it with it. No live row is malformed today; the shape of the
+   * input is what makes that luck rather than a property.
+   */
+  const day = (iso?: string) => {
+    const d = iso?.slice(0, 10);
+    return d && /^\d{4}-\d{2}-\d{2}$/.test(d) ? d : undefined;
+  };
 
   const entries: { loc: string; lastmod?: string }[] = [
     { loc: abs("/"), lastmod: day(generatedAt) },
