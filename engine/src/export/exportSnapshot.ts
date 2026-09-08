@@ -61,7 +61,26 @@ export const SNAPSHOT_META_OUT =
 
 // Roles that vanished from their feed stay in the snapshot for this long so the
 // site can render a "role closed" tombstone instead of 404ing shared links.
+//
+// The same window covers roles that left the board the other way — still open
+// at the ATS, but reclassified out of scope (jobs.delisted_at). Their URLs were
+// just as indexed and just as shared, and used to 404 the same night.
 const CLOSED_RETENTION_DAYS = 30;
+
+/**
+ * The rows the snapshot carries: everything in scope, plus what was in scope
+ * recently enough that its URL is still out there. Two ways to have left —
+ * closed at the ATS, or delisted by the classifier — and either can also have
+ * happened to the other, so the tests are independent: a delisted role that
+ * then closed is kept as a closed tombstone while its closure is recent, and
+ * dropped once it is not.
+ *
+ * Shared by the companies query and the jobs query, which must agree on which
+ * rows exist or a job page links to a company page that was never built.
+ */
+const inSnapshot = (t: string) =>
+  `(${t}.classification = 'in' OR ${t}.delisted_at >= @cutoff)
+   AND (${t}.is_closed = 0 OR ${t}.last_seen_at >= @cutoff)`;
 
 interface JobRow {
   id: string;
@@ -85,9 +104,11 @@ interface JobRow {
   salary_period: string | null;
   model_score: number | null;
   is_closed: number;
+  classification: string;
   posted_at: string | null;
   updated_at: string | null;
   ingested_at: string;
+  last_seen_at: string | null;
 }
 
 interface CompanyRow {
@@ -120,13 +141,9 @@ export async function exportSnapshot(): Promise<void> {
     .prepare(
       `SELECT id, name, slug, domain, stage, size, logo_url, description
        FROM companies
-       WHERE id IN (
-         SELECT DISTINCT company_id FROM jobs
-         WHERE classification = 'in'
-           AND (is_closed = 0 OR (is_closed = 1 AND last_seen_at >= ?))
-       )`,
+       WHERE id IN (SELECT DISTINCT company_id FROM jobs WHERE ${inSnapshot("jobs")})`,
     )
-    .all(closedCutoff) as unknown as CompanyRow[];
+    .all({ cutoff: closedCutoff }) as unknown as CompanyRow[];
   const companies: Company[] = companyRows.map((c) => ({
     id: c.id,
     name: c.name,
@@ -142,11 +159,10 @@ export async function exportSnapshot(): Promise<void> {
     .prepare(
       `SELECT j.*, c.name AS company_name, c.slug AS company_slug
        FROM jobs j JOIN companies c ON c.id = j.company_id
-       WHERE j.classification = 'in'
-         AND (j.is_closed = 0 OR (j.is_closed = 1 AND j.last_seen_at >= ?))
+       WHERE ${inSnapshot("j")}
        ORDER BY j.ingested_at DESC, j.id`,
     )
-    .all(closedCutoff) as unknown as JobRow[];
+    .all({ cutoff: closedCutoff }) as unknown as JobRow[];
 
   const skillRows = db
     .prepare(
@@ -169,6 +185,10 @@ export async function exportSnapshot(): Promise<void> {
   const jobs: Job[] = rows.map((r) => {
     const sk = skillsByJob.get(r.id) ?? { names: [], clusters: new Set<ClusterId>() };
     const closed = !!r.is_closed;
+    // Still open at the ATS, no longer in scope here. Rendered as a tombstone
+    // that keeps its apply link; the description goes the way of the closed
+    // tombstone's (and dropOutOfScopeText has usually emptied it already).
+    const delisted = !closed && r.classification !== "in";
     return {
       slug: r.slug,
       companyName: r.company_name,
@@ -177,7 +197,7 @@ export async function exportSnapshot(): Promise<void> {
       normalizedTitle: r.normalized_title,
       // Tombstones drop the description — the page shows a "role closed"
       // banner + facts, and the text is the snapshot's dominant weight.
-      descriptionText: closed ? undefined : displayText(r),
+      descriptionText: closed || delisted ? undefined : displayText(r),
       applyUrl: r.apply_url,
       locationRaw: r.location_raw ?? undefined,
       country: r.country ?? undefined,
@@ -206,9 +226,13 @@ export async function exportSnapshot(): Promise<void> {
       skills: sk.names,
       clusters: [...sk.clusters],
       ...(closed ? { isClosed: true } : {}),
+      ...(delisted ? { isDelisted: true } : {}),
       postedAt: r.posted_at ?? undefined,
       updatedAt: r.updated_at ?? undefined,
       ingestedAt: r.ingested_at,
+      // Only meaningful for a role that is still live: a tombstone's page says
+      // it closed, and "last seen" on it would read as a contradiction.
+      ...(closed || delisted ? {} : { lastSeenAt: r.last_seen_at ?? undefined }),
     };
   });
 
@@ -233,14 +257,16 @@ export async function exportSnapshot(): Promise<void> {
   // errors for the same reason.
   writeDailyPicks(snapshot);
 
-  const openCount = jobs.filter((j) => !j.isClosed).length;
+  const openCount = jobs.filter((j) => !j.isClosed && !j.isDelisted).length;
+  const delistedCount = jobs.filter((j) => j.isDelisted).length;
   writeFileSync(
     SNAPSHOT_META_OUT,
     JSON.stringify(
       {
         generatedAt: snapshot.generatedAt,
         openJobs: openCount,
-        closedJobs: jobs.length - openCount,
+        closedJobs: jobs.length - openCount - delistedCount,
+        delistedJobs: delistedCount,
         companies: companies.length,
       },
       null,

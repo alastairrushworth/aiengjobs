@@ -24,7 +24,7 @@ const { jobs, fxRates } = JSON.parse(
   readFileSync(join(repoRoot, "site/src/data/snapshot.json"), "utf8"),
 ) as SiteSnapshot;
 
-const open = jobs.filter((j) => !j.isClosed);
+const open = jobs.filter((j) => !j.isClosed && !j.isDelisted);
 const priced = (j: Job) => Boolean(j.salaryMin ?? j.salaryMax);
 const hasLogo = (j: Job) => logoDataUri(j.companySlug) !== null;
 

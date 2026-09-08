@@ -47,10 +47,49 @@ export const NON_CITY: ReadonlySet<string> = new Set(
    nova scotia,newfoundland and labrador,prince edward island,
    yukon,nunavut,northwest territories,
    new south wales,queensland,western australia,south australia,
-   tasmania,australian capital territory,northern territory`
+   tasmania,australian capital territory,northern territory,
+   maharashtra,karnataka,haryana,tamil nadu,telangana,gujarat,west bengal,
+   uttar pradesh,republic of ireland`
     .split(",")
     .map((s) => s.trim().toLowerCase()),
 );
+
+/**
+ * Subdivisions that are also, on their own, a city on this board — so they
+ * cannot go in NON_CITY, but still need peeling off the end of "Jersey City
+ * New Jersey United States" and "New York New York United States". Only ever
+ * consulted for a trailing run with something in front of it (see
+ * stripTrailingRegions), so "New York" alone is untouched.
+ */
+const TRAILING_ONLY_REGION: ReadonlySet<string> = new Set(["new york", "washington"]);
+
+/**
+ * Peel country and subdivision names off the end of a city string.
+ *
+ * Workday feeds write "Pune Maharashtra India" and "Irving Texas United
+ * States" — City State Country with every separator dropped — and each such
+ * value became its own city, its own landing page (/ai-jobs-pune-maharashtra-
+ * india/ beside /ai-jobs-pune/) and its own addressLocality. Longest suffix
+ * first, so "United States" is taken as one name and never leaves "United"
+ * behind; and a suffix is only removed while at least one word would remain,
+ * so a bare country still reaches the NON_CITY check and is rejected there.
+ */
+function stripTrailingRegions(s: string): string {
+  let words = s.split(/\s+/);
+  for (;;) {
+    let stripped = false;
+    for (const n of [3, 2, 1]) {
+      if (words.length <= n) continue;
+      const tail = words.slice(-n).join(" ").toLowerCase();
+      if (NON_CITY.has(tail) || TRAILING_ONLY_REGION.has(tail)) {
+        words = words.slice(0, -n);
+        stripped = true;
+        break;
+      }
+    }
+    if (!stripped) return words.join(" ");
+  }
+}
 
 /**
  * Multi-country regions that feeds put in the location slot ("EMEA", "AMER",
@@ -227,9 +266,10 @@ export function canonicalCity(raw?: string | null): string | undefined {
   if (early) return early;
   if (PLACEHOLDER.has(s.toLowerCase())) return undefined;
 
-  // "Chicago; New York" / "London | Paris" / "SF or NYC" → the first one wins.
-  // Hyphens are NOT separators: "Kitchener-Waterloo" is one place.
-  s = s.split(/[;|]|\s\/\s|\s+or\s+/i)[0]!.trim();
+  // "Chicago; New York" / "London | Paris" / "SF or NYC" / "London & San
+  // Francisco" / "United States and Canada" → the first one wins. Hyphens are
+  // NOT separators: "Kitchener-Waterloo" is one place.
+  s = s.split(/[;|&]|\s\/\s|\s+(?:or|and)\s+/i)[0]!.trim();
 
   s = s.replace(new RegExp(`^(?:${PREFIX_WORDS})\\s*[-–—:]\\s*`, "i"), "");
 
@@ -287,6 +327,11 @@ export function canonicalCity(raw?: string | null): string | undefined {
   if (aliased) return aliased;
 
   if (NON_CITY.has(key)) return undefined;
+
+  // "Pune Maharashtra India" → "Pune". After the whole-string checks, so a
+  // value that IS a country or state has already been rejected outright.
+  s = stripTrailingRegions(s);
+  if (NON_CITY.has(s.toLowerCase())) return undefined;
 
   // Anything still carrying digits, or absurdly long, isn't a city name.
   if (/\d/.test(s) || s.length > 40) return undefined;

@@ -9,26 +9,24 @@ import { companyUrl } from "../../lib/format.ts";
 import { CLUSTER_PAGES } from "../../lib/clusters.ts";
 import { url } from "../../lib/url.ts";
 import { jsonLdScript } from "../../lib/jsonld.ts";
-import { openJobs, companies } from "../../lib/data.ts";
-import type { Job } from "@aiengjobs/shared";
+import { companies, openJobsByCompany, companyPageIndexable } from "../../lib/data.ts";
 
 export function getStaticPaths() {
-  const byCompany = new Map<string, Job[]>();
-  for (const j of openJobs) {
-    const list = byCompany.get(j.companySlug) ?? [];
-    list.push(j);
-    byCompany.set(j.companySlug, list);
-  }
   return companies
-    .filter((c) => byCompany.has(c.slug))
+    .filter((c) => openJobsByCompany.has(c.slug))
     .map((company) => ({
       params: { slug: company.slug },
-      props: { company, jobs: byCompany.get(company.slug)! },
+      props: { company, jobs: openJobsByCompany.get(company.slug)! },
     }));
 }
 
 type Props = InferGetStaticPropsType<typeof getStaticPaths>;
 const { company, jobs } = Astro.props as Props;
+
+// A one-role company page is its role's page under another heading. It stays
+// built and linked, but is not offered for indexing — see
+// MIN_INDEXED_COMPANY_ROLES, which the sitemap applies too.
+const noindex = !companyPageIndexable(company.slug);
 
 // Company domains come from seed data, but validate the shape anyway before
 // composing a URL from it (lib/format — the job page's sameAs uses the same
@@ -78,6 +76,7 @@ const breadcrumbJsonLd = {
 <Base
   title={`${company.name} AI engineering jobs`}
   description={`Open AI-engineering roles at ${company.name}${stack.length ? ` — ${stack.slice(0, 6).join(", ")}.` : "."}`}
+  noindex={noindex}
 >
   <section class="hero" style="padding-bottom:8px;text-align:left">
     <p style="margin:0"><a class="back" href={url("/")}>← All jobs</a></p>
