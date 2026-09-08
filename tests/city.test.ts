@@ -131,6 +131,34 @@ describe("canonicalCity", () => {
     expect(canonicalCity("SF Office")).toBe("San Francisco");
   });
 
+  it("peels country and state names off a separator-less Workday location", () => {
+    // Each of these was its own city, and "Pune Maharashtra India" its own
+    // landing page beside /ai-jobs-pune/.
+    expect(canonicalCity("Pune Maharashtra India")).toBe("Pune");
+    expect(canonicalCity("Irving Texas United States")).toBe("Irving");
+    expect(canonicalCity("Gurugram Haryana India")).toBe("Gurgaon");
+    expect(canonicalCity("Bangalore Karnataka India")).toBe("Bangalore");
+    expect(canonicalCity("Chennai Tamil Nadu India")).toBe("Chennai");
+    expect(canonicalCity("Mississauga Ontario Canada")).toBe("Mississauga");
+    expect(canonicalCity("Jersey City New Jersey United States")).toBe("Jersey City");
+    expect(canonicalCity("New York New York United States")).toBe("New York");
+    expect(canonicalCity("Sydney New South Wales Australia")).toBe("Sydney");
+  });
+
+  it("only peels a trailing region when a city is left in front of it", () => {
+    expect(canonicalCity("New York")).toBe("New York");
+    expect(canonicalCity("Washington")).toBe("Washington");
+    expect(canonicalCity("Mexico City")).toBe("Mexico City");
+    expect(canonicalCity("Salt Lake City Utah")).toBe("Salt Lake City");
+    expect(canonicalCity("Republic of Ireland")).toBeUndefined();
+    expect(canonicalCity("United States and Canada")).toBeUndefined();
+  });
+
+  it("treats '&' and 'and' as list separators like 'or'", () => {
+    expect(canonicalCity("London & San Francisco")).toBe("London");
+    expect(canonicalCity("London & Amsterdam")).toBe("London");
+  });
+
   it("is idempotent — safe to apply at ingest and again at export", () => {
     for (const raw of [
       "UK - London",
