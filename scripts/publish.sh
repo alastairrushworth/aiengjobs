@@ -63,5 +63,12 @@ fi
 
 # Announce new and closed job URLs. Best-effort: a missed ping costs freshness,
 # whereas failing here would leave the board published but the run marked failed.
-npm run -s notify -w @aiengjobs/engine -- "$PREV" "$SNAPSHOT" ||
+#
+# Absolute paths, deliberately. `npm run -w` runs the script with the
+# workspace — engine/ — as its working directory, so the repo-relative $PREV
+# and $SNAPSHOT resolved to engine/data/… and engine/site/… there, neither of
+# which exists. Every nightly run from launch through 2026-09-08 logged
+# "cannot read new snapshot" and fell through to the non-fatal echo below, so
+# IndexNow and Google's Indexing API were never once told about a URL.
+npm run -s notify -w @aiengjobs/engine -- "$PWD/$PREV" "$PWD/$SNAPSHOT" ||
   echo "  ! notify failed (non-fatal)"
