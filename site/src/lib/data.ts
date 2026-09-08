@@ -77,6 +77,34 @@ export const openJobs: Job[] = listedJobs(data);
 /** Recently-closed roles — rendered as noindexed tombstone pages, not listed. */
 export const closedJobs: Job[] = data.jobs.filter((j) => j.isClosed).map(withCanonicalCity);
 
+/** Open roles per employer, in listing order. Built once for the company pages and the sitemap. */
+export const openJobsByCompany: ReadonlyMap<string, Job[]> = (() => {
+  const m = new Map<string, Job[]>();
+  for (const j of openJobs) {
+    const list = m.get(j.companySlug);
+    if (list) list.push(j);
+    else m.set(j.companySlug, [j]);
+  }
+  return m;
+})();
+
+/**
+ * Open roles a company needs before its page is offered to search engines.
+ *
+ * A company page with one role is that role's page again with a different
+ * heading — same card, same stack, one fewer paragraph — and 206 of the 661
+ * company pages were exactly that on 2026-09-08. After Google's August 2026
+ * spam update cut the board's impressions by ~93%, near-duplicate URLs are the
+ * thing to have fewer of. The page still builds and still links (it is the
+ * breadcrumb parent of its role, and the nav lands on it); it just carries
+ * noindex and stays out of the sitemap until a second role arrives.
+ */
+export const MIN_INDEXED_COMPANY_ROLES = 2;
+
+/** Does this company's page earn an index entry? Shared by the page and the sitemap. */
+export const companyPageIndexable = (companySlug: string): boolean =>
+  (openJobsByCompany.get(companySlug)?.length ?? 0) >= MIN_INDEXED_COMPANY_ROLES;
+
 /**
  * How long a role that aged out of the listings keeps a tombstone before its
  * URL is allowed to 404.

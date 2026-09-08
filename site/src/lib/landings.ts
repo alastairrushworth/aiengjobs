@@ -153,14 +153,11 @@ function buildCityLandings(): Landing[] {
  * the phones most of this traffic arrives on, while still giving each role a
  * crawlable in-site link (previously the sitemap was doing that alone).
  *
- * Shared by [topic]/[...page].astro and the sitemap so the two can't disagree
- * about how many pages exist.
+ * Only [topic]/[...page].astro paginates on this now. The sitemap used to
+ * derive a page count from it to list every slice; slices past the first are
+ * noindexed today (components/LandingPage.astro), so it lists page 1 alone.
  */
 export const PAGE_SIZE = 50;
-
-/** Number of slices a landing paginates into (always at least 1). */
-export const pageCount = (l: Landing): number =>
-  Math.max(1, Math.ceil(l.jobs.length / PAGE_SIZE));
 
 export const CITY_LANDINGS: Landing[] = buildCityLandings();
 export const LOCATION_LANDINGS: Landing[] = [...remoteLanding, ...CITY_LANDINGS];
