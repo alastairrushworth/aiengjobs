@@ -25,6 +25,36 @@ export const DB_PATH =
  */
 const JOB_COLUMNS_ADDED_LATER: Record<string, string> = {
   model_score: "ALTER TABLE jobs ADD COLUMN model_score REAL",
+  delisted_at: "ALTER TABLE jobs ADD COLUMN delisted_at TEXT",
+};
+
+/**
+ * Triggers on `jobs`, created with the same IF NOT EXISTS idempotence as the
+ * columns above and for the same reason: the nightly database predates them.
+ *
+ * `delisted_at` records the moment a role's classification goes in → out
+ * (see schema.sql). Three different statements rewrite classification —
+ * ingest's upsert, retag's demote, reclassify's update — and a rule kept in
+ * three places is a rule one refactor away from being kept in two. A trigger
+ * is the one place. Both fire only on a real transition: the upsert restates
+ * classification on every re-poll, and an in → in or out → out "update" must
+ * neither stamp nor clear anything.
+ */
+const JOB_TRIGGERS: Record<string, string> = {
+  jobs_delisted: `
+    CREATE TRIGGER IF NOT EXISTS jobs_delisted
+    AFTER UPDATE OF classification ON jobs
+    FOR EACH ROW WHEN OLD.classification = 'in' AND NEW.classification = 'out'
+    BEGIN
+      UPDATE jobs SET delisted_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE id = NEW.id;
+    END`,
+  jobs_relisted: `
+    CREATE TRIGGER IF NOT EXISTS jobs_relisted
+    AFTER UPDATE OF classification ON jobs
+    FOR EACH ROW WHEN OLD.classification = 'out' AND NEW.classification = 'in'
+    BEGIN
+      UPDATE jobs SET delisted_at = NULL WHERE id = NEW.id;
+    END`,
 };
 
 /**
@@ -48,6 +78,7 @@ export function migrate(db: DatabaseSync): void {
       console.log(`  migrated: added jobs.${column}`);
     }
   }
+  for (const sql of Object.values(JOB_TRIGGERS)) db.exec(sql);
 }
 
 export function openDb(): DatabaseSync {
@@ -63,6 +94,9 @@ export function initDb(): void {
   const db = openDb();
   const schema = readFileSync(join(here, "schema.sql"), "utf8");
   db.exec(schema);
+  // openDb's migrate found no jobs table and stood down; now there is one,
+  // and it needs its triggers.
+  migrate(db);
 
   const insert = db.prepare(
     "INSERT OR IGNORE INTO skills (id, name, cluster) VALUES (?, ?, ?)",

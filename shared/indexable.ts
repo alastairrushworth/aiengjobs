@@ -50,11 +50,12 @@ const postedTs = (j: Job): number => (j.postedAt ? Date.parse(j.postedAt) || 0 :
  * Open roles inside the age window, newest first — the set the site lists.
  * Roles without a posted date sink to the bottom, and roles whose date is
  * missing entirely are excluded: a board that sells freshness can't show an
- * unknown date as fresh.
+ * unknown date as fresh. Delisted roles are tombstones, not listings, exactly
+ * like closed ones.
  */
 export function listedJobs(snapshot: SiteSnapshot): Job[] {
   return snapshot.jobs
-    .filter((j) => !j.isClosed)
+    .filter((j) => !j.isClosed && !j.isDelisted)
     .filter((j) => {
       const age = jobAgeDays(j, snapshot.generatedAt);
       return age !== null && age <= MAX_JOB_AGE_DAYS;

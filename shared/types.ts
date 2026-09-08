@@ -107,6 +107,14 @@ export interface Job {
   /** True when the role vanished from its feed — exported (recently-closed only)
    *  so the site can render a tombstone page instead of a 404. */
   isClosed?: boolean;
+  /**
+   * True when the role is still open at its ATS but the classifier has since
+   * ruled it out of scope — exported (recently-delisted only, see the engine's
+   * CLOSED_RETENTION_DAYS) so the URL Google indexed yesterday lands on a page
+   * that says so, apply link intact, rather than a 404. Never set together
+   * with isClosed: a delisted role that then closes is a closed role.
+   */
+  isDelisted?: boolean;
 
   postedAt?: string;
   updatedAt?: string;

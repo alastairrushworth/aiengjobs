@@ -491,7 +491,9 @@ function existingManifest(): Record<string, { file: string; w: number; h: number
 export async function fetchLogos(opts: { force?: boolean } = {}): Promise<void> {
   const snapshot = JSON.parse(readFileSync(SNAPSHOT, "utf8")) as SiteSnapshot;
   // Only companies with roles on the board — the seed list carries more.
-  const live = new Set(snapshot.jobs.filter((j) => !j.isClosed).map((j) => j.companySlug));
+  const live = new Set(
+    snapshot.jobs.filter((j) => !j.isClosed && !j.isDelisted).map((j) => j.companySlug),
+  );
   const companies = snapshot.companies
     .filter((c) => c.domain && live.has(c.slug))
     .sort((a, b) => a.slug.localeCompare(b.slug));

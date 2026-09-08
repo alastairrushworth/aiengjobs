@@ -77,7 +77,18 @@ CREATE TABLE IF NOT EXISTS jobs (
   ingested_at               TEXT NOT NULL DEFAULT (datetime('now')),
   content_hash              TEXT,                       -- change detection (skip reprocessing)
   dedup_key                 TEXT,                       -- company + normalized_title + location
-  last_seen_at              TEXT                        -- last poll that still listed this job
+  last_seen_at              TEXT,                       -- last poll that still listed this job
+  -- When classification last went in → out while the role was still open: the
+  -- moment its page left the board. Null while it is in, or was never in. A
+  -- role that leaves this way used to vanish from the snapshot on the spot and
+  -- its URL — indexed, shared, in yesterday's sitemap — went 404, where a role
+  -- that *closed* got a 30-day tombstone. The exporter keeps a delisted role
+  -- for the same window (CLOSED_RETENTION_DAYS) so the site can say what
+  -- happened instead. Maintained by triggers (db/index.ts, JOB_TRIGGERS), so
+  -- every path that rewrites classification — ingest's upsert, retag's
+  -- demote, reclassify — keeps it without knowing about it. Added after the
+  -- schema shipped, so the ALTER lives in db/index.ts too.
+  delisted_at               TEXT
 );
 
 CREATE INDEX IF NOT EXISTS idx_jobs_company        ON jobs(company_id);
