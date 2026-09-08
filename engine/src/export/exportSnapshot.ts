@@ -88,6 +88,7 @@ interface JobRow {
   posted_at: string | null;
   updated_at: string | null;
   ingested_at: string;
+  last_seen_at: string | null;
 }
 
 interface CompanyRow {
@@ -209,6 +210,9 @@ export async function exportSnapshot(): Promise<void> {
       postedAt: r.posted_at ?? undefined,
       updatedAt: r.updated_at ?? undefined,
       ingestedAt: r.ingested_at,
+      // Only meaningful for a role that is still live: a tombstone's page says
+      // it closed, and "last seen" on it would read as a contradiction.
+      ...(closed ? {} : { lastSeenAt: r.last_seen_at ?? undefined }),
     };
   });
 
