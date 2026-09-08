@@ -53,7 +53,7 @@ const EMPTY: DailyPicksFile = { picks: [] };
 
 /** Roles that arrived in the most recent ingest run and could be picked. */
 function newestArrivals(snapshot: SiteSnapshot): Job[] {
-  const open = snapshot.jobs.filter((j) => !j.isClosed);
+  const open = snapshot.jobs.filter((j) => !j.isClosed && !j.isDelisted);
   if (open.length === 0) return [];
 
   // ingest.ts stamps every job it writes in a run with one `runStart`, so the

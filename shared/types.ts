@@ -107,10 +107,26 @@ export interface Job {
   /** True when the role vanished from its feed — exported (recently-closed only)
    *  so the site can render a tombstone page instead of a 404. */
   isClosed?: boolean;
+  /**
+   * True when the role is still open at its ATS but the classifier has since
+   * ruled it out of scope — exported (recently-delisted only, see the engine's
+   * CLOSED_RETENTION_DAYS) so the URL Google indexed yesterday lands on a page
+   * that says so, apply link intact, rather than a 404. Never set together
+   * with isClosed: a delisted role that then closes is a closed role.
+   */
+  isDelisted?: boolean;
 
   postedAt?: string;
   updatedAt?: string;
   ingestedAt: string;
+  /**
+   * The last nightly poll that still found this role on its feed. Exported so
+   * the job page can say when the role was last confirmed live — the one
+   * freshness claim an aggregator can make that the employer's own page
+   * cannot. At most two nights old for an open role (ingest rotates through
+   * every source across two runs); absent on snapshots older than the field.
+   */
+  lastSeenAt?: string;
 
   contentHash?: string;
 }

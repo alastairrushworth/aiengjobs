@@ -120,9 +120,19 @@ const feedHref = url(`/${landing.slug}/rss.xml`);
 const description = `${landing.intro} ${page.total} open role${page.total === 1 ? "" : "s"} right now.${
   page.currentPage > 1 ? ` Page ${page.currentPage} of ${page.lastPage}.` : ""
 }`;
+
+// Page 1 is the landing: it carries the intro, the stats block and the
+// distinguishing copy. Pages 2+ are the same template over the next 50 cards —
+// 190 such URLs across the board, up to /ai-agent-jobs/30/ — and Google's
+// August 2026 spam update is the kind of thing a stack of near-identical
+// programmatic slices attracts. They stay built, linked and crawlable (noindex
+// leaves follow at its default) so every role keeps an in-site path, and the
+// sitemap lists each role directly; they just stop asking to be indexed. The
+// sitemap applies the same rule (pages/sitemap.xml.ts).
+const noindex = page.currentPage > 1;
 ---
 
-<Base title={title} description={description} prev={prevUrl} next={nextUrl} feed={feedHref} feedTitle={`${landing.h1} — frontierroles.com`}>
+<Base title={title} description={description} noindex={noindex} prev={prevUrl} next={nextUrl} feed={feedHref} feedTitle={`${landing.h1} — frontierroles.com`}>
   <section class="hero" style="padding-bottom:8px">
     <h1>{landing.h1}</h1>
     <p>{landing.intro}</p>

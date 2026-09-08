@@ -64,6 +64,7 @@ describe("exportSnapshot", () => {
     salaryMax?: number | null;
     city?: string | null;
     descriptionHtml?: string | null;
+    delistedAt?: string | null;
   }
 
   function build(companies: string[], jobs: JobSeed[]): string {
@@ -82,9 +83,10 @@ describe("exportSnapshot", () => {
       db.prepare(
         `INSERT INTO jobs (id, company_id, slug, title, normalized_title, apply_url,
                            description_html, city, salary_min, salary_max, salary_currency,
-                           classification, is_closed, last_seen_at, ingested_at, content_hash)
+                           classification, is_closed, last_seen_at, delisted_at,
+                           ingested_at, content_hash)
          VALUES (?, ?, ?, 'AI Engineer', 'ai engineer', 'https://x/apply', ?, ?, ?, ?, 'USD',
-                 ?, ?, ?, '2026-08-01T00:00:00Z', 'h')`,
+                 ?, ?, ?, ?, '2026-08-01T00:00:00Z', 'h')`,
       ).run(
         j.id,
         `co_${j.company}`,
@@ -96,6 +98,7 @@ describe("exportSnapshot", () => {
         j.classification ?? "in",
         j.isClosed ?? 0,
         j.lastSeenAt ?? "2026-08-20T00:00:00Z",
+        j.delistedAt ?? null,
       );
     }
     db.close();
@@ -193,6 +196,77 @@ describe("exportSnapshot", () => {
     expect(snap.companies).toEqual([]);
   });
 
+  it("keeps a recently-delisted role as a tombstone that still applies", async () => {
+    // Reclassified out of scope while still open at the ATS. Its URL was
+    // indexed and shared right up to the reclassification; it used to 404.
+    const recent = new Date(Date.now() - 2 * 86_400_000).toISOString();
+    const dir = build(
+      ["co"],
+      [{ id: "moved", company: "co", classification: "out", delistedAt: recent }],
+    );
+
+    const snap = await runExport(dir);
+
+    expect(snap.jobs[0]).toMatchObject({ slug: "moved", isDelisted: true });
+    expect(snap.jobs[0]!.isClosed).toBeUndefined();
+    expect(snap.jobs[0]!.descriptionText).toBeUndefined();
+    expect(snap.jobs[0]!.lastSeenAt).toBeUndefined();
+    expect(snap.jobs[0]!.applyUrl).toBe("https://x/apply");
+    expect(snap.companies.map((c) => c.slug)).toEqual(["co"]);
+  });
+
+  it("drops a delisted role once the window has passed, and never a never-listed one", async () => {
+    const dir = build(
+      ["co"],
+      [
+        { id: "old", company: "co", classification: "out", delistedAt: "2020-01-01T00:00:00Z" },
+        { id: "never", company: "co", classification: "out" },
+      ],
+    );
+
+    const snap = await runExport(dir);
+
+    expect(snap.jobs).toEqual([]);
+  });
+
+  it("treats a delisted role that then closed as a closed tombstone", async () => {
+    const recent = new Date(Date.now() - 2 * 86_400_000).toISOString();
+    const dir = build(
+      ["co"],
+      [
+        {
+          id: "both",
+          company: "co",
+          classification: "out",
+          delistedAt: recent,
+          isClosed: 1,
+          lastSeenAt: recent,
+        },
+      ],
+    );
+
+    const snap = await runExport(dir);
+
+    expect(snap.jobs[0]).toMatchObject({ slug: "both", isClosed: true });
+    expect(snap.jobs[0]!.isDelisted).toBeUndefined();
+  });
+
+  it("carries the last-seen stamp on open roles only", async () => {
+    const dir = build(
+      ["co"],
+      [
+        { id: "open", company: "co", lastSeenAt: "2026-08-20T00:00:00Z" },
+        { id: "shut", company: "co", isClosed: 1, lastSeenAt: "2026-08-20T00:00:00Z" },
+      ],
+    );
+
+    const snap = await runExport(dir);
+    const bySlug = (slug: string) => snap.jobs.find((j) => j.slug === slug)!;
+
+    expect(bySlug("open").lastSeenAt).toBe("2026-08-20T00:00:00Z");
+    expect(bySlug("shut").lastSeenAt).toBeUndefined();
+  });
+
   it("re-derives display text from the stored HTML, keeping list structure", async () => {
     const dir = build(["co"], [{ id: "a", company: "co" }]);
 
@@ -247,6 +321,7 @@ describe("exportSnapshot", () => {
       generatedAt: snap.generatedAt,
       openJobs: 1,
       closedJobs: 1,
+      delistedJobs: 0,
       companies: 1,
     });
   });

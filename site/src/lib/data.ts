@@ -78,6 +78,47 @@ export const openJobs: Job[] = listedJobs(data);
 export const closedJobs: Job[] = data.jobs.filter((j) => j.isClosed).map(withCanonicalCity);
 
 /**
+ * Roles the classifier ruled out of scope within the engine's retention window
+ * — still open at the ATS, no longer listed here. The third tombstone kind:
+ * like aged-out, the apply link still works; like closed, the description is
+ * gone. Before the engine tracked these (jobs.delisted_at) they simply left
+ * the snapshot, and 40 URLs Google had indexed went 404 in the fortnight
+ * after the 2026-08-22 reclassification. Disjoint from closedJobs by
+ * construction (the exporter never sets both flags).
+ */
+export const delistedJobs: Job[] = data.jobs
+  .filter((j) => !j.isClosed && j.isDelisted)
+  .map(withCanonicalCity);
+
+/** Open roles per employer, in listing order. Built once for the company pages and the sitemap. */
+export const openJobsByCompany: ReadonlyMap<string, Job[]> = (() => {
+  const m = new Map<string, Job[]>();
+  for (const j of openJobs) {
+    const list = m.get(j.companySlug);
+    if (list) list.push(j);
+    else m.set(j.companySlug, [j]);
+  }
+  return m;
+})();
+
+/**
+ * Open roles a company needs before its page is offered to search engines.
+ *
+ * A company page with one role is that role's page again with a different
+ * heading — same card, same stack, one fewer paragraph — and 206 of the 661
+ * company pages were exactly that on 2026-09-08. After Google's August 2026
+ * spam update cut the board's impressions by ~93%, near-duplicate URLs are the
+ * thing to have fewer of. The page still builds and still links (it is the
+ * breadcrumb parent of its role, and the nav lands on it); it just carries
+ * noindex and stays out of the sitemap until a second role arrives.
+ */
+export const MIN_INDEXED_COMPANY_ROLES = 2;
+
+/** Does this company's page earn an index entry? Shared by the page and the sitemap. */
+export const companyPageIndexable = (companySlug: string): boolean =>
+  (openJobsByCompany.get(companySlug)?.length ?? 0) >= MIN_INDEXED_COMPANY_ROLES;
+
+/**
  * How long a role that aged out of the listings keeps a tombstone before its
  * URL is allowed to 404.
  *
@@ -101,7 +142,8 @@ export const AGED_OUT_TOMBSTONE_DAYS = 30;
  * this board is willing to vouch for.
  */
 export const agedOutJobs: Job[] = data.jobs
-  .filter((j) => !j.isClosed)
+  // Not delisted either: a role can be both, and it needs exactly one page.
+  .filter((j) => !j.isClosed && !j.isDelisted)
   .filter((j) => {
     const age = ageDays(j);
     return (

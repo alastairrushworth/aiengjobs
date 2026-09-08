@@ -1,7 +1,13 @@
 import type { APIRoute } from "astro";
-import { LANDINGS, pageCount } from "../lib/landings.ts";
+import { LANDINGS } from "../lib/landings.ts";
 import { url } from "../lib/url.ts";
-import { openJobs, generatedAt, duplicateOf } from "../lib/data.ts";
+import {
+  openJobs,
+  openJobsByCompany,
+  companyPageIndexable,
+  generatedAt,
+  duplicateOf,
+} from "../lib/data.ts";
 
 export const GET: APIRoute = ({ site }) => {
   // Trailing slashes throughout — GitHub Pages 301s the slash-less form, and a
@@ -35,15 +41,17 @@ export const GET: APIRoute = ({ site }) => {
     { loc: abs("/stats"), lastmod: day(generatedAt) },
     { loc: abs("/mcp"), lastmod: day(generatedAt) },
   ];
-  // Every listing page — clusters and locations alike — is paginated; list each
-  // slice so the roles past page 1 stay discoverable (pages/[topic]/[...page]).
+  // Landing pages: the first slice of each only. Pages 2+ are noindexed
+  // (components/LandingPage.astro says why), and a sitemap that lists a URL
+  // the page itself asks Google to ignore is a contradictory signal. Every
+  // role past page 1 is listed directly below, so nothing loses its entry.
   for (const landing of LANDINGS) {
     entries.push({ loc: abs(`/${landing.slug}`), lastmod: day(generatedAt) });
-    for (let n = 2; n <= pageCount(landing); n++) {
-      entries.push({ loc: abs(`/${landing.slug}/${n}`), lastmod: day(generatedAt) });
-    }
   }
-  for (const slug of new Set(openJobs.map((j) => j.companySlug))) {
+  // Company pages with enough roles to be more than one role's page again —
+  // the same line the page draws for its own noindex (MIN_INDEXED_COMPANY_ROLES).
+  for (const slug of openJobsByCompany.keys()) {
+    if (!companyPageIndexable(slug)) continue;
     entries.push({ loc: abs(`/companies/${slug}`), lastmod: day(generatedAt) });
   }
   // Closed-job tombstones are noindexed and deliberately absent here, as are

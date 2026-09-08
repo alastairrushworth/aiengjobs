@@ -34,11 +34,12 @@ const snapshot = (jobs: Job[]): SiteSnapshot => ({
 });
 
 describe("listedJobs", () => {
-  it("drops closed roles, aged-out roles and roles with no posted date", () => {
+  it("drops closed, delisted and aged-out roles, and roles with no posted date", () => {
     const slugs = listedJobs(
       snapshot([
         job("fresh"),
         job("closed", { isClosed: true }),
+        job("delisted", { isDelisted: true }),
         job("aged", { postedAt: daysAgo(MAX_JOB_AGE_DAYS + 1) }),
         job("undated", { postedAt: undefined }),
       ]),
@@ -149,11 +150,14 @@ describe("indexableSlugs", () => {
     expect([...idx].sort()).toEqual(["city-and-country", "country-only"]);
   });
 
-  it("excludes tombstones — closed and aged-out roles alike", () => {
+  it("excludes tombstones — closed, delisted and aged-out roles alike", () => {
+    // Delisting strips the markup, so the engine must announce URL_DELETED
+    // for it exactly as it does for a closure.
     const idx = indexableSlugs(
       snapshot([
         job("open"),
         job("closed", { isClosed: true }),
+        job("delisted", { isDelisted: true }),
         job("aged", { postedAt: daysAgo(MAX_JOB_AGE_DAYS + 5) }),
       ]),
     );

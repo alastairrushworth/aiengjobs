@@ -21,7 +21,12 @@ function legacyDb(without: string): DatabaseSync {
   db.exec(
     SCHEMA.split("\n")
       .filter((line) => !line.trim().startsWith(without))
-      .join("\n"),
+      .join("\n")
+      // Dropping the table's last column leaves "…TEXT, -- note\n  -- more\n)"
+      // behind: a comma with nothing but whole comment lines between it and
+      // a ")" that opens its own line. (Anchored to line starts because the
+      // comments themselves contain parentheses.)
+      .replace(/,((?:[ \t]*--[^\n]*)?(?:\n[ \t]*--[^\n]*)*\n[ \t]*\))/g, "$1"),
   );
   return db;
 }
@@ -49,6 +54,14 @@ describe("migrate", () => {
     const before = columns(db);
     migrate(db);
     expect(columns(db)).toEqual(before);
+    db.close();
+  });
+
+  it("adds delisted_at to a database that predates it", () => {
+    const db = legacyDb("delisted_at");
+    expect(columns(db)).not.toContain("delisted_at");
+    migrate(db);
+    expect(columns(db)).toContain("delisted_at");
     db.close();
   });
 
@@ -137,6 +150,99 @@ describe("upsertJob and model_score", () => {
     upsertJob(d, { ...base, modelScore: 0.93 });
     upsertJob(d, { ...base, contentHash: "h2", modelScore: 0.41 });
     expect(score(d)).toBeCloseTo(0.41);
+    d.close();
+  });
+});
+
+describe("delisted_at", () => {
+  const base = {
+    id: "j1",
+    companyId: "co",
+    sourceId: "src",
+    externalId: "1",
+    slug: "ai-engineer",
+    title: "AI Engineer",
+    normalizedTitle: "ai engineer",
+    applyUrl: "https://acme.example/1",
+    classification: "in",
+    ingestedAt: "2026-08-01T00:00:00Z",
+    contentHash: "h1",
+    dedupKey: "k1",
+    lastSeenAt: "2026-08-01T00:00:00Z",
+  };
+
+  function db(): DatabaseSync {
+    const d = new DatabaseSync(":memory:");
+    d.exec(SCHEMA);
+    // The triggers live in migrate, not the schema, because the nightly
+    // database predates them — so this is the path that installs them.
+    migrate(d);
+    d.prepare("INSERT INTO companies (id, name, slug, ats_provider) VALUES ('co', 'Acme', 'acme', 'greenhouse')").run();
+    d.prepare(
+      "INSERT INTO sources (id, company_id, ats_provider, endpoint_url) VALUES ('src','co','greenhouse','https://x')",
+    ).run();
+    return d;
+  }
+
+  const delistedAt = (d: DatabaseSync) =>
+    (d.prepare("SELECT delisted_at FROM jobs WHERE id = 'j1'").get() as {
+      delisted_at: string | null;
+    }).delisted_at;
+
+  it("is stamped when a re-poll reclassifies a listed role out", () => {
+    // ingest's upsert is the path that demotes an edited posting; the
+    // trigger sees the transition without the upsert knowing about it.
+    const d = db();
+    upsertJob(d, base);
+    expect(delistedAt(d)).toBeNull();
+    upsertJob(d, { ...base, classification: "out", contentHash: "h2" });
+    expect(delistedAt(d)).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
+    d.close();
+  });
+
+  it("is not stamped by a re-poll that keeps the classification", () => {
+    const d = db();
+    upsertJob(d, base);
+    upsertJob(d, { ...base, lastSeenAt: "2026-08-02T00:00:00Z" });
+    expect(delistedAt(d)).toBeNull();
+    d.close();
+  });
+
+  it("is never stamped for a role that was out from the start", () => {
+    const d = db();
+    upsertJob(d, { ...base, classification: "out" });
+    upsertJob(d, { ...base, classification: "out", lastSeenAt: "2026-08-02T00:00:00Z" });
+    expect(delistedAt(d)).toBeNull();
+    d.close();
+  });
+
+  it("is cleared when the role is reclassified back in", () => {
+    const d = db();
+    upsertJob(d, base);
+    upsertJob(d, { ...base, classification: "out", contentHash: "h2" });
+    expect(delistedAt(d)).not.toBeNull();
+    d.prepare("UPDATE jobs SET classification = 'in' WHERE id = 'j1'").run();
+    expect(delistedAt(d)).toBeNull();
+    d.close();
+  });
+
+  it("fires from a plain UPDATE too, which is how retag and reclassify demote", () => {
+    const d = db();
+    upsertJob(d, base);
+    d.prepare("UPDATE jobs SET classification = 'out' WHERE id = 'j1'").run();
+    expect(delistedAt(d)).not.toBeNull();
+    d.close();
+  });
+
+  it("installs the triggers idempotently", () => {
+    const d = db();
+    expect(() => migrate(d)).not.toThrow();
+    const triggers = (
+      d.prepare("SELECT name FROM sqlite_master WHERE type = 'trigger' ORDER BY name").all() as {
+        name: string;
+      }[]
+    ).map((t) => t.name);
+    expect(triggers).toEqual(["jobs_delisted", "jobs_relisted"]);
     d.close();
   });
 });
