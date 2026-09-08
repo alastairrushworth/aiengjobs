@@ -57,7 +57,7 @@ function readSnapshot(path: string): SiteSnapshot | null {
 }
 
 const openSlugs = (s: SiteSnapshot | null): Set<string> =>
-  new Set((s?.jobs ?? []).filter((j) => !j.isClosed).map((j) => j.slug));
+  new Set((s?.jobs ?? []).filter((j) => !j.isClosed && !j.isDelisted).map((j) => j.slug));
 
 export interface UrlDelta {
   added: string[];

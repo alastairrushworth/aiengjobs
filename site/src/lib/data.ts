@@ -77,6 +77,19 @@ export const openJobs: Job[] = listedJobs(data);
 /** Recently-closed roles — rendered as noindexed tombstone pages, not listed. */
 export const closedJobs: Job[] = data.jobs.filter((j) => j.isClosed).map(withCanonicalCity);
 
+/**
+ * Roles the classifier ruled out of scope within the engine's retention window
+ * — still open at the ATS, no longer listed here. The third tombstone kind:
+ * like aged-out, the apply link still works; like closed, the description is
+ * gone. Before the engine tracked these (jobs.delisted_at) they simply left
+ * the snapshot, and 40 URLs Google had indexed went 404 in the fortnight
+ * after the 2026-08-22 reclassification. Disjoint from closedJobs by
+ * construction (the exporter never sets both flags).
+ */
+export const delistedJobs: Job[] = data.jobs
+  .filter((j) => !j.isClosed && j.isDelisted)
+  .map(withCanonicalCity);
+
 /** Open roles per employer, in listing order. Built once for the company pages and the sitemap. */
 export const openJobsByCompany: ReadonlyMap<string, Job[]> = (() => {
   const m = new Map<string, Job[]>();
@@ -129,7 +142,8 @@ export const AGED_OUT_TOMBSTONE_DAYS = 30;
  * this board is willing to vouch for.
  */
 export const agedOutJobs: Job[] = data.jobs
-  .filter((j) => !j.isClosed)
+  // Not delisted either: a role can be both, and it needs exactly one page.
+  .filter((j) => !j.isClosed && !j.isDelisted)
   .filter((j) => {
     const age = ageDays(j);
     return (

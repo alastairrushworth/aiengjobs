@@ -24,6 +24,7 @@ import { markupLogo } from "../../lib/logos.ts";
 import {
   openJobs,
   closedJobs,
+  delistedJobs,
   agedOutJobs,
   companyBySlug,
   generatedAt,
@@ -37,7 +38,7 @@ import { hasUsableLocation } from "@aiengjobs/shared/indexable";
 export function getStaticPaths() {
   // <title> needs whole-corpus knowledge: it trims over-long feed titles, but
   // only where the trim doesn't merge two distinct roles. See lib/jobTitle.
-  const titles = buildJobTitles([...openJobs, ...closedJobs, ...agedOutJobs]);
+  const titles = buildJobTitles([...openJobs, ...closedJobs, ...delistedJobs, ...agedOutJobs]);
 
   // Two indexes over openJobs, built once.
   //
@@ -121,6 +122,17 @@ export function getStaticPaths() {
         ...related(job),
       },
     })),
+    // Roles the classifier has since ruled out of scope. Still live at the
+    // ATS, so the apply link stays; the board just no longer lists them.
+    ...delistedJobs.map((job) => ({
+      params: { slug: job.slug },
+      props: {
+        job,
+        retired: "delisted" as const,
+        pageTitle: titles.get(job.slug)!,
+        ...related(job),
+      },
+    })),
     // Roles that aged past MAX_JOB_AGE_DAYS. Same reasoning as the closed
     // tombstone — these URLs were listed and shared right up until the refresh
     // that dropped them — but the role itself is still live at the ATS, so the
@@ -141,12 +153,14 @@ export function getStaticPaths() {
 type Props = InferGetStaticPropsType<typeof getStaticPaths>;
 const { job, retired, pageTitle, atCompany, similar } = Astro.props as Props;
 
-// Both tombstone kinds are noindexed, drop their structured data and stay out
-// of the sitemap. They differ in what's still true of the role: a closed one is
-// gone from the employer's site (no description, no apply link), an aged-out
-// one is still live and still applicable.
+// All three tombstone kinds are noindexed, drop their structured data and stay
+// out of the sitemap. They differ in what's still true of the role: a closed
+// one is gone from the employer's site (no description, no apply link); an
+// aged-out one is still live and still applicable; a delisted one is still
+// live and applicable too, but no longer something this board covers.
 const closed = retired === "closed";
 const agedOut = retired === "aged-out";
+const delisted = retired === "delisted";
 const isTombstone = retired !== null;
 
 const salary = formatSalary(job, fxRates);
@@ -465,6 +479,17 @@ const ogImageAlt = `${job.title} at ${job.companyName}${location ? `, ${location
         no longer live. It's still on {job.companyName}'s careers site and you can
         still apply.
         {similar.length > 0 && " Fresher roles are listed below."}
+      </p>
+    )}
+    {/* Not a judgement on the role — the board's scope is narrow (frontier AI
+        engineering) and its classifier moves as that scope is refined. Say
+        what changed and what didn't: the requisition is still up. */}
+    {delisted && (
+      <p class="closed-banner" role="status">
+        This role is no longer listed on the board — on a closer look it sits outside
+        the AI-engineering roles this board covers. It's still on {job.companyName}'s
+        careers site and you can still apply.
+        {similar.length > 0 && " Roles the board does cover are listed below."}
       </p>
     )}
     <h1>{job.title}</h1>
