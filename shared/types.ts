@@ -111,6 +111,14 @@ export interface Job {
   postedAt?: string;
   updatedAt?: string;
   ingestedAt: string;
+  /**
+   * The last nightly poll that still found this role on its feed. Exported so
+   * the job page can say when the role was last confirmed live — the one
+   * freshness claim an aggregator can make that the employer's own page
+   * cannot. At most two nights old for an open role (ingest rotates through
+   * every source across two runs); absent on snapshots older than the field.
+   */
+  lastSeenAt?: string;
 
   contentHash?: string;
 }

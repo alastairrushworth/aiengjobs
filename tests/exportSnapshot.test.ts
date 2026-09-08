@@ -193,6 +193,22 @@ describe("exportSnapshot", () => {
     expect(snap.companies).toEqual([]);
   });
 
+  it("carries the last-seen stamp on open roles only", async () => {
+    const dir = build(
+      ["co"],
+      [
+        { id: "open", company: "co", lastSeenAt: "2026-08-20T00:00:00Z" },
+        { id: "shut", company: "co", isClosed: 1, lastSeenAt: "2026-08-20T00:00:00Z" },
+      ],
+    );
+
+    const snap = await runExport(dir);
+    const bySlug = (slug: string) => snap.jobs.find((j) => j.slug === slug)!;
+
+    expect(bySlug("open").lastSeenAt).toBe("2026-08-20T00:00:00Z");
+    expect(bySlug("shut").lastSeenAt).toBeUndefined();
+  });
+
   it("re-derives display text from the stored HTML, keeping list structure", async () => {
     const dir = build(["co"], [{ id: "a", company: "co" }]);
 
