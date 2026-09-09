@@ -255,13 +255,22 @@ for (const line of decodeEntities(job.descriptionText ?? "").split("\n")) {
 // Jobs eligibility: description, jobLocation (non-remote), validThrough.
 // Only emitted for open roles (tombstones are noindexed).
 const DAY_MS = 86_400_000;
-// Deliberately short. Every rebuild pushes this forward for roles that are still
-// open, so nothing legitimate expires — but the moment we stop refreshing a
-// listing (role closed, or the whole pipeline died) Google stops showing it
-// within days instead of weeks. `validThrough` in the past is one of Google's
-// three sanctioned ways to retire a JobPosting, and it's the only one that keeps
-// working without us being able to reach Google.
-const VALID_THROUGH_DAYS = 10;
+// A dead-man's switch on the whole pipeline: `validThrough` in the past is one
+// of Google's three sanctioned ways to retire a JobPosting, and the only one
+// that keeps working when we can't reach Google. Every rebuild pushes it
+// forward for roles that are still open, so the moment we stop refreshing a
+// listing it retires itself.
+//
+// The window has to clear Googlebot's actual return interval, or it retires
+// live roles instead. That stopped being true after the 2026-08-22 demotion:
+// crawl fell from ~1.7K requests/day to ~350 against 4,054 sitemap URLs, so a
+// job page now waits two weeks or more between fetches. At 10 days the board's
+// most-seen role (1,534 impressions) was last crawled 15 Aug carrying a
+// validThrough of 25 Aug — expired in the index for a fortnight while open on
+// the site — and Job Postings valid items fell from ~90 to 8 over that window.
+// 30 days clears the current interval with room to spare and still retires a
+// dead pipeline inside a month.
+const VALID_THROUGH_DAYS = 30;
 // No per-role override: nothing in the pipeline ever set jobs.expires_at, so
 // the `job.expiresAt ?? …` this replaced had exactly one live branch while
 // implying the engine supplied a per-role expiry.
@@ -515,7 +524,8 @@ const ogImageAlt = `${job.title} at ${job.companyName}${location ? `, ${location
     )}
     {!closed && applyHref && (
       <p class="apply-wrap top-apply">
-        <a class="apply" href={applyHref} target="_blank" rel="noopener noreferrer nofollow">
+        <a class="apply" href={applyHref} target="_blank" rel="noopener noreferrer nofollow"
+           data-job={job.slug} data-company={job.companyName}>
           Apply on company site <span aria-hidden="true">→</span><span class="sr-only">(opens in new tab)</span>
         </a>
       </p>
@@ -574,7 +584,8 @@ const ogImageAlt = `${job.title} at ${job.companyName}${location ? `, ${location
     )}
     {!closed && applyHref && blocks.length > 0 && (
       <p class="apply-wrap">
-        <a class="apply" href={applyHref} target="_blank" rel="noopener noreferrer nofollow">
+        <a class="apply" href={applyHref} target="_blank" rel="noopener noreferrer nofollow"
+           data-job={job.slug} data-company={job.companyName}>
           Apply on company site <span aria-hidden="true">→</span><span class="sr-only">(opens in new tab)</span>
         </a>
       </p>

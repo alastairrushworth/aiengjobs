@@ -2,7 +2,7 @@
 import type { Job } from "@aiengjobs/shared";
 import { formatSalary, postedAgo, remoteLabel, seniorityLabel } from "../lib/format.ts";
 import { generatedAt, fxRates } from "../lib/data.ts";
-import { jobsUrl } from "../lib/url.ts";
+import { jobsUrl, FILTER_LINK_REL } from "../lib/url.ts";
 import CompanyLogo from "./CompanyLogo.astro";
 import { CARD_CLASS as C, CARD_LOGO_PX } from "../lib/jobCardShape.ts";
 
@@ -67,7 +67,7 @@ const posted = postedAgo(job.postedAt, generatedAt);
         navigate to the listing already filtered. Either way the badge does
         what it looks like it does. */}
     {job.skills.slice(0, 4).map((s) => (
-      <a class={C.badgeSkill} href={jobsUrl({ skill: s })}>{s}</a>
+      <a class={C.badgeSkill} rel={FILTER_LINK_REL} href={jobsUrl({ skill: s })}>{s}</a>
     ))}
   </div>
 </li>
