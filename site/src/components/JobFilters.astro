@@ -140,6 +140,7 @@ const showAllHidden = hasPager || total <= initial;
 
 <script>
   import { CARD_CLASS as C, CARD_LOGO_PX } from "../lib/jobCardShape.ts";
+  import { FILTER_LINK_REL } from "../lib/url.ts";
   import type { JobEntry } from "../lib/jobEntry.ts";
   import {
     EMPTY_STATE,
@@ -383,7 +384,10 @@ const showAllHidden = hasPager || total <= initial;
       const link = document.createElement("a");
       link.className = C.badgeSkill;
       // Only ever followed on a middle-click or "open in new tab" — the click
-      // handler below narrows this list in place instead.
+      // handler below narrows this list in place instead. Same rel as the
+      // server-rendered badge it mirrors: a crawler that runs this script sees
+      // the identical markup either way.
+      link.rel = FILTER_LINK_REL;
       link.href = `${homeHref}?skill=${encodeURIComponent(s)}`;
       link.textContent = s;
       meta.append(link);
