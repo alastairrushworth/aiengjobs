@@ -110,6 +110,29 @@ const updated = new Date(generatedAt).toLocaleDateString("en-US", {
       }
       gtag("js", new Date());
       gtag("config", "G-F8NGE6G65G");
+
+      // The one outcome this board exists to produce: someone leaving for an
+      // employer's ATS. Nothing measured it. Enhanced measurement's `click`
+      // fires on every outbound link — the company site on a company page, a
+      // logo's sameAs, an apply button — so it can't answer "did anyone
+      // apply", which is the only number that says whether the traffic is
+      // worth anything. Mark `apply_click` as a key event in GA4 and it
+      // becomes the conversion.
+      //
+      // Delegated from the document because the listing renders its cards
+      // client-side; bound per-anchor, every card the filter script rebuilds
+      // would lose its handler. The link opens in a new tab, so the page never
+      // unloads and the hit sends normally — no beacon transport needed.
+      document.addEventListener("click", (e) => {
+        const a = e.target instanceof Element && e.target.closest("a.apply");
+        if (!(a instanceof HTMLAnchorElement)) return;
+        gtag("event", "apply_click", {
+          job_slug: a.dataset.job,
+          company: a.dataset.company,
+          link_domain: a.hostname,
+          link_url: a.href,
+        });
+      });
     </script>
   </head>
   <body>

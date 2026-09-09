@@ -62,4 +62,15 @@ describe("job card shape", () => {
     expect(client).toContain("CARD_LOGO_PX");
     expect(client).not.toMatch(/\bconst LOGO_PX\b/);
   });
+
+  it("marks the skill badge nofollow in both renderers", () => {
+    // The badges are filtered-listing links, which robots.txt also refuses; the
+    // rel is what keeps them out of the crawl queue to begin with. Only the
+    // server side is visible to a crawler that doesn't run scripts, so it would
+    // be easy to fix one and leave the other rendering followable copies of the
+    // same URLs. Both read it from lib/url so they can't disagree on the value.
+    expect(server, "JobCard.astro should rel its skill badges").toContain("FILTER_LINK_REL");
+    expect(client, "makeCard() should rel its skill badges").toContain("FILTER_LINK_REL");
+    expect(client).not.toMatch(/\brel\s*=\s*["']nofollow["']/);
+  });
 });
