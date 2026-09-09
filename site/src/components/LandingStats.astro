@@ -1,7 +1,7 @@
 ---
 import type { LandingStats } from "../lib/landingStats.ts";
 import { kUsd } from "../lib/format.ts";
-import { url } from "../lib/url.ts";
+import { url, FILTER_LINK_REL } from "../lib/url.ts";
 
 interface Props {
   stats: LandingStats;
@@ -83,7 +83,7 @@ const tiles: { label: string; value: string; note?: string }[] = [
           so the destination is one the board understands. */}
       {stats.topSkills.map((s) => (
         <span class="item">
-          <a href={url(`/?skill=${encodeURIComponent(s.name)}`)}>{s.name}</a>
+          <a rel={FILTER_LINK_REL} href={url(`/?skill=${encodeURIComponent(s.name)}`)}>{s.name}</a>
           <span class="n">{s.count}</span>
         </span>
       ))}

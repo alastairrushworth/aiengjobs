@@ -24,3 +24,17 @@ export function jobsUrl(params: Record<string, string> = {}): string {
   const qs = new URLSearchParams(params).toString();
   return qs ? `${path}?${qs}` : path;
 }
+
+/**
+ * `rel` for every link that carries filter state in a query string.
+ *
+ * These are UI affordances, not pages: each one canonicalises back to the
+ * listing it filters, so Google folds it away after paying to fetch it. That
+ * was free until the crawl budget wasn't — a landing page emits ~38 distinct
+ * `?skill=` links, /stats adds `?level=` and `?country=`, and across ~60
+ * landings that is a four-figure pile of URLs competing with the 3,538 job
+ * pages that have to be re-fetched before their `validThrough` lapses, at a
+ * crawl rate of ~350/day. robots.txt refuses the fetch; this keeps them out of
+ * the crawl queue in the first place. Neither affects a human clicking one.
+ */
+export const FILTER_LINK_REL = "nofollow";
