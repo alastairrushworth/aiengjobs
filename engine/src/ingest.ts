@@ -7,6 +7,9 @@ import {
   markSeen,
   markSourcePolled,
   closeStaleJobs,
+  closeUnseenJobs,
+  sourceNames,
+  UNSEEN_CLOSE_DAYS,
   pruneClosedJobs,
   dropOutOfScopeText,
 } from "./db/repo.ts";
@@ -83,6 +86,7 @@ interface Tally {
   fetched: number;
   invalid: number; // no usable title/apply URL — dropped before classification
   unchanged: number; // content hash matched a stored job, so never reclassified
+  seen: number; // listed past the connector's detail cap; stamped seen, not re-fetched
   filtered: number; // title heuristic said OUT, so inference was skipped
   inferred: number; // encoder ran on the advert
   listed: number; // classified in-scope
@@ -96,6 +100,7 @@ const newTally = (): Tally => ({
   fetched: 0,
   invalid: 0,
   unchanged: 0,
+  seen: 0,
   filtered: 0,
   inferred: 0,
   listed: 0,
@@ -119,6 +124,7 @@ function describe(t: Tally): string {
     `inferred=${t.inferred}`,
     `in-scope=${t.listed}`,
   ];
+  if (t.seen) parts.push(`seen=${t.seen}`);
   if (t.invalid) parts.push(`invalid=${t.invalid}`);
   if (t.errored) parts.push(`errored=${t.errored}`);
   parts.push(`fetch=${dur(t.fetchMs)}`, `process=${dur(t.workMs)}`);
@@ -235,10 +241,23 @@ export async function ingest(): Promise<void> {
     const fetchStart = Date.now();
     let postings: RawPosting[];
     let partial = false;
+    let seen: string[] = [];
     try {
-      const result = await connector.fetchPostings(t.atsToken);
+      const result = await connector.fetchPostings(t.atsToken, {
+        // Open and unchanged in title, or it is worth a detail fetch: Workday
+        // reuses req ids, so the same id can name a different role a month on.
+        isKnown: (externalId, title) => {
+          const existing = getExistingJob(db, jobId(t.slug, externalId));
+          return (
+            existing !== undefined &&
+            existing.isClosed === 0 &&
+            (title === undefined || existing.title === title)
+          );
+        },
+      });
       postings = Array.isArray(result) ? result : result.postings;
       partial = Array.isArray(result) ? false : result.partial === true;
+      seen = Array.isArray(result) ? [] : (result.seen ?? []);
     } catch (e) {
       failed++;
       const line = `${t.name} (${t.atsProvider}:${t.atsToken}): ${(e as Error).message}`;
@@ -248,27 +267,42 @@ export async function ingest(): Promise<void> {
       continue;
     }
     tally.fetchMs = Date.now() - fetchStart;
-    // Only a feed that returned the WHOLE board counts as polled.
+    // Only a feed that listed the WHOLE board counts as polled.
     //
     // A 200 with an empty array is indistinguishable from a renamed board, an
     // expired token, or a response shape that changed under us — and marking it
     // polled would let closeStaleJobs close every open role at this company on
     // that evidence. A genuinely empty board just keeps yesterday's roles until
-    // they age out.
+    // closeUnseenJobs ages them out.
     //
-    // A capped return (the enterprise connectors' MAX_DETAIL) is the same
-    // problem wearing a different hat: the roles past the cap are live, they're
-    // just unseen, and closing them made those boards flap open and closed from
-    // one night to the next.
+    // A truncated listing (an enterprise query with more hits than the
+    // connector pages through) is the same problem wearing a different hat:
+    // the roles past the window may well be live, and closing them made those
+    // boards flap open and closed from one night to the next.
     if (partial) {
-      console.warn(`  ! ${t.name} (${t.atsProvider}:${t.atsToken}): capped result, not closing its roles`);
-    } else if (postings.length > 0) {
+      console.warn(`  ! ${t.name} (${t.atsProvider}:${t.atsToken}): truncated listing, not closing its roles`);
+    } else if (postings.length > 0 || seen.length > 0) {
       polledSourceIds.push(t.sourceId);
     } else {
       console.warn(`  ! ${t.name} (${t.atsProvider}:${t.atsToken}): returned 0 postings, not closing its roles`);
     }
     tallies.set(t.sourceId, { name: t.name, tally });
     tally.fetched = postings.length;
+
+    // Listed but not fetched — past a detail cap. Stamp the stored ones so
+    // they survive closeStaleJobs and closeUnseenJobs without a re-read; an id
+    // we do not hold yet gets its detail fetched on a later night (the
+    // connectors put unknown ids first, so only when the cap is all new roles).
+    //
+    // Open ones only: a closed role back on the list is re-read before it
+    // reopens (isKnown above), never resurrected under last month's advert.
+    for (const externalId of seen) {
+      const id = jobId(t.slug, externalId);
+      if (getExistingJob(db, id)?.isClosed === 0) {
+        markSeen(db, id, runStart);
+        tally.seen++;
+      }
+    }
 
     const workStart = Date.now();
     // Each posting is isolated: one bad payload logs and skips rather than
@@ -411,6 +445,15 @@ export async function ingest(): Promise<void> {
   }
 
   const closedBySource = closeStaleJobs(db, runStart, polledSourceIds);
+  // The backstop for everything closeStaleJobs cannot reach: roles at boards
+  // that failed, were paused, or listed nothing tonight. See UNSEEN_CLOSE_DAYS.
+  const unseenCutoff = new Date(
+    Date.parse(runStart) - UNSEEN_CLOSE_DAYS * 86_400_000,
+  ).toISOString();
+  const agedBySource = closeUnseenJobs(db, unseenCutoff);
+  // Named here, before the connection closes: the sources this reaches are
+  // mostly ones with no tally tonight — paused, failed, or not polled.
+  const agedNames = sourceNames(db, [...agedBySource.keys()]);
   // Roles closed long enough ago that no snapshot still carries them. Nothing
   // else deletes rows, and each one holds the full advert twice — see
   // pruneClosedJobs for what that was costing the release asset.
@@ -429,6 +472,7 @@ export async function ingest(): Promise<void> {
   const sum = (pick: (t: Tally) => number) =>
     all.reduce((n, { tally }) => n + pick(tally), 0);
   const closed = [...closedBySource.values()].reduce((n, c) => n + c, 0);
+  const aged = [...agedBySource.values()].reduce((n, c) => n + c, 0);
 
   // Gathered back up before the totals line, so a fortnight-dead board reads as
   // a dead board rather than as one more warning lost in four hours of log.
@@ -443,7 +487,9 @@ export async function ingest(): Promise<void> {
     `\nIngest complete. fetched=${sum((t) => t.fetched)} unchanged=${sum((t) => t.unchanged)}` +
       ` invalid=${sum((t) => t.invalid)} filtered=${sum((t) => t.filtered)}` +
       ` inferred=${sum((t) => t.inferred)} processed=${sum((t) => t.written)}` +
-      ` in-scope=${sum((t) => t.listed)} closed=${closed} feeds_polled=${all.length}` +
+      ` in-scope=${sum((t) => t.listed)} closed=${closed}` +
+      (aged > 0 ? ` aged_out=${aged}` : "") +
+      ` feeds_polled=${all.length}` +
       ` feeds_failed=${failed} postings_errored=${sum((t) => t.errored)}` +
       (skippedForBudget > 0 ? ` feeds_skipped_for_budget=${skippedForBudget}` : "") +
       (pruned > 0 ? ` pruned=${pruned}` : "") +
@@ -485,6 +531,20 @@ export async function ingest(): Promise<void> {
       .sort((a, b) => b.n - a.n)
       .slice(0, 10);
     console.log(`\nClosures: ${closed} across ${closedBySource.size} sources:`);
+    for (const { name, n } of top) console.log(`  ${String(n).padStart(5)}  ${name}`);
+  }
+
+  // Separately from the closures above, because it is a different signal: a
+  // board here is one nothing has heard from in a fortnight, and the name to
+  // look for is usually in tonight's failure list or the paused list.
+  if (agedBySource.size > 0) {
+    const top = [...agedBySource]
+      .map(([sourceId, n]) => ({ name: agedNames.get(sourceId) ?? sourceId, n }))
+      .sort((a, b) => b.n - a.n)
+      .slice(0, 10);
+    console.log(
+      `\nAged out: ${aged} role(s) unseen for ${UNSEEN_CLOSE_DAYS}+ days across ${agedBySource.size} sources:`,
+    );
     for (const { name, n } of top) console.log(`  ${String(n).padStart(5)}  ${name}`);
   }
 }

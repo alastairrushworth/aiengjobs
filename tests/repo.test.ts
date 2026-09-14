@@ -3,6 +3,8 @@ import { DatabaseSync } from "node:sqlite";
 import { readFileSync } from "node:fs";
 import {
   closeStaleJobs,
+  closeUnseenJobs,
+  UNSEEN_CLOSE_DAYS,
   dropOutOfScopeText,
   listPollTargets,
   markSourcePolled,
@@ -51,6 +53,52 @@ function addJob(
 
 const isClosed = (db: DatabaseSync, id: string) =>
   (db.prepare("SELECT is_closed c FROM jobs WHERE id = ?").get(id) as { c: number }).c;
+
+describe("closeUnseenJobs", () => {
+  const cutoff = new Date(
+    Date.parse(RUN_START) - UNSEEN_CLOSE_DAYS * 86_400_000,
+  ).toISOString();
+  const longAgo = new Date(Date.parse(cutoff) - 86_400_000).toISOString();
+  const recent = new Date(Date.parse(cutoff) + 86_400_000).toISOString();
+
+  it("closes open roles unseen since the cutoff at ANY source, polled or not", () => {
+    const db = makeDb();
+    addJob(db, "j_dead", "src_a", { lastSeen: longAgo });
+    addJob(db, "j_fresh", "src_a", { lastSeen: recent });
+    addJob(db, "j_dead_b", "src_b", { lastSeen: longAgo });
+    const bySource = closeUnseenJobs(db, cutoff);
+    expect(isClosed(db, "j_dead")).toBe(1);
+    expect(isClosed(db, "j_dead_b")).toBe(1);
+    expect(isClosed(db, "j_fresh")).toBe(0);
+    expect([...bySource]).toEqual([
+      ["src_a", 1],
+      ["src_b", 1],
+    ]);
+  });
+
+  it("leaves direct postings and already-closed roles alone", () => {
+    const db = makeDb();
+    addJob(db, "j_direct", "src_a", { lastSeen: longAgo, isDirect: 1 });
+    addJob(db, "j_closed", "src_a", { lastSeen: longAgo, isClosed: 1 });
+    expect(closeUnseenJobs(db, cutoff).size).toBe(0);
+    expect(isClosed(db, "j_direct")).toBe(0);
+  });
+
+  it("falls back to ingested_at for a role that was never stamped seen", () => {
+    const db = makeDb();
+    addJob(db, "j_old_unstamped", "src_a", { lastSeen: null });
+    db.prepare("UPDATE jobs SET ingested_at = ? WHERE id = 'j_old_unstamped'").run(longAgo);
+    addJob(db, "j_new_unstamped", "src_a", { lastSeen: null });
+    db.prepare("UPDATE jobs SET ingested_at = ? WHERE id = 'j_new_unstamped'").run(recent);
+    expect(closeUnseenJobs(db, cutoff).get("src_a")).toBe(1);
+    expect(isClosed(db, "j_old_unstamped")).toBe(1);
+    expect(isClosed(db, "j_new_unstamped")).toBe(0);
+  });
+
+  it("is a two-week window", () => {
+    expect(UNSEEN_CLOSE_DAYS).toBe(14);
+  });
+});
 
 describe("closeStaleJobs", () => {
   it("closes stale jobs and reports the count per source", () => {
