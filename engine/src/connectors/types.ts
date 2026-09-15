@@ -32,8 +32,31 @@ export interface RawPosting {
  *  protection an empty feed already gets. */
 export interface PostingsResult {
   postings: RawPosting[];
-  /** True when this is a capped subset of the board, not the whole of it. */
+  /** True when the *listing* was truncated — the connector could not enumerate
+   *  the whole board, so absence from `postings` + `seen` proves nothing. A
+   *  capped detail fetch on its own is not partial: the roles past the cap go
+   *  in `seen` instead. */
   partial?: boolean;
+  /** External ids the connector saw listed but did not return as postings —
+   *  the roles past a detail-fetch cap. The ingest loop stamps the stored ones
+   *  as seen tonight, so they neither close as stale nor need re-fetching, and
+   *  a complete listing can once again close what has really gone.
+   *
+   *  Before this, a capped board was simply `partial`, and its roles past the
+   *  cap were never seen again: ~300 Workday roles sat open for six weeks
+   *  after their employers had closed them (2026-09-14). */
+  seen?: string[];
+}
+
+/** What the ingest loop can tell a connector about the board it already holds. */
+export interface FetchContext {
+  /** Is this listed posting already stored, open, and still carrying this
+   *  title? A capped connector spends its detail budget on the ones that are
+   *  not, so a new role reaches the board the night it appears rather than
+   *  when it happens to rank — and a req id that Workday has reused for a
+   *  different role, or a role that closed and came back, is re-read rather
+   *  than stamped seen under its old advert. */
+  isKnown?(externalId: string, title?: string): boolean;
 }
 
 export interface Connector {
@@ -43,6 +66,6 @@ export interface Connector {
   /** Fetch + map the feed to RawPosting[]. Throws on fetch/parse error (so the
    *  caller does NOT treat the feed as empty and wrongly expire that company's jobs).
    *  Return a {@link PostingsResult} instead of a bare array to declare that the
-   *  result is capped. */
-  fetchPostings(slug: string): Promise<RawPosting[] | PostingsResult>;
+   *  listing is truncated or that some listed roles were not fetched. */
+  fetchPostings(slug: string, ctx?: FetchContext): Promise<RawPosting[] | PostingsResult>;
 }

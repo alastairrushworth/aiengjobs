@@ -1,4 +1,5 @@
 import { stripHtml } from "./html.ts";
+import type { FetchContext } from "../connectors/types.ts";
 
 // Shared helpers for the big-enterprise connectors (Workday-style: Oracle,
 // Eightfold, iCIMS, SuccessFactors). Enterprise boards run to thousands of
@@ -9,6 +10,45 @@ import { stripHtml } from "./html.ts";
 /** Union of single-term searches; searchText semantics vary by vendor, so we
  *  UNION several narrow queries rather than rely on one multi-word query. */
 export const AI_QUERIES = ["machine learning", "generative ai", "llm"];
+
+/**
+ * Split a capped connector's matched list rows into the ones worth a detail
+ * fetch tonight and the ones to report as merely seen.
+ *
+ * The detail budget goes to rows the database does not hold yet, so a new role
+ * reaches the board the night it appears. Whatever budget is left re-reads the
+ * stored ones in a window that advances by `cap` each night, so a stored advert
+ * is refreshed every few runs — an edited salary, or a description that was
+ * missing because its one detail fetch failed — instead of the same first fifty
+ * forever. Everything else is returned as `seen`: still on the board, not
+ * re-fetched (see PostingsResult.seen).
+ *
+ * Without a context every row counts as new and the first `cap` are fetched,
+ * which is what the connectors did before and what their tests still drive.
+ */
+export function planDetailFetch<T>(
+  rows: T[],
+  keyOf: (row: T) => { id: string; title?: string },
+  cap: number,
+  ctx: FetchContext | undefined,
+  today = Math.floor(Date.now() / 86_400_000),
+): { targets: T[]; seen: string[] } {
+  const idOf = (r: T) => keyOf(r).id;
+  const isKnown = (r: T) => {
+    const k = keyOf(r);
+    return ctx?.isKnown?.(k.id, k.title) ?? false;
+  };
+  const fresh = rows.filter((r) => !isKnown(r));
+  const known = rows
+    .filter((r) => isKnown(r))
+    .sort((a, b) => idOf(a).localeCompare(idOf(b)));
+  const start = known.length === 0 ? 0 : (today * cap) % known.length;
+  const rotated = [...known.slice(start), ...known.slice(0, start)];
+  const targets = [...fresh, ...rotated].slice(0, cap);
+  const chosen = new Set(targets.map(idOf));
+  const seen = rows.map(idOf).filter((id) => !chosen.has(id));
+  return { targets, seen };
+}
 
 /** Engineering-flavoured title gate (same intent as the Workday connector). */
 export const TECH_TITLE =

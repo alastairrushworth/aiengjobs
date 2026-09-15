@@ -1,8 +1,8 @@
 import type { Connector, RawPosting } from "./types.ts";
 import { stripHtml } from "../util/html.ts";
-import { mapPool } from "../util/concurrency.ts";
-import { fetchRetry } from "../util/fetch.ts";
-import { AI_QUERIES, TECH_TITLE } from "../util/enterprise.ts";
+import { guardedPool } from "../util/concurrency.ts";
+import { fetchDetail, fetchRetry } from "../util/fetch.ts";
+import { AI_QUERIES, TECH_TITLE, planDetailFetch } from "../util/enterprise.ts";
 
 // Oracle Recruiting Cloud (Fusion / "Oracle Cloud HCM") public candidate-
 // experience REST API. A site is keyed by its Fusion host plus a numeric
@@ -52,12 +52,15 @@ export const oracle: Connector = {
     const { base, site } = parseSlug(slug);
     return `${base}/recruitingCEJobRequisitions?onlyData=true&finder=findReqs;siteNumber=${site},limit=${LIMIT},sortBy=POSTING_DATES_DESC`;
   },
-  async fetchPostings(slug) {
+  async fetchPostings(slug, ctx) {
     const { host, site, base } = parseSlug(slug);
 
     // Union several keyword searches; the finder syntax keeps ';' and ',' literal
     // (valid query sub-delimiters), with only the keyword value percent-encoded.
     const byId = new Map<string, OracleReq>();
+    // A keyword that fills its page has hits we never saw, so the listing is
+    // reported as truncated (see PostingsResult.partial).
+    let truncated = false;
     for (const q of AI_QUERIES) {
       const finder = `findReqs;siteNumber=${site},limit=${LIMIT},sortBy=POSTING_DATES_DESC,keyword=${encodeURIComponent(q)}`;
       const url = `${base}/recruitingCEJobRequisitions?onlyData=true&expand=requisitionList.secondaryLocations&finder=${finder}`;
@@ -67,7 +70,9 @@ export const oracle: Connector = {
         items?: { requisitionList?: OracleReq[] }[];
       };
       for (const item of data.items ?? []) {
-        for (const r of item.requisitionList ?? []) {
+        const list = item.requisitionList ?? [];
+        if (list.length >= LIMIT) truncated = true;
+        for (const r of list) {
           if (r.Id) byId.set(r.Id, r);
         }
       }
@@ -77,28 +82,30 @@ export const oracle: Connector = {
     const kept = [...byId.values()].filter(
       (r) => r.Title && TECH_TITLE.test(r.Title),
     );
-    if (kept.length > MAX_DETAIL) {
+    // Rows past the detail cap are reported as seen rather than dropped — see
+    // PostingsResult.seen.
+    const { targets, seen } = planDetailFetch(
+      kept,
+      (r) => ({ id: r.Id, title: (r.Title ?? "").trim() }),
+      MAX_DETAIL,
+      ctx,
+    );
+    if (seen.length > 0) {
       console.warn(
-        `[oracle] ${host}: ${kept.length} matched, capping detail fetch at ${MAX_DETAIL}`,
+        `[oracle] ${host}: ${kept.length} matched, fetching detail for ${targets.length}, ${seen.length} marked seen`,
       );
     }
-    const targets = kept.slice(0, MAX_DETAIL);
-    // Capped means we did NOT see the whole board; say so, or closeStaleJobs
-    // closes everything past the cap (see PostingsResult in ./types.ts).
-    const partial = kept.length > MAX_DETAIL;
+    if (truncated) {
+      console.warn(`[oracle] ${host}: a keyword filled its ${LIMIT}-row page, listing is partial`);
+    }
 
-    const postings = await mapPool(targets, DETAIL_CONCURRENCY, async (r): Promise<RawPosting> => {
+    const postings = await guardedPool(targets, DETAIL_CONCURRENCY, `oracle ${host}`, async (r, attempt): Promise<RawPosting> => {
       // Detail carries the HTML description; degrade to the list row on failure.
-      let info: OracleDetail | undefined;
-      try {
+      const info = await attempt(async () => {
         const durl = `${base}/recruitingCEJobRequisitionDetails?onlyData=true&expand=all&finder=ById;Id=%22${encodeURIComponent(r.Id)}%22,siteNumber=${site}`;
-        const dr = await ofetch(durl);
-        if (dr.ok) {
-          info = ((await dr.json()) as { items?: OracleDetail[] }).items?.[0];
-        }
-      } catch {
-        info = undefined;
-      }
+        const dr = await fetchDetail(durl, { headers: { Accept: "application/json" } });
+        return ((await dr.json()) as { items?: OracleDetail[] }).items?.[0];
+      });
       const html = [
         info?.ExternalDescriptionStr,
         info?.ExternalResponsibilitiesStr,
@@ -124,6 +131,6 @@ export const oracle: Connector = {
             : undefined,
       };
     });
-    return { postings, partial };
+    return { postings, partial: truncated, seen };
   },
 };
