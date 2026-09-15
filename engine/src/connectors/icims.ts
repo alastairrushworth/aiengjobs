@@ -1,6 +1,6 @@
 import type { Connector, RawPosting } from "./types.ts";
-import { mapPool } from "../util/concurrency.ts";
-import { fetchRetry } from "../util/fetch.ts";
+import { guardedPool } from "../util/concurrency.ts";
+import { fetchDetail, fetchRetry } from "../util/fetch.ts";
 import {
   AI_QUERIES,
   TECH_TITLE,
@@ -64,19 +64,17 @@ export const icims: Connector = {
       );
     }
 
-    const mapped = await mapPool(
+    const mapped = await guardedPool(
       targets,
       DETAIL_CONCURRENCY,
-      async (path): Promise<RawPosting | null> => {
+      `icims ${host}`,
+      async (path, attempt): Promise<RawPosting | null> => {
         const jobUrl = `${base}${path}`;
-        let html: string;
-        try {
-          const dr = await ifetch(jobUrl);
-          if (!dr.ok) return null;
-          html = await dr.text();
-        } catch {
-          return null;
-        }
+        const html = await attempt(async () => {
+          const dr = await fetchDetail(jobUrl, { headers: { Accept: "text/html" } });
+          return await dr.text();
+        });
+        if (html == null) return null;
         const job = parseJsonLdJobs(html)[0];
         if (!job?.title || !TECH_TITLE.test(job.title)) return null;
         const reqId = path.split("/")[2];

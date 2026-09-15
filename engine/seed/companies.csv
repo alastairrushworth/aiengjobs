@@ -12,7 +12,10 @@
 # <date>: <evidence>` comment above the row saying what was observed.
 #
 # Pausing is NOT the same as deleting the row:
-#   paused  -> not polled; company and its open jobs stay, ageing out normally.
+#   paused  -> not polled; company and its open jobs stay, ageing out normally
+#              (an open role no poll has listed for 14 days is closed — see
+#              UNSEEN_CLOSE_DAYS in engine/src/db/repo.ts — and reopened by the
+#              first poll that lists it again).
 #              Reversible: delete the flag and the next seed re-activates it.
 #   deleted -> the source is retired and its open jobs are closed. That is the
 #              right end state for a board that is gone for good, and it is what
@@ -409,7 +412,7 @@ Sigma Computing,greenhouse,sigmacomputing,sigmacomputing.com,growth
 Smartsheet,greenhouse,smartsheet,smartsheet.com,late
 Sumo Logic,greenhouse,sumologic,sumologic.com,late
 Supabase,ashby,supabase,supabase.com,growth
-Temporal,greenhouse,temporaltechnologies,temporal.io,growth
+Temporal,ashby,temporal,temporal.io,growth
 Typeform,greenhouse,typeform,typeform.com,growth
 Vercel,greenhouse,vercel,vercel.com,growth
 WorkOS,ashby,workos,workos.com,early
@@ -465,7 +468,7 @@ SiPearl,teamtailor,sipearl,sipearl.com,growth
 # --- US ---
 Etched,ashby,etched,etched.com,early
 Lightmatter,greenhouse,lightmatter,lightmatter.co,growth
-MatX,greenhouse,matx,matx.com,early
+MatX,ashby,matx,matx.com,early
 
 # === MLOPS / EVAL & DATA (auto-verified live feeds) ===
 Invisible Technologies,greenhouse,invisibletech,invisible.co,growth
@@ -732,7 +735,7 @@ Toloka,greenhouse,toloka,toloka.ai,growth
 Torc Robotics,greenhouse,torcrobotics,torc.ai,growth
 Turing,greenhouse,turing,turing.com,growth
 Udio,greenhouse,udio,udio.com,early
-World Labs,greenhouse,worldlabs,worldlabs.ai,growth
+World Labs,ashby,worldlabs,worldlabs.ai,growth
 Xaira Therapeutics,greenhouse,xairatherapeutics,xaira.com,growth
 # --- ashby (AI additions) ---
 Abacum,ashby,abacum,abacum.ai,growth
@@ -1304,7 +1307,7 @@ Carrot Fertility,greenhouse,carrotfertility,carrotfertility.com,early
 Cavnue,greenhouse,cavnue,cavnue.com,early
 Charlie Health,greenhouse,charliehealth,charliehealth.ai,late
 Clarity AI,greenhouse,clarityai,clarity.ai,early
-ClickHouse,greenhouse,clickhouse,clickhouse.com,late
+ClickHouse,ashby,clickhouse,clickhouse.com,late
 Climate X,greenhouse,climatex,climatex.com,early
 Clover Health,greenhouse,cloverhealth,cloverhealth.com,growth
 Cloverly,greenhouse,cloverly,cloverly.com,early
@@ -1537,7 +1540,7 @@ Nidus Technologies,ashby,nidus-technologies,nidustech.com,early
 Nomic AI,ashby,nomic,nomic.ai,early
 Nooks,ashby,nooks,nooks.ai,growth
 Norm AI,ashby,norm-ai,norm.ai,early
-Nous Research,ashby,nous-research,nousresearch.com,early
+Nous Research,ashby,nousresearch,nousresearch.com,early
 Nubank,ashby,nubank,nubank.com.br,late
 Omnea,ashby,omnea,omnea.com,growth
 OpenArt,ashby,openart,openart.ai,early

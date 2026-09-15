@@ -1,8 +1,8 @@
 import type { Connector, RawPosting } from "./types.ts";
 import type { RemoteType } from "@aiengjobs/shared";
 import { stripHtml } from "../util/html.ts";
-import { fetchRetry } from "../util/fetch.ts";
-import { mapPool } from "../util/concurrency.ts";
+import { fetchDetail, fetchRetry } from "../util/fetch.ts";
+import { guardedPool } from "../util/concurrency.ts";
 
 // Workable's public board API lists jobs without descriptions, so each posting
 // needs a follow-up detail fetch — bounded so big boards don't hammer the API.
@@ -59,20 +59,26 @@ export const workable: Connector = {
     const res = await fetchRetry(workable.endpoint(slug));
     if (!res.ok) throw new Error(`workable ${slug} HTTP ${res.status}`);
     const data = (await res.json()) as { jobs?: WorkableListJob[] };
-    const jobs = (data.jobs ?? []).filter((j) => j.application_url ?? j.shortlink ?? j.url);
+    // One row per location for a multi-location job, all sharing a shortcode:
+    // Intertek's 250 rows were 149 jobs. The detail (and its single location)
+    // is the same for each, so keep the first row and fetch it once.
+    const byCode = new Map<string, WorkableListJob>();
+    for (const j of data.jobs ?? []) {
+      if ((j.application_url ?? j.shortlink ?? j.url) && !byCode.has(j.shortcode)) {
+        byCode.set(j.shortcode, j);
+      }
+    }
+    const jobs = [...byCode.values()];
 
-    return mapPool(jobs, DETAIL_CONCURRENCY, async (j): Promise<RawPosting> => {
+    return guardedPool(jobs, DETAIL_CONCURRENCY, `workable ${slug}`, async (j, attempt): Promise<RawPosting> => {
       // Detail carries the description + structured location; degrade gracefully
       // (list-only posting) if a single job's detail fetch fails.
-      let detail: WorkableDetail | undefined;
-      try {
-        const dr = await fetchRetry(
+      const detail = await attempt(async () => {
+        const dr = await fetchDetail(
           `https://apply.workable.com/api/v2/accounts/${slug}/jobs/${j.shortcode}`,
         );
-        if (dr.ok) detail = (await dr.json()) as WorkableDetail;
-      } catch {
-        detail = undefined;
-      }
+        return (await dr.json()) as WorkableDetail;
+      });
 
       const html = [detail?.description, detail?.requirements, detail?.benefits]
         .filter(Boolean)

@@ -1,8 +1,8 @@
 import type { Connector, RawPosting } from "./types.ts";
 import type { RemoteType } from "@aiengjobs/shared";
 import { stripHtml } from "../util/html.ts";
-import { fetchRetry } from "../util/fetch.ts";
-import { mapPool } from "../util/concurrency.ts";
+import { fetchDetail, fetchRetry } from "../util/fetch.ts";
+import { guardedPool } from "../util/concurrency.ts";
 
 // SmartRecruiters' public Posting API paginates (max 100/page) and omits the job
 // ad body from the list, so each posting needs a detail fetch — bounded so big
@@ -94,15 +94,12 @@ export const smartrecruiters: Connector = {
       if (batch.length < PAGE || list.length >= (data.totalFound ?? list.length)) break;
     }
 
-    return mapPool(list, DETAIL_CONCURRENCY, async (j): Promise<RawPosting> => {
+    return guardedPool(list, DETAIL_CONCURRENCY, `smartrecruiters ${slug}`, async (j, attempt): Promise<RawPosting> => {
       // Detail carries the job ad + apply URL; degrade to list-only on failure.
-      let detail: SrDetail | undefined;
-      try {
-        const dr = await fetchRetry(detailUrl(slug, j));
-        if (dr.ok) detail = (await dr.json()) as SrDetail;
-      } catch {
-        detail = undefined;
-      }
+      const detail = await attempt(async () => {
+        const dr = await fetchDetail(detailUrl(slug, j));
+        return (await dr.json()) as SrDetail;
+      });
 
       const sections = detail?.jobAd?.sections ?? {};
       const html = ["companyDescription", "jobDescription", "qualifications", "additionalInformation"]

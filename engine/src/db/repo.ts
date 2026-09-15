@@ -171,11 +171,13 @@ export function markSourcePolled(db: DatabaseSync, sourceId: string, ts: string)
 export function getExistingJob(
   db: DatabaseSync,
   id: string,
-): { contentHash: string | null; isClosed: number } | undefined {
+): { contentHash: string | null; isClosed: number; title: string } | undefined {
   const r = db
-    .prepare(`SELECT content_hash, is_closed FROM jobs WHERE id = ?`)
-    .get(id) as { content_hash: string | null; is_closed: number } | undefined;
-  return r ? { contentHash: r.content_hash, isClosed: r.is_closed } : undefined;
+    .prepare(`SELECT content_hash, is_closed, title FROM jobs WHERE id = ?`)
+    .get(id) as
+    | { content_hash: string | null; is_closed: number; title: string }
+    | undefined;
+  return r ? { contentHash: r.content_hash, isClosed: r.is_closed, title: r.title } : undefined;
 }
 
 export interface JobUpsert {
@@ -323,6 +325,61 @@ export function closeStaleJobs(
     bySource.set(r.source_id, (bySource.get(r.source_id) ?? 0) + 1);
   }
   return bySource;
+}
+
+/** How long an open role may go unseen by any poll before it is closed anyway.
+ *
+ *  `closeStaleJobs` only reaches sources polled tonight, so a role at a board
+ *  that has 404'd since the company changed ATS, a paused source, or a Workday
+ *  role past the detail cap, had nothing that would ever close it — companies.csv
+ *  and ingest.ts both promised such roles "age out", and nothing did it. On
+ *  2026-09-14 that was 55 roles at boards dead for up to four weeks and ~300
+ *  at capped Workday tenants unseen for six, most of them closed at the
+ *  employer, all still on the site with dead apply links.
+ *
+ *  Two weeks, not one: the poll loop stops at its wall-clock budget and picks
+ *  up where it left off, so a bad week (2026-08-27 polled 72 of 1,373) can
+ *  leave a live source unvisited for several nights. A wrongly closed role is
+ *  reopened by the next poll that lists it, but a burst of them is IndexNow
+ *  churn and a tombstoned page for nothing. */
+export const UNSEEN_CLOSE_DAYS = 14;
+
+/** Close open roles no poll has listed within {@link UNSEEN_CLOSE_DAYS}, and
+ *  report how many went per source. Same shape as `closeStaleJobs`, and run
+ *  right after it: that one is the same-night closure for boards that answered,
+ *  this one the backstop for boards that did not. */
+export function closeUnseenJobs(
+  db: DatabaseSync,
+  cutoff: string,
+): Map<string, number> {
+  const bySource = new Map<string, number>();
+  const rows = db
+    .prepare(
+      `UPDATE jobs SET is_closed = 1
+       WHERE is_direct = 0 AND is_closed = 0
+         AND COALESCE(last_seen_at, ingested_at) < ?
+       RETURNING source_id`,
+    )
+    .all(cutoff) as { source_id: string | null }[];
+  for (const r of rows) {
+    const k = r.source_id ?? "(no source)";
+    bySource.set(k, (bySource.get(k) ?? 0) + 1);
+  }
+  return bySource;
+}
+
+/** Company names for a set of source ids, for reports that cover sources the
+ *  run did not poll — paused, failed, or retired ones have no tally to name
+ *  them from. */
+export function sourceNames(db: DatabaseSync, ids: string[]): Map<string, string> {
+  if (ids.length === 0) return new Map();
+  const rows = db
+    .prepare(
+      `SELECT s.id, c.name FROM sources s JOIN companies c ON c.id = s.company_id
+       WHERE s.id IN (${ids.map(() => "?").join(",")})`,
+    )
+    .all(...ids) as { id: string; name: string }[];
+  return new Map(rows.map((r) => [r.id, r.name]));
 }
 
 /** How long a closed role stays in the database.

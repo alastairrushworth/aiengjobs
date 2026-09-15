@@ -1,8 +1,8 @@
 import type { Connector, RawPosting } from "./types.ts";
 import type { RemoteType } from "@aiengjobs/shared";
 import { stripHtml } from "../util/html.ts";
-import { fetchRetry } from "../util/fetch.ts";
-import { mapPool } from "../util/concurrency.ts";
+import { fetchDetail, fetchRetry } from "../util/fetch.ts";
+import { guardedPool } from "../util/concurrency.ts";
 import { parseSalaryText } from "../pipeline/comp.ts";
 
 // BambooHR's hosted careers page is backed by an unauthenticated JSON API on
@@ -101,19 +101,14 @@ export const bamboohr: Connector = {
     const data = (await res.json()) as { result?: BhListJob[] };
     const jobs = (data.result ?? []).filter((j) => j.id != null && j.jobOpeningName);
 
-    const postings = await mapPool(jobs, DETAIL_CONCURRENCY, async (j): Promise<RawPosting | null> => {
+    const postings = await guardedPool(jobs, DETAIL_CONCURRENCY, `bamboohr ${slug}`, async (j, attempt): Promise<RawPosting | null> => {
       const id = String(j.id);
       // Detail carries the description, posting date and pay; degrade to the
       // list row rather than lose the posting if one detail fetch fails.
-      let d: BhDetail | undefined;
-      try {
-        const dr = await fetchRetry(`https://${slug}.bamboohr.com/careers/${id}/detail`);
-        if (dr.ok) {
-          d = ((await dr.json()) as { result?: { jobOpening?: BhDetail } }).result?.jobOpening;
-        }
-      } catch {
-        d = undefined;
-      }
+      const d = await attempt(async () => {
+        const dr = await fetchDetail(`https://${slug}.bamboohr.com/careers/${id}/detail`);
+        return ((await dr.json()) as { result?: { jobOpening?: BhDetail } }).result?.jobOpening;
+      });
       // Only the detail knows whether a listed role is still open. Absent a
       // detail we keep the posting: the list itself only carries open roles.
       if (d?.jobOpeningStatus && d.jobOpeningStatus !== "Open") return null;

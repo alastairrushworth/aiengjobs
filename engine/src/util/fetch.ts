@@ -101,3 +101,26 @@ export async function fetchRetry(
     await sleep(backoffMs);
   }
 }
+
+/**
+ * `fetchRetry` for the per-posting detail page behind a listing: a response
+ * that is not OK is an error here, not a result.
+ *
+ * `fetchRetry` returns a 429 that outlasted its retries rather than throwing,
+ * which is right for a feed (the caller decides what a status means) and wrong
+ * inside `guardedPool`: Intertek's Workable board spent 14 minutes on 149
+ * details that were mostly returned 429s, and the breaker — which counts only
+ * thrown attempts — never saw one. A 403 wall or a 5xx run is the same story
+ * at a lower price. Throwing makes every non-OK detail count; the pool's rate
+ * floor keeps the odd legitimate 404 (a role closed between list and detail)
+ * from tripping it.
+ */
+export async function fetchDetail(
+  url: string,
+  init?: RequestInit,
+  opts?: FetchRetryOptions,
+): Promise<Response> {
+  const res = await fetchRetry(url, init, opts);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res;
+}
