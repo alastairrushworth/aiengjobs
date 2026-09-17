@@ -53,6 +53,13 @@ describe("orderedPay", () => {
 describe("exportSnapshot", () => {
   const SCHEMA = readFileSync("engine/src/db/schema.sql", "utf8");
   const dirs: string[] = [];
+  const DAY = 86_400_000;
+  const daysAgo = (n: number) => new Date(Date.now() - n * DAY).toISOString();
+  // "Recently seen", relative to the clock the exporter reads. This was the
+  // literal 2026-08-20, which is only recent until the 30-day retention window
+  // rolls past it: from 2026-09-19 every tombstone test here would have failed,
+  // and the deploy workflow gates on this suite.
+  const RECENT = daysAgo(5);
 
   interface JobSeed {
     id: string;
@@ -97,7 +104,7 @@ describe("exportSnapshot", () => {
         j.salaryMax ?? null,
         j.classification ?? "in",
         j.isClosed ?? 0,
-        j.lastSeenAt ?? "2026-08-20T00:00:00Z",
+        j.lastSeenAt ?? RECENT,
         j.delistedAt ?? null,
       );
     }
@@ -175,7 +182,7 @@ describe("exportSnapshot", () => {
   it("keeps a recently-closed role as a tombstone, without its description", async () => {
     const dir = build(
       ["co"],
-      [{ id: "gone", company: "co", isClosed: 1, lastSeenAt: "2026-08-20T00:00:00Z" }],
+      [{ id: "gone", company: "co", isClosed: 1, lastSeenAt: RECENT }],
     );
 
     const snap = await runExport(dir);
@@ -255,15 +262,15 @@ describe("exportSnapshot", () => {
     const dir = build(
       ["co"],
       [
-        { id: "open", company: "co", lastSeenAt: "2026-08-20T00:00:00Z" },
-        { id: "shut", company: "co", isClosed: 1, lastSeenAt: "2026-08-20T00:00:00Z" },
+        { id: "open", company: "co", lastSeenAt: RECENT },
+        { id: "shut", company: "co", isClosed: 1, lastSeenAt: RECENT },
       ],
     );
 
     const snap = await runExport(dir);
     const bySlug = (slug: string) => snap.jobs.find((j) => j.slug === slug)!;
 
-    expect(bySlug("open").lastSeenAt).toBe("2026-08-20T00:00:00Z");
+    expect(bySlug("open").lastSeenAt).toBe(RECENT);
     expect(bySlug("shut").lastSeenAt).toBeUndefined();
   });
 
