@@ -3,6 +3,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { openDb } from "../db/index.ts";
 import { canonicalCity } from "@aiengjobs/shared/city";
+import { MAX_JOB_AGE_DAYS } from "@aiengjobs/shared/indexable";
 import { stripHtml } from "../util/html.ts";
 import { fetchFxRates } from "../util/fx.ts";
 import { writeDailyPicks } from "./dailyPicks.ts";
@@ -10,6 +11,8 @@ import type {
   SiteSnapshot,
   Job,
   Company,
+  CompanyHiring,
+  BoardHiring,
   RemoteType,
   Seniority,
   SalaryPeriod,
@@ -82,6 +85,134 @@ const inSnapshot = (t: string) =>
   `(${t}.classification = 'in' OR ${t}.delisted_at >= @cutoff)
    AND (${t}.is_closed = 0 OR ${t}.last_seen_at >= @cutoff)`;
 
+/**
+ * Providers whose connector searches the employer's board by keyword instead of
+ * reading all of it. Their rows are "postings that matched our queries", so a
+ * count of them is not the employer's hiring and is never published as one.
+ * Everything else (Greenhouse, Lever, Ashby, SmartRecruiters, Workable, …)
+ * returns the whole board, which is what makes `openPostings` a real total.
+ */
+const KEYWORD_QUERIED_PROVIDERS = ["workday", "oracle", "icims", "eightfold", "successfactors"];
+
+/**
+ * Providers whose posted date is the posting's *first* publication, on a board
+ * read in full — the only ones where "posted → last seen" measures how long a
+ * role was open.
+ *
+ * Measured on 3,272 closed in-scope roles (2026-09-17): Greenhouse
+ * (`first_published`), Ashby (`publishedAt`) and Lever (`createdAt`) agree to
+ * within a day, at a median of 76–77. SmartRecruiters came out at 22 — its
+ * `releasedDate` moves each time a posting is re-released — Teamtailor at 4,
+ * and Workday at 24, where a role also "closes" whenever it drops out of our
+ * keyword results. Capital One's median would have been published as 7 days.
+ * An allow-list rather than a block-list, so a new connector is timed only once
+ * someone has checked what its date means.
+ */
+const FIRST_PUBLISHED_PROVIDERS = ["greenhouse", "ashby", "lever"];
+
+/** Closures a company needs before a median time-open is quoted for it. */
+export const MIN_CLOSED_FOR_MEDIAN = 5;
+
+const DAY_MS = 86_400_000;
+
+function medianOf(xs: number[]): number {
+  const s = [...xs].sort((a, b) => a - b);
+  const m = Math.floor(s.length / 2);
+  return s.length % 2 ? s[m]! : (s[m - 1]! + s[m]!) / 2;
+}
+
+const closureStats = (daysOpen: number[]): BoardHiring => ({
+  closedRoles: daysOpen.length,
+  ...(daysOpen.length >= MIN_CLOSED_FOR_MEDIAN
+    ? { medianDaysOpen: Math.round(medianOf(daysOpen)) }
+    : {}),
+});
+
+/**
+ * What the database knows about each employer's hiring that the published rows
+ * can't show — see CompanyHiring in shared/types.ts.
+ *
+ * Both halves read rows the snapshot never carries: postings classified out of
+ * scope (68k open against 6.5k in, on the night this was written) and roles
+ * that closed up to PRUNE_AFTER_DAYS ago. Dates are compared in JS rather than
+ * SQL because `posted_at` keeps the feed's own UTC offset, and the age test has
+ * to agree with shared/indexable's `jobAgeDays` to the millisecond: the site
+ * divides its listed count by `openPostings`, and a role listed there but
+ * missed here would publish a share above 100%.
+ */
+function hiringStats(
+  db: ReturnType<typeof openDb>,
+  generatedAt: string,
+): { byCompany: Map<string, CompanyHiring>; board: BoardHiring } {
+  const now = Date.parse(generatedAt);
+  const marks = KEYWORD_QUERIED_PROVIDERS.map(() => "?").join(", ");
+
+  const openRows = db
+    .prepare(
+      `SELECT j.company_id AS company_id, j.posted_at AS posted_at
+       FROM jobs j JOIN companies c ON c.id = j.company_id
+       WHERE j.is_closed = 0
+         AND j.posted_at IS NOT NULL
+         AND c.ats_provider NOT IN (${marks})
+         AND NOT EXISTS (
+           SELECT 1 FROM sources s
+           WHERE s.company_id = c.id AND s.ats_provider IN (${marks})
+         )`,
+    )
+    .all(...KEYWORD_QUERIED_PROVIDERS, ...KEYWORD_QUERIED_PROVIDERS) as unknown as {
+    company_id: string;
+    posted_at: string;
+  }[];
+  const openPostings = new Map<string, number>();
+  for (const r of openRows) {
+    const posted = Date.parse(r.posted_at);
+    if (!Number.isFinite(posted) || (now - posted) / DAY_MS > MAX_JOB_AGE_DAYS) continue;
+    openPostings.set(r.company_id, (openPostings.get(r.company_id) ?? 0) + 1);
+  }
+
+  // `classification = 'in'` keeps this to roles that were on the board when
+  // they closed; one delisted first is 'out' by then and was never ours to time.
+  const timed = FIRST_PUBLISHED_PROVIDERS.map(() => "?").join(", ");
+  const closedRows = db
+    .prepare(
+      `SELECT j.company_id AS company_id, j.posted_at AS posted_at, j.last_seen_at AS last_seen_at
+       FROM jobs j JOIN companies c ON c.id = j.company_id
+       WHERE j.is_closed = 1 AND j.classification = 'in'
+         AND j.posted_at IS NOT NULL AND j.last_seen_at IS NOT NULL
+         AND c.ats_provider IN (${timed})
+         AND NOT EXISTS (
+           SELECT 1 FROM sources s
+           WHERE s.company_id = c.id AND s.ats_provider NOT IN (${timed})
+         )`,
+    )
+    .all(...FIRST_PUBLISHED_PROVIDERS, ...FIRST_PUBLISHED_PROVIDERS) as unknown as {
+    company_id: string;
+    posted_at: string;
+    last_seen_at: string;
+  }[];
+  const daysOpen = new Map<string, number[]>();
+  const allDaysOpen: number[] = [];
+  for (const r of closedRows) {
+    const days = (Date.parse(r.last_seen_at) - Date.parse(r.posted_at)) / DAY_MS;
+    // A feed that re-dates a posting after we last saw it gives a negative span.
+    if (!Number.isFinite(days) || days < 0) continue;
+    allDaysOpen.push(days);
+    const list = daysOpen.get(r.company_id);
+    if (list) list.push(days);
+    else daysOpen.set(r.company_id, [days]);
+  }
+
+  const byCompany = new Map<string, CompanyHiring>();
+  for (const id of new Set([...openPostings.keys(), ...daysOpen.keys()])) {
+    const open = openPostings.get(id);
+    byCompany.set(id, {
+      ...(open !== undefined ? { openPostings: open } : {}),
+      ...closureStats(daysOpen.get(id) ?? []),
+    });
+  }
+  return { byCompany, board: closureStats(allDaysOpen) };
+}
+
 interface JobRow {
   id: string;
   slug: string;
@@ -124,8 +255,12 @@ interface CompanyRow {
 
 export async function exportSnapshot(): Promise<void> {
   const db = openDb();
+  // Fixed up front: every age in the file is measured against this instant, by
+  // the site as well as here, so it has to be one value rather than "now" read
+  // at several points across a run that includes a network call.
+  const generatedAt = new Date().toISOString();
   const closedCutoff = new Date(
-    Date.now() - CLOSED_RETENTION_DAYS * 86_400_000,
+    Date.parse(generatedAt) - CLOSED_RETENTION_DAYS * DAY_MS,
   ).toISOString();
 
   // Public fields only — internal provenance (ats_provider, ats_token) stays
@@ -144,6 +279,7 @@ export async function exportSnapshot(): Promise<void> {
        WHERE id IN (SELECT DISTINCT company_id FROM jobs WHERE ${inSnapshot("jobs")})`,
     )
     .all({ cutoff: closedCutoff }) as unknown as CompanyRow[];
+  const hiring = hiringStats(db, generatedAt);
   const companies: Company[] = companyRows.map((c) => ({
     id: c.id,
     name: c.name,
@@ -153,6 +289,7 @@ export async function exportSnapshot(): Promise<void> {
     size: c.size ?? undefined,
     logoUrl: c.logo_url ?? undefined,
     description: c.description ?? undefined,
+    ...(hiring.byCompany.has(c.id) ? { hiring: hiring.byCompany.get(c.id) } : {}),
   }));
 
   const rows = db
@@ -241,10 +378,11 @@ export async function exportSnapshot(): Promise<void> {
   const fxRates = await fetchFxRates();
 
   const snapshot: SiteSnapshot = {
-    generatedAt: new Date().toISOString(),
+    generatedAt,
     fxRates,
     jobs,
     companies,
+    hiring: hiring.board,
   };
 
   db.close();
