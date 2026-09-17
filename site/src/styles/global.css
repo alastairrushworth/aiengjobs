@@ -636,8 +636,33 @@ a.badge.skill:focus-visible { color: var(--text); border-color: var(--accent); }
    SC 2.5.8) — at 0.95rem the bare link was 18px tall. Same treatment as
    .crumbs .feed in LandingPage.astro and .line a in LandingStats.astro; this
    was the one back-link that never got it. */
-.back { color: var(--muted); display: inline-block; padding-block: 3px; }
-.back:hover { color: var(--accent-text); }
+/* The way back to the list. It was a line of muted text with a 26px tap
+   target, which on a page whose first job is "or go and look at another role"
+   read as a footnote. A ghost pill: clearly a control, 32px tall, and quiet
+   enough not to compete with the title under it. */
+.back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 13px 5px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 0.88rem;
+  line-height: 1.4;
+}
+.back:hover,
+.back:focus-visible {
+  color: var(--text);
+  border-color: var(--border-strong);
+  background: var(--surface);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .back { transition: color 0.15s ease, border-color 0.15s ease, background-color 0.15s ease; }
+  .back .arrow { transition: transform 0.15s ease; }
+  .back:hover .arrow,
+  .back:focus-visible .arrow { transform: translateX(-3px); }
+}
 
 /* Narrow screens: stack salary under the title so long titles don't cramp. */
 @media (max-width: 480px) {

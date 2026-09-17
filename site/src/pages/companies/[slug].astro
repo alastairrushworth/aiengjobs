@@ -10,6 +10,8 @@ import { CLUSTER_PAGES } from "../../lib/clusters.ts";
 import { url } from "../../lib/url.ts";
 import { jsonLdScript } from "../../lib/jsonld.ts";
 import { companies, openJobsByCompany, companyPageIndexable } from "../../lib/data.ts";
+import { companyHiring } from "../../lib/companyContext.ts";
+import CompanyHiringStats from "../../components/CompanyHiringStats.astro";
 
 export function getStaticPaths() {
   return companies
@@ -32,6 +34,10 @@ const noindex = !companyPageIndexable(company.slug);
 // composing a URL from it (lib/format — the job page's sameAs uses the same
 // guard, so the two can't disagree about what a usable domain is).
 const domainHref = companyUrl(company.domain);
+
+// The employer's hiring as a set, and over time — the part of this page that is
+// not a filtered copy of the job list. See lib/companyHiring.ts.
+const hiring = companyHiring(company.slug);
 
 // Distinct stack across this company's roles.
 const stack = [...new Set(jobs.flatMap((j) => j.skills))].slice(0, 14);
@@ -79,7 +85,7 @@ const breadcrumbJsonLd = {
   noindex={noindex}
 >
   <section class="hero" style="padding-bottom:8px;text-align:left">
-    <p style="margin:0"><a class="back" href={url("/")}>← All jobs</a></p>
+    <p style="margin:0"><a class="back" href={url("/")}><span class="arrow" aria-hidden="true">←</span>All jobs</a></p>
     <div class="company-head">
       <CompanyLogo name={company.name} slug={company.slug} size={56} />
       <h1>{company.name}</h1>
@@ -101,6 +107,8 @@ const breadcrumbJsonLd = {
       ) : null}
     </p>
   </section>
+
+  <CompanyHiringStats hiring={hiring} companyName={company.name} />
 
   {stack.length > 0 && (
     <div class="meta" style="margin:6px 0 20px;display:flex;flex-wrap:wrap;gap:8px">
