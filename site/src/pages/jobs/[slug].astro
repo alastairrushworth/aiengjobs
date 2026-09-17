@@ -511,7 +511,11 @@ const ogImageAlt = `${job.title} at ${job.companyName}${location ? `, ${location
   canonicalOverride={dupCanonicalSlug ? url(`/jobs/${dupCanonicalSlug}/`) : undefined}
 >
   <article class="job-detail">
-    <p><a class="back" href={url("/")}>← All jobs</a></p>
+    <p>
+      <a class="back" href={url("/")} data-back data-jobs-base={url("/jobs/")}>
+        <span class="arrow" aria-hidden="true">←</span><span class="back-label">All jobs</span>
+      </a>
+    </p>
     {closed && (
       <p class="closed-banner" role="status">
         This role has closed — it no longer appears on {job.companyName}'s careers site.
@@ -631,6 +635,33 @@ const ogImageAlt = `${job.title} at ${job.companyName}${location ? `, ${location
       )}
     </aside>
   )}
+
+  {/* "All jobs" always went to an unfiltered home page — so someone who had
+      narrowed the board to remote Rust roles, opened one and wanted the next
+      lost their filters, their page and their place. When they arrived from one
+      of the board's own lists, take them back *to it*: the filters live in that
+      URL and the browser restores the scroll. Arriving any other way (search, a
+      share, a new tab, another job page) leaves the plain link alone, as does
+      having no script. */}
+  <script is:inline>
+    (() => {
+      const link = document.querySelector("a.back[data-back]");
+      if (!link || !document.referrer || history.length < 2) return;
+      let from;
+      try {
+        from = new URL(document.referrer);
+      } catch {
+        return;
+      }
+      if (from.origin !== location.origin || from.pathname.startsWith(link.dataset.jobsBase)) return;
+      link.querySelector(".back-label").textContent = "Back to results";
+      link.addEventListener("click", (e) => {
+        if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+        e.preventDefault();
+        history.back();
+      });
+    })();
+  </script>
 
   {jsonLd && (
     <script type="application/ld+json" set:html={jsonLdScript(jsonLd)} is:inline />
