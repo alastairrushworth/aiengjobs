@@ -7,7 +7,6 @@ import {
   countryName,
   decodeEntities,
   formatSalary,
-  kUsd,
   postedAgo,
   remoteLabel,
   safeUrl,
@@ -16,7 +15,10 @@ import {
 import { url } from "../../lib/url.ts";
 import { jsonLdScript } from "../../lib/jsonld.ts";
 import { ogImagePath } from "../../lib/og/policy.ts";
-import { payContext, IN_LINE_BAND } from "../../lib/payContext.ts";
+import { payContext } from "../../lib/payContext.ts";
+import { postingFacts, type DegreeLevel } from "../../lib/postingFacts.ts";
+import PayBenchmark from "../../components/PayBenchmark.astro";
+import AtAGlance from "../../components/AtAGlance.astro";
 import { CLUSTER_PAGES } from "../../lib/clusters.ts";
 import { buildJobTitles } from "../../lib/jobTitle.ts";
 import CompanyLogo from "../../components/CompanyLogo.astro";
@@ -175,12 +177,26 @@ const location =
   (job.locationRaw && decodeEntities(job.locationRaw)) ||
   [job.city, country].filter(Boolean).join(", ") ||
   null;
-const facts: { label: string; value: string; muted?: boolean }[] = [
+// What the advert asks for and offers, read out of its text — lib/postingFacts.
+// The description is the employer's, and Google already has it from the
+// employer; a reading of it (how much experience, whether a visa is on offer,
+// how many days in the office) is something this page can add without
+// inventing anything. Tombstones skip it: a closed role has no text left to
+// read, and the other two kinds are off the board.
+const reading = isTombstone ? { facts: [] } : postingFacts(job.descriptionText);
+
+// Everything the page states about the role, as one "At a glance" list: the
+// feed's own fields first (they are what the role *is*), then what was read out
+// of the description. There used to be a grid of tiles for the first six and a
+// separate section for the rest; to a reader "Level: Staff" and "Experience:
+// 8+ years" are the same kind of answer, and tiles made fourteen of them a
+// 700px wall on a phone. Label/value rows hold all of it in a third of that.
+const facts: { label: string; value: string; tone?: "salary" | "muted" }[] = [
   // Honesty on a salary-transparent board: say so when a range isn't published
   // rather than silently omitting the row.
   salary
-    ? { label: "Salary", value: salary }
-    : { label: "Salary", value: "Not published", muted: true },
+    ? { label: "Salary", value: salary, tone: "salary" as const }
+    : { label: "Salary", value: "Not published", tone: "muted" as const },
   location && { label: "Location", value: location },
   remoteLabel(job.remoteType) && {
     label: "Work type",
@@ -197,7 +213,8 @@ const facts: { label: string; value: string; muted?: boolean }[] = [
   // listing fails. Open roles only (the exporter drops it on tombstones), and
   // only on snapshots new enough to carry it.
   !isTombstone && lastSeen && { label: "Verified live", value: lastSeen },
-].filter(Boolean) as { label: string; value: string; muted?: boolean }[];
+  ...reading.facts.map((f) => ({ label: f.label, value: f.value })),
+].filter(Boolean) as { label: string; value: string; tone?: "salary" | "muted" }[];
 
 // Cap the skill wall; the long tail adds noise more than signal.
 const MAX_SKILLS = 16;
@@ -216,21 +233,14 @@ const clusterLinks = isTombstone
       label: p.label,
     }));
 
-// Pay against the rest of the board — see lib/payContext.ts for why this is
-// the sentence worth computing. Phrased from the role's side when it has a
-// range, from the pool's side when it doesn't (then the useful fact is what
-// comparable roles pay and how many say so). Tombstones skip it: comparing a
-// closed role to the live board is trivia.
+// Pay against the rest of the board — see lib/payBenchmark.ts. Phrased from the
+// role's side when it has a range, from the pool's side when it doesn't (then
+// the useful fact is what comparable roles pay and how many say so). For the
+// half of the board that publishes no pay it is the only pay information on
+// the page. Tombstones skip it: comparing a closed role to the live board is
+// trivia.
 const pay = isTombstone ? null : payContext(job);
-const payPool = pay
-  ? `${pay.clusterLabel} roles${pay.country ? ` in ${pay.country}` : ""} on this board`
-  : "";
-const payStanding =
-  pay?.delta === undefined
-    ? null
-    : Math.abs(pay.delta) < IN_LINE_BAND
-      ? "in line with"
-      : `${Math.round(Math.abs(pay.delta) * 100)}% ${pay.delta > 0 ? "above" : "below"}`;
+
 
 // Render the description as real paragraphs + bullet lists. The text carries
 // newlines, with list items prefixed by a bullet/dash marker (see stripHtml).
@@ -277,6 +287,12 @@ const VALID_THROUGH_DAYS = 30;
 const validThrough = new Date(
   Date.parse(generatedAt) + VALID_THROUGH_DAYS * DAY_MS,
 ).toISOString();
+// Google's credentialCategory vocabulary has one value above a bachelor's.
+const DEGREE_CREDENTIAL: Record<DegreeLevel, string> = {
+  bachelor: "bachelor degree",
+  master: "postgraduate degree",
+  phd: "postgraduate degree",
+};
 const PERIOD_UNIT: Record<string, string> = {
   year: "YEAR", month: "MONTH", day: "DAY", hour: "HOUR",
 };
@@ -357,6 +373,31 @@ const jsonLd: Record<string, unknown> | null = isTombstone || dupCanonicalSlug |
       // Google's JobPosting rich result does not read it; it is here so the
       // page's added data is machine-readable, not only visible.
       ...(job.skills.length ? { skills: job.skills.join(", ") } : {}),
+      // The reading above, in the JobPosting properties Google documents for it.
+      // Only the plain cases: `minYears` is absent for "preferred" figures and
+      // degree ladders, `requiredDegree` for roles aimed at students.
+      ...(reading.minYears !== undefined
+        ? {
+            experienceRequirements: {
+              "@type": "OccupationalExperienceRequirements",
+              monthsOfExperience: reading.minYears * 12,
+            },
+          }
+        : {}),
+      ...(reading.requiredDegree
+        ? {
+            educationRequirements: {
+              "@type": "EducationalOccupationalCredential",
+              credentialCategory: DEGREE_CREDENTIAL[reading.requiredDegree],
+            },
+          }
+        : {}),
+      // Google requires both of the above alongside this one.
+      ...(reading.experienceInPlaceOfEducation &&
+      reading.minYears !== undefined &&
+      reading.requiredDegree
+        ? { experienceInPlaceOfEducation: true }
+        : {}),
       // datePosted is required for the rich result; first-seen is the honest
       // fallback when a feed carries no posted date.
       datePosted: job.postedAt ?? job.ingestedAt,
@@ -470,7 +511,11 @@ const ogImageAlt = `${job.title} at ${job.companyName}${location ? `, ${location
   canonicalOverride={dupCanonicalSlug ? url(`/jobs/${dupCanonicalSlug}/`) : undefined}
 >
   <article class="job-detail">
-    <p><a class="back" href={url("/")}>← All jobs</a></p>
+    <p>
+      <a class="back" href={url("/")} data-back data-jobs-base={url("/jobs/")}>
+        <span class="arrow" aria-hidden="true">←</span><span class="back-label">All jobs</span>
+      </a>
+    </p>
     {closed && (
       <p class="closed-banner" role="status">
         This role has closed — it no longer appears on {job.companyName}'s careers site.
@@ -512,16 +557,23 @@ const ogImageAlt = `${job.title} at ${job.companyName}${location ? `, ${location
         )}
       </p>
     </div>
-    {facts.length > 0 && (
-      <dl class="facts">
-        {facts.map((f) => (
-          <div class="fact">
-            <dt>{f.label}</dt>
-            <dd class={f.muted ? "muted" : f.label === "Salary" ? "salary" : undefined}>{f.value}</dd>
-          </div>
-        ))}
-      </dl>
-    )}
+    <section class="role-panel">
+      <div class="panel-section">
+        <h2>At a glance</h2>
+        <AtAGlance
+          facts={facts}
+          skills={skills}
+          moreSkills={moreSkills}
+          clusterLinks={clusterLinks}
+        />
+      </div>
+      {pay && (
+        <div class="panel-section">
+          <h2>How the pay compares</h2>
+          <PayBenchmark pay={pay} />
+        </div>
+      )}
+    </section>
     {!closed && applyHref && (
       <p class="apply-wrap top-apply">
         <a class="apply" href={applyHref} target="_blank" rel="noopener noreferrer nofollow"
@@ -530,40 +582,7 @@ const ogImageAlt = `${job.title} at ${job.companyName}${location ? `, ${location
         </a>
       </p>
     )}
-    {skills.length > 0 && (
-      <div class="meta skills">
-        {skills.map((s) => <span class="badge skill">{s}</span>)}
-        {moreSkills > 0 && <span class="badge more">+{moreSkills} more</span>}
-      </div>
-    )}
-    {clusterLinks.length > 0 && (
-      <p class="filed">
-        <span class="filed-label">Filed under</span>
-        {clusterLinks.map((c, i) => (
-          <>
-            {i > 0 && <span class="filed-sep" aria-hidden="true">·</span>}
-            <a href={c.href}>{c.label}</a>
-          </>
-        ))}
-      </p>
-    )}
-    {pay && (
-      <p class="pay-context">
-        {payStanding ? (
-          <>
-            This range sits <strong>{payStanding}</strong> the {kUsd(pay.medianUsd)} median for{" "}
-            <a href={url(`/${pay.clusterSlug}/`)}>{payPool}</a> that publish pay
-            ({pay.pricedCount} of {pay.total}).
-          </>
-        ) : (
-          <>
-            {pay.pricedCount} of {pay.total}{" "}
-            <a href={url(`/${pay.clusterSlug}/`)}>{payPool}</a> publish pay; their median is{" "}
-            <strong>{kUsd(pay.medianUsd)}</strong>.
-          </>
-        )}
-      </p>
-    )}
+    {blocks.length > 0 && <h2 class="desc-title">Job description</h2>}
     {blocks.length > 0 ? (
       <div class="desc">
         {blocks.map((b) =>
@@ -617,6 +636,33 @@ const ogImageAlt = `${job.title} at ${job.companyName}${location ? `, ${location
     </aside>
   )}
 
+  {/* "All jobs" always went to an unfiltered home page — so someone who had
+      narrowed the board to remote Rust roles, opened one and wanted the next
+      lost their filters, their page and their place. When they arrived from one
+      of the board's own lists, take them back *to it*: the filters live in that
+      URL and the browser restores the scroll. Arriving any other way (search, a
+      share, a new tab, another job page) leaves the plain link alone, as does
+      having no script. */}
+  <script is:inline>
+    (() => {
+      const link = document.querySelector("a.back[data-back]");
+      if (!link || !document.referrer || history.length < 2) return;
+      let from;
+      try {
+        from = new URL(document.referrer);
+      } catch {
+        return;
+      }
+      if (from.origin !== location.origin || from.pathname.startsWith(link.dataset.jobsBase)) return;
+      link.querySelector(".back-label").textContent = "Back to results";
+      link.addEventListener("click", (e) => {
+        if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+        e.preventDefault();
+        history.back();
+      });
+    })();
+  </script>
+
   {jsonLd && (
     <script type="application/ld+json" set:html={jsonLdScript(jsonLd)} is:inline />
   )}
@@ -649,65 +695,25 @@ const ogImageAlt = `${job.title} at ${job.companyName}${location ? `, ${location
     color: var(--text);
     margin: 16px 0 0;
   }
-  /* Flex rather than an auto-fit grid: the grid left a dead panel whenever the
-     fact count didn't fill its last row (six facts across five columns at 720px
-     left most of a row empty). Flex items grow, so a short last row stretches
-     to fill instead of showing the container through the gap. */
-  .facts {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 1px;
-    margin: 0 0 8px;
-    background: var(--border);
+  /* What the board adds to the employer's posting, set apart from the
+     employer's copy that follows by the accent rule down its left edge: a
+     reading of the advert, then the pay of comparable roles. One panel rather
+     than two — a second border and a second margin bought nothing. */
+  .role-panel {
+    margin: 0;
+    padding: 0 18px;
     border: 1px solid var(--border);
-    border-radius: var(--radius);
-    overflow: hidden;
-  }
-  .facts .fact { flex: 1 1 140px; background: var(--surface); padding: 12px 14px; }
-  /* Wider basis once there's room, so the usual six facts land as two rows of
-     three instead of five-plus-a-stretched-one. */
-  @media (min-width: 700px) {
-    .facts .fact { flex: 1 1 200px; }
-  }
-  .facts dt {
-    color: var(--muted);
-    font-size: 0.72rem;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    margin-bottom: 4px;
-  }
-  .facts dd { margin: 0; font-size: 0.95rem; font-weight: 600; }
-  .facts dd.salary { color: var(--accent-2); }
-  .facts dd.muted { color: var(--muted); font-weight: 500; }
-  .job-detail .meta { display: flex; flex-wrap: wrap; gap: 8px; }
-  .job-detail .skills { margin-top: 16px; }
-  .badge.more { color: var(--muted); }
-  .filed {
-    margin: 14px 0 0;
-    font-size: 0.9rem;
-    color: var(--muted);
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px 8px;
-    align-items: baseline;
-  }
-  .filed a { color: var(--accent-text); }
-  .filed a:hover { text-decoration: underline; }
-  .filed-sep { color: var(--border-strong); }
-  /* The board's own sentence about the role, set apart from the employer's
-     copy that follows so the two voices don't run together. */
-  .pay-context {
-    margin: 16px 0 0;
-    padding: 10px 14px;
     border-left: 3px solid var(--accent);
     background: var(--surface-2);
     border-radius: 0 var(--radius) var(--radius) 0;
     font-size: 0.92rem;
     line-height: 1.55;
-    max-width: 66ch;
   }
-  .pay-context a { color: var(--accent-text); }
-  .pay-context a:hover { text-decoration: underline; }
+  .panel-section { padding: 12px 0 14px; }
+  .panel-section + .panel-section { border-top: 1px solid var(--border); }
+  .role-panel h2 { font-size: 1rem; margin: 0 0 6px; letter-spacing: -0.01em; }
+  .desc-title { font-size: 1.1rem; margin: 32px 0 0; letter-spacing: -0.01em; }
+  .desc-title + .desc { margin-top: 12px; }
   .desc { margin-top: 28px; color: var(--text); line-height: 1.7; }
   /* The description is the longest prose on the site. At the column's full
      720px it set ~88 characters a line, well past the ~65–75 the eye tracks

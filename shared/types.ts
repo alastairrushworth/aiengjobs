@@ -52,6 +52,48 @@ export interface Company {
   size?: string;
   logoUrl?: string;
   description?: string;
+  /** What the engine's database knows about this employer's hiring that the
+   *  snapshot's own rows cannot show. Absent on snapshots older than the field. */
+  hiring?: CompanyHiring;
+}
+
+/**
+ * Hiring facts that need the whole database rather than the published rows.
+ *
+ * The snapshot carries the roles in scope. The database also holds every other
+ * posting on each employer's board (classified out, never published) and every
+ * role that closed in the last 90 days — which is what it takes to say "128 of
+ * Anthropic's 607 open postings are AI engineering" or "roles here stay open a
+ * median of 34 days". Neither number exists anywhere else: the employer's own
+ * careers page has no notion of scope and keeps no history.
+ */
+export interface CompanyHiring {
+  /**
+   * Every open posting on the employer's board inside the listing window
+   * (MAX_JOB_AGE_DAYS), in scope or not — the denominator for the roles this
+   * board lists, counted by the same rule so the two are comparable.
+   *
+   * Only set where the connector reads the whole board. Workday, Oracle, iCIMS,
+   * Eightfold and SuccessFactors are queried by keyword, so their row counts
+   * are "postings matching our searches", not the employer's hiring.
+   */
+  openPostings?: number;
+  /**
+   * In-scope roles that closed inside the engine's retention window — counted
+   * only where the feed's posted date is a true first-publication date
+   * (Greenhouse, Ashby, Lever), so that "posted → last seen" means what it says.
+   * Zero elsewhere, not because nothing closed but because it can't be timed.
+   */
+  closedRoles: number;
+  /** Median days those roles were open, posted → last seen on the feed. Absent
+   *  below MIN_CLOSED_FOR_MEDIAN — a median of three closures is an anecdote. */
+  medianDaysOpen?: number;
+}
+
+/** The same closure statistics across every employer that can be timed, for comparison. */
+export interface BoardHiring {
+  closedRoles: number;
+  medianDaysOpen?: number;
 }
 
 export interface Job {
@@ -142,4 +184,6 @@ export interface SiteSnapshot {
   fxRates: Record<string, number>;
   jobs: Job[];
   companies: Company[];
+  /** Board-wide closure statistics — see CompanyHiring. Absent on older snapshots. */
+  hiring?: BoardHiring;
 }

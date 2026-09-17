@@ -162,7 +162,7 @@ const noindex = page.currentPage > 1;
       {...filterOptions}
     >
       <p class="crumbs" slot="crumbs">
-        <a class="back" href={url("/")}>← All jobs</a>
+        <a class="back" href={url("/")}><span class="arrow" aria-hidden="true">←</span>All jobs</a>
         <a class="feed" href={feedHref}>RSS feed</a>
       </p>
       <ul class="jobs" id="jobs">
@@ -172,7 +172,7 @@ const noindex = page.currentPage > 1;
   ) : (
     <>
       <p class="crumbs">
-        <a class="back" href={url("/")}>← All jobs</a>
+        <a class="back" href={url("/")}><span class="arrow" aria-hidden="true">←</span>All jobs</a>
         <a class="feed" href={feedHref}>RSS feed</a>
       </p>
       <ul class="jobs">
@@ -227,7 +227,7 @@ const noindex = page.currentPage > 1;
   .crumbs {
     display: flex;
     gap: 16px;
-    align-items: baseline;
+    align-items: center;
     margin: 8px 0;
   }
   /* padding-block takes the tap target from 20px to the 24px floor WCAG 2.2

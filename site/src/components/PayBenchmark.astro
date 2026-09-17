@@ -1,0 +1,184 @@
+---
+import type { PayBenchmark } from "../lib/payBenchmark.ts";
+import { IN_LINE_BAND, payChart } from "../lib/payBenchmark.ts";
+import { kUsd } from "../lib/format.ts";
+import { url } from "../lib/url.ts";
+
+interface Props {
+  pay: PayBenchmark;
+}
+
+const { pay } = Astro.props;
+const chart = payChart(pay);
+const role = pay.role;
+
+const pool =
+  `${pay.seniority ? `${pay.seniority} ` : ""}${pay.clusterLabel} roles` +
+  `${pay.country ? ` in ${pay.country}` : pay.tooThinIn ? " worldwide" : ""}`;
+
+const poolHref = pay.clusterSlug ? url(`/${pay.clusterSlug}/`) : url("/");
+
+const standing = !role
+  ? null
+  : Math.abs(role.delta) < IN_LINE_BAND
+    ? "in line with"
+    : `${Math.round(Math.abs(role.delta) * 100)}% ${role.delta > 0 ? "above" : "below"}`;
+
+// Counts, not a percentile: "higher than 103 of 143" is true at any pool size,
+// where "72nd percentile" of a dozen roles claims a precision it doesn't have.
+// The role is one of the priced roles itself, so it is compared with the rest.
+const others = pay.pricedCount - 1;
+
+const roleRange = role
+  ? role.loUsd === role.hiUsd
+    ? kUsd(role.loUsd)
+    : `${kUsd(role.loUsd)}–${kUsd(role.hiUsd)}`
+  : null;
+
+// The whole picture in words, for a screen reader and for anything that reads
+// the page without rendering it. Nothing below is only in the drawing.
+const chartLabel =
+  `Pay for ${pool} on this board: middle half ${kUsd(pay.p25)} to ${kUsd(pay.p75)}, ` +
+  `median ${kUsd(pay.medianUsd)}, 10th to 90th percentile ${kUsd(pay.p10)} to ${kUsd(pay.p90)}.` +
+  (roleRange ? ` This role: ${roleRange}.` : "");
+
+const pos = (left: number, width?: number) =>
+  `left:${left.toFixed(2)}%${width !== undefined ? `;width:${width.toFixed(2)}%` : ""}`;
+---
+
+<div class="pay-benchmark">
+  <p class="lede">
+    {role ? (
+      <>
+        This range sits <strong>{standing}</strong> the {kUsd(pay.medianUsd)} median for{" "}
+        <a href={poolHref}>{pool}</a> on this board
+        {others > 0 && <> — higher than {role.below} of the {others} others that publish pay</>}.
+      </>
+    ) : (
+      <>
+        This posting doesn't publish pay. {pay.pricedCount} of the {pay.total}{" "}
+        <a href={poolHref}>{pool}</a> on this board do: the middle half
+        pay <strong>{kUsd(pay.p25)}–{kUsd(pay.p75)}</strong>, with a median of{" "}
+        <strong>{kUsd(pay.medianUsd)}</strong>.
+      </>
+    )}
+    {pay.tooThinIn && (
+      <>
+        {" "}Too few roles in {pay.tooThinIn} publish pay for a local comparison, so this is every
+        country together — mostly US pay.
+      </>
+    )}
+  </p>
+
+  {/* Emphasis form: this role in the accent, the pool it is measured against
+      in the de-emphasis gray. Positioned HTML rather than SVG so the labels stay
+      at the page's type size at every width — a scaled viewBox sets 11px text
+      at 6px on a phone. No script: the hover detail is the native title. */}
+  <div class="chart" role="img" aria-label={chartLabel}>
+    {chart.role && (
+      <div class="track role-track">
+        {chart.role.width > 0 ? (
+          <span class="role-bar" style={pos(chart.role.left, chart.role.width)} title={`This role: ${roleRange}`} />
+        ) : (
+          <span class="role-dot" style={pos(chart.role.left)} title={`This role: ${roleRange}`} />
+        )}
+      </div>
+    )}
+    <div class="track pool-track">
+      <span
+        class="whisker"
+        style={pos(chart.whisker.left, chart.whisker.width)}
+        title={`10th–90th percentile: ${kUsd(pay.p10)}–${kUsd(pay.p90)}`}
+      />
+      <span
+        class="box"
+        style={pos(chart.box.left, chart.box.width)}
+        title={`Middle half: ${kUsd(pay.p25)}–${kUsd(pay.p75)}`}
+      />
+      <span class="median" style={pos(chart.median)} title={`Median: ${kUsd(pay.medianUsd)}`} />
+    </div>
+    <div class="axis" aria-hidden="true">
+      <span>{kUsd(chart.minUsd)}</span>
+      {chart.labelMedian && (
+        <span class="median-label" style={pos(chart.median)}>{kUsd(pay.medianUsd)}</span>
+      )}
+      <span>{kUsd(chart.maxUsd)}</span>
+    </div>
+  </div>
+
+  <p class="legend">
+    {role && <span class="key"><i class="swatch role-swatch" />This role</span>}
+    <span class="key"><i class="swatch box-swatch" />Middle half of the {pay.pricedCount} that publish pay</span>
+    <span class="key"><i class="swatch median-swatch" />Median</span>
+    <span class="key"><i class="swatch whisker-swatch" />10th–90th percentile</span>
+    <span class="key usd">Annual, USD</span>
+  </p>
+</div>
+
+<style>
+  .pay-benchmark { --pool: var(--border-strong); }
+  .lede { margin: 0 0 14px; max-width: 66ch; }
+  .lede a { color: var(--accent-text); }
+  .lede a:hover { text-decoration: underline; }
+
+  .chart { margin: 0; }
+  .track { position: relative; height: 14px; }
+  .role-track { margin-bottom: 4px; }
+  .track span { position: absolute; top: 50%; transform: translateY(-50%); }
+  /* 4px rounded ends on the one mark that is data about this role; the pool's
+     box keeps a tighter radius so the two don't read as the same kind of thing. */
+  .role-bar { height: 8px; min-width: 6px; border-radius: 4px; background: var(--accent); }
+  .role-dot {
+    width: 10px;
+    height: 10px;
+    margin-left: -5px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 0 2px var(--surface-2);
+  }
+  .whisker { height: 2px; background: var(--pool); opacity: 0.55; }
+  .box { height: 12px; border-radius: 3px; background: var(--pool); }
+  /* The median is drawn in text ink with a surface ring, so it reads as a mark
+     on the box rather than a gap in it. */
+  .median {
+    width: 2px;
+    height: 18px;
+    margin-left: -1px;
+    background: var(--text);
+    box-shadow: 0 0 0 2px var(--surface-2);
+  }
+  .axis {
+    position: relative;
+    display: flex;
+    justify-content: space-between;
+    margin-top: 4px;
+    color: var(--muted);
+    font-size: 0.75rem;
+    font-variant-numeric: tabular-nums;
+  }
+  .axis .median-label { position: absolute; transform: translateX(-50%); color: var(--text); }
+
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 16px;
+    margin: 10px 0 0;
+    color: var(--muted);
+    font-size: 0.75rem;
+  }
+  .key { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+  .key.usd { margin-left: auto; }
+  .swatch { display: inline-block; flex: none; }
+  .role-swatch { width: 14px; height: 8px; border-radius: 4px; background: var(--accent); }
+  .box-swatch { width: 14px; height: 10px; border-radius: 3px; background: var(--pool); }
+  .median-swatch { width: 2px; height: 12px; background: var(--text); }
+  .whisker-swatch { width: 14px; height: 2px; background: var(--pool); opacity: 0.55; }
+  @media (max-width: 520px) {
+    .key { white-space: normal; }
+    .key.usd { margin-left: 0; }
+  }
+  /* Forced-colors strips backgrounds, which is every mark here. Borders survive. */
+  @media (forced-colors: active) {
+    .role-bar, .role-dot, .box, .median, .whisker { border: 1px solid CanvasText; }
+  }
+</style>

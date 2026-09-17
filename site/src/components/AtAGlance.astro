@@ -1,0 +1,90 @@
+---
+interface Props {
+  /** The feed's own fields, then what was read out of the description. */
+  facts: { label: string; value: string; tone?: "salary" | "muted" }[];
+  skills: string[];
+  /** Skills beyond the ones shown. */
+  moreSkills: number;
+  clusterLinks: { href: string; label: string }[];
+}
+
+const { facts, skills, moreSkills, clusterLinks } = Astro.props;
+---
+
+{facts.length > 0 && (
+  <dl class="glance">
+    {facts.map((f) => (
+      <div class="row">
+        <dt>{f.label}</dt>
+        <dd class={f.tone}>{f.value}</dd>
+      </div>
+    ))}
+  </dl>
+)}
+{(skills.length > 0 || clusterLinks.length > 0) && (
+  <dl class="glance-wide">
+    {skills.length > 0 && (
+      <div class="row">
+        <dt>Skills</dt>
+        <dd class="pills">
+          {skills.map((s) => <span class="badge skill">{s}</span>)}
+          {moreSkills > 0 && <span class="badge more">+{moreSkills} more</span>}
+        </dd>
+      </div>
+    )}
+    {clusterLinks.length > 0 && (
+      <div class="row">
+        <dt>Filed under</dt>
+        <dd class="filed">
+          {clusterLinks.map((c, i) => (
+            <>
+              {i > 0 && <span class="sep" aria-hidden="true">·</span>}
+              <a href={c.href}>{c.label}</a>
+            </>
+          ))}
+        </dd>
+      </div>
+    )}
+  </dl>
+)}
+
+<style>
+  /* Label and value side by side on one line, two columns of them, no rules
+     and no tiles. This is every fact the page states about the role; as tiles
+     the same list ran to 700px on a phone, and the point of the section is
+     that it can be taken in at a glance. */
+  .glance { margin: 0; columns: 2 250px; column-gap: 32px; }
+  .glance-wide { margin: 0; }
+  .row { display: flex; align-items: baseline; gap: 10px; padding: 2px 0; break-inside: avoid; }
+  /* Wide enough for the longest label ("Visa sponsorship") on one line; a
+     label that wraps turns a one-line row into two and the list stops aligning. */
+  dt { flex: none; width: 124px; white-space: nowrap; color: var(--muted); }
+  dd { margin: 0; min-width: 0; font-weight: 600; overflow-wrap: anywhere; }
+  dd.salary { color: var(--accent-2); }
+  dd.muted { color: var(--muted); font-weight: 500; }
+  .glance + .glance-wide { margin-top: 6px; }
+  .pills { display: flex; flex-wrap: wrap; gap: 6px; font-weight: 400; }
+  /* The shared .badge is filled with --surface-2 — which is also this panel's
+     background, so here the fill vanished and a skill was muted text inside a
+     1px --border outline: grey on near-black. On a job card the quiet tone is
+     deliberate (four pills mustn't outweigh the title); here the pills are the
+     content of their row, so they get a fill that separates from the panel, a
+     border that can be seen, and full-strength text a size up. */
+  .pills .badge {
+    font-size: 0.8rem;
+    padding: 4px 10px;
+    color: var(--text);
+    background: color-mix(in srgb, var(--accent) 16%, var(--surface-2));
+    border-color: color-mix(in srgb, var(--accent) 42%, var(--surface-2));
+  }
+  .pills .badge.more { color: var(--muted); background: transparent; border-color: var(--border-strong); }
+  .filed { display: flex; flex-wrap: wrap; gap: 2px 8px; font-weight: 500; }
+  .filed a { color: var(--accent-text); }
+  .filed a:hover { text-decoration: underline; }
+  .sep { color: var(--border-strong); }
+  /* On a phone the label column would take a third of the width; stack the
+     pills and links under their label instead, and keep the facts on one line. */
+  @media (max-width: 520px) {
+    .glance-wide .row { flex-direction: column; gap: 4px; padding: 4px 0; }
+  }
+</style>

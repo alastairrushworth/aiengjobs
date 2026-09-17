@@ -39,6 +39,8 @@ if (snapshotAgeDays > 2) {
 export const generatedAt: string = data.generatedAt;
 export const fxRates: Record<string, number> = data.fxRates ?? {};
 export const companies = data.companies;
+/** Board-wide closure statistics from the engine; absent on snapshots older than the field. */
+export const boardHiring = data.hiring;
 
 /**
  * Companies by slug. Every job page needs its employer's row, and looking that

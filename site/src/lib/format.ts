@@ -123,6 +123,23 @@ export function salaryMidpointUsd(
   return annual;
 }
 
+/**
+ * Annualized USD bounds of a pay range, under the same gate as the midpoint — a
+ * role is priced here exactly when it is priced everywhere else. A lone figure
+ * gives lo === hi.
+ */
+export function salaryRangeUsd(
+  job: SalaryFields,
+  fxRates?: Record<string, number>,
+): { lo: number; hi: number } | null {
+  if (salaryMidpointUsd(job, fxRates) === null) return null;
+  const fx = fxToUsd(job.salaryCurrency, fxRates)!;
+  const perYear = PERIOD_TO_YEAR[job.salaryPeriod ?? "year"] ?? 1;
+  const a = (job.salaryMin ?? job.salaryMax!) * perYear * fx;
+  const b = (job.salaryMax ?? job.salaryMin!) * perYear * fx;
+  return { lo: Math.min(a, b), hi: Math.max(a, b) };
+}
+
 export function median(xs: number[]): number {
   if (!xs.length) return 0;
   const s = [...xs].sort((a, b) => a - b);
