@@ -1,0 +1,129 @@
+---
+import type { CompanyHiringSummary } from "../lib/companyHiring.ts";
+import { sharePct, RECENT_DAYS } from "../lib/companyHiring.ts";
+import { kUsd } from "../lib/format.ts";
+import { url } from "../lib/url.ts";
+
+interface Props {
+  hiring: CompanyHiringSummary;
+  companyName: string;
+}
+
+const { hiring: h, companyName } = Astro.props;
+
+// Only the tiles that can be filled, as on the landing pages — an empty
+// "Median pay" box for an employer that publishes none is worse than no tile.
+const tiles: { label: string; value: string; note?: string }[] = [
+  h.scopeShare !== undefined && {
+    label: "Share of its hiring",
+    value: sharePct(h.scopeShare),
+    note: `${h.openRoles} of ${h.openPostings} open postings are AI engineering`,
+  },
+  {
+    label: `Posted in the last ${RECENT_DAYS} days`,
+    value: String(h.postedRecently),
+    note: `of ${h.openRoles} open role${h.openRoles === 1 ? "" : "s"}`,
+  },
+  h.medianUsd !== null
+    ? {
+        label: "Median pay",
+        value: kUsd(h.medianUsd),
+        note: `${h.pricedCount} of ${h.openRoles} roles publish pay, USD`,
+      }
+    : {
+        label: "Publish pay",
+        value: `${h.pricedCount} of ${h.openRoles}`,
+        note: h.payRangeUsd ? `${kUsd(h.payRangeUsd.lo)}–${kUsd(h.payRangeUsd.hi)}, USD` : "",
+      },
+  h.medianDaysOpen !== undefined && {
+    label: "Time to close",
+    value: `${h.medianDaysOpen} days`,
+    note:
+      `median of ${h.closedRoles} roles closed in 90 days` +
+      (h.boardMedianDaysOpen !== undefined ? ` · board-wide ${h.boardMedianDaysOpen}` : ""),
+  },
+].filter(Boolean) as { label: string; value: string; note?: string }[];
+---
+
+<section class="company-hiring" aria-label={`Hiring at ${companyName}`}>
+  <dl class="tiles">
+    {tiles.map((t) => (
+      <div class="tile">
+        <dt>{t.label}</dt>
+        <dd>{t.value}</dd>
+        {t.note && <p class="note">{t.note}</p>}
+      </div>
+    ))}
+  </dl>
+
+  {h.clusters.length > 0 && (
+    <p class="line">
+      <span class="lead">Hiring for:</span>
+      {h.clusters.map((c) => (
+        <span class="item">
+          <a href={url(`/${c.slug}/`)}>{c.label}</a>
+          <span class="n">{c.count}</span>
+        </span>
+      ))}
+    </p>
+  )}
+  {(h.locations.length > 0 || h.remoteCount > 0) && (
+    <p class="line">
+      <span class="lead">Where:</span>
+      {h.locations.map((l) => (
+        <span class="item">{l.label}<span class="n">{l.count}</span></span>
+      ))}
+      {h.remoteCount > 0 && <span class="item">Remote<span class="n">{h.remoteCount}</span></span>}
+    </p>
+  )}
+  {h.levels.length > 1 && (
+    <p class="line">
+      <span class="lead">Levels:</span>
+      {h.levels.map((l) => (
+        <span class="item">{l.label}<span class="n">{l.count}</span></span>
+      ))}
+    </p>
+  )}
+</section>
+
+<style>
+  /* The landing pages' hiring-snapshot language (LandingStats.astro), so an
+     employer's page and a cluster's page read as the same kind of thing. */
+  .company-hiring { margin: 16px 0 12px; }
+  .tiles {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1px;
+    margin: 0 0 16px;
+    background: var(--border);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+  /* 140px, so a 390px phone gets the four tiles as two rows of two rather than
+     a 340px column that pushes the first job card off the screen. */
+  .tile { flex: 1 1 140px; background: var(--surface); padding: 12px 14px; }
+  .tile dt {
+    color: var(--muted);
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-bottom: 4px;
+  }
+  .tile dd { margin: 0; font-size: 1.15rem; font-weight: 700; letter-spacing: -0.01em; }
+  .tile .note { margin: 2px 0 0; color: var(--muted); font-size: 0.75rem; }
+  .line {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 4px 14px;
+    margin: 0 0 8px;
+    font-size: 0.9rem;
+    line-height: 1.6;
+  }
+  .line .lead { color: var(--muted); }
+  .line .item { white-space: nowrap; }
+  .line .n { color: var(--muted); font-size: 0.78rem; margin-left: 3px; }
+  .line a { color: var(--accent-text); display: inline-block; padding-block: 4px; }
+  .line a:hover { text-decoration: underline; }
+</style>
