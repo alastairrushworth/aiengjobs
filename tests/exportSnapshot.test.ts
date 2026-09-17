@@ -72,9 +72,15 @@ describe("exportSnapshot", () => {
     city?: string | null;
     descriptionHtml?: string | null;
     delistedAt?: string | null;
+    postedAt?: string | null;
   }
 
-  function build(companies: string[], jobs: JobSeed[]): string {
+  /** `providers` overrides the ATS for the named companies; the rest are Greenhouse. */
+  function build(
+    companies: string[],
+    jobs: JobSeed[],
+    providers: Record<string, string> = {},
+  ): string {
     const dir = mkdtempSync(join(tmpdir(), "export-"));
     dirs.push(dir);
     const path = join(dir, "test.db");
@@ -83,17 +89,17 @@ describe("exportSnapshot", () => {
     for (const c of companies) {
       db.prepare(
         `INSERT INTO companies (id, name, slug, domain, ats_provider, ats_token)
-         VALUES (?, ?, ?, ?, 'greenhouse', ?)`,
-      ).run(`co_${c}`, c.toUpperCase(), c, `${c}.test`, `secret-token-${c}`);
+         VALUES (?, ?, ?, ?, ?, ?)`,
+      ).run(`co_${c}`, c.toUpperCase(), c, `${c}.test`, providers[c] ?? "greenhouse", `secret-token-${c}`);
     }
     for (const j of jobs) {
       db.prepare(
         `INSERT INTO jobs (id, company_id, slug, title, normalized_title, apply_url,
                            description_html, city, salary_min, salary_max, salary_currency,
-                           classification, is_closed, last_seen_at, delisted_at,
+                           classification, is_closed, last_seen_at, delisted_at, posted_at,
                            ingested_at, content_hash)
          VALUES (?, ?, ?, 'AI Engineer', 'ai engineer', 'https://x/apply', ?, ?, ?, ?, 'USD',
-                 ?, ?, ?, ?, '2026-08-01T00:00:00Z', 'h')`,
+                 ?, ?, ?, ?, ?, '2026-08-01T00:00:00Z', 'h')`,
       ).run(
         j.id,
         `co_${j.company}`,
@@ -106,6 +112,7 @@ describe("exportSnapshot", () => {
         j.isClosed ?? 0,
         j.lastSeenAt ?? RECENT,
         j.delistedAt ?? null,
+        j.postedAt ?? null,
       );
     }
     db.close();
@@ -310,6 +317,127 @@ describe("exportSnapshot", () => {
     expect(cityOf("code")).toBeUndefined();
     expect(cityOf("prov")).toBeUndefined();
     expect(cityOf("real")).toBe("Berlin");
+  });
+
+  it("counts every open posting on the employer's board, in scope or not", async () => {
+    const dir = build(
+      ["co"],
+      [
+        { id: "ai", company: "co", postedAt: daysAgo(10) },
+        { id: "sales", company: "co", classification: "out", postedAt: daysAgo(20) },
+        { id: "legal", company: "co", classification: "out", postedAt: daysAgo(40) },
+        // Outside the listing window, closed, and undated: none is hiring the
+        // site could list, so none belongs in the denominator it divides by.
+        { id: "stale", company: "co", classification: "out", postedAt: daysAgo(200) },
+        { id: "shut", company: "co", classification: "out", isClosed: 1, postedAt: daysAgo(10) },
+        { id: "undated", company: "co", classification: "out" },
+      ],
+    );
+
+    const snap = await runExport(dir);
+
+    expect(snap.companies[0]!.hiring?.openPostings).toBe(3);
+  });
+
+  it("reads the posting's own UTC offset when ageing it", async () => {
+    // 90 days and one hour ago, written with a +05:30 offset. Compared as a
+    // string it sorts after a "Z" cutoff and would be counted; as an instant it
+    // is past the window, which is how shared/indexable ages the listed roles.
+    const past = new Date(Date.now() - 90 * DAY - 3_600_000);
+    const withOffset = new Date(past.getTime() + 5.5 * 3_600_000).toISOString().replace("Z", "+05:30");
+    const dir = build(
+      ["co"],
+      [
+        { id: "ai", company: "co", postedAt: daysAgo(1) },
+        { id: "edge", company: "co", classification: "out", postedAt: withOffset },
+      ],
+    );
+
+    const snap = await runExport(dir);
+
+    expect(snap.companies[0]!.hiring?.openPostings).toBe(1);
+  });
+
+  it("publishes no total for a board it only searches by keyword", async () => {
+    const dir = build(
+      ["bank"],
+      [
+        { id: "ai", company: "bank", postedAt: daysAgo(3) },
+        { id: "other", company: "bank", classification: "out", postedAt: daysAgo(3) },
+      ],
+      { bank: "workday" },
+    );
+
+    const snap = await runExport(dir);
+
+    // Two rows matched our queries; the bank has thousands of postings.
+    expect(snap.companies[0]!.hiring?.openPostings).toBeUndefined();
+  });
+
+  it("times how long closed roles were open, once there are enough to mean it", async () => {
+    const closed = (id: string, company: string, days: number, extra: Partial<JobSeed> = {}): JobSeed => ({
+      id,
+      company,
+      isClosed: 1,
+      lastSeenAt: daysAgo(2),
+      postedAt: daysAgo(2 + days),
+      ...extra,
+    });
+    const dir = build(
+      ["busy", "quiet"],
+      [
+        { id: "busy-open", company: "busy", postedAt: daysAgo(1) },
+        ...[10, 20, 30, 40, 50].map((d, i) => closed(`busy-${i}`, "busy", d)),
+        // Never on the board, so never ours to time.
+        closed("busy-out", "busy", 400, { classification: "out" }),
+        { id: "quiet-open", company: "quiet", postedAt: daysAgo(1) },
+        closed("quiet-0", "quiet", 100),
+      ],
+    );
+
+    const snap = await runExport(dir);
+    const hiring = (slug: string) => snap.companies.find((c) => c.slug === slug)!.hiring!;
+
+    expect(hiring("busy")).toMatchObject({ closedRoles: 5, medianDaysOpen: 30 });
+    // One closure is an anecdote: counted, not averaged.
+    expect(hiring("quiet").closedRoles).toBe(1);
+    expect(hiring("quiet").medianDaysOpen).toBeUndefined();
+    expect(snap.hiring).toEqual({ closedRoles: 6, medianDaysOpen: 35 });
+  });
+
+  it("times closures only where the posted date is a first-publication date", async () => {
+    // SmartRecruiters re-dates a posting on every re-release and Workday rows
+    // vanish from keyword results without closing: measured medians of 22 and
+    // 24 days against 76–77 on the three feeds that date a posting once.
+    const closed = (id: string, company: string): JobSeed => ({
+      id,
+      company,
+      isClosed: 1,
+      lastSeenAt: daysAgo(2),
+      postedAt: daysAgo(9),
+    });
+    const five = (company: string) => [0, 1, 2, 3, 4].map((i) => closed(`${company}-${i}`, company));
+    const dir = build(
+      ["bank", "retailer", "lab"],
+      [
+        { id: "bank-open", company: "bank", postedAt: daysAgo(1) },
+        ...five("bank"),
+        { id: "retailer-open", company: "retailer", postedAt: daysAgo(1) },
+        ...five("retailer"),
+        { id: "lab-open", company: "lab", postedAt: daysAgo(1) },
+        ...five("lab"),
+      ],
+      { bank: "workday", retailer: "smartrecruiters", lab: "ashby" },
+    );
+
+    const snap = await runExport(dir);
+    const hiring = (slug: string) => snap.companies.find((c) => c.slug === slug)!.hiring;
+
+    expect(hiring("lab")).toMatchObject({ closedRoles: 5, medianDaysOpen: 7 });
+    expect(hiring("retailer")?.medianDaysOpen).toBeUndefined();
+    expect(hiring("bank")).toBeUndefined();
+    // The board's figure is drawn from the same employers, or it isn't a comparison.
+    expect(snap.hiring).toEqual({ closedRoles: 5, medianDaysOpen: 7 });
   });
 
   it("writes a meta file whose counts match the snapshot", async () => {
