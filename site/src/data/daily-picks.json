@@ -1,17 +1,6 @@
 {
   "picks": [
     {
-      "date": "2026-08-22",
-      "pickedAt": "2026-08-23T03:30:54.341Z",
-      "slugs": [
-        "anybotics-senior-reinforcement-learning-engineer-b0d6bf",
-        "anyone-ai-research-scientist-remote-us-latam-c8a297",
-        "arago-ml-systems-engineer-inference-acceleration-36ca71",
-        "arsiem-361-ai-engineer-c5a753",
-        "arsiem-390-jr-software-engineer-e2f87b"
-      ]
-    },
-    {
       "date": "2026-08-23",
       "pickedAt": "2026-08-24T03:33:41.345Z",
       "slugs": [
@@ -326,6 +315,17 @@
         "salesforce-wd12-external-career-site-ai-builder-emerging-talent-polish-market-7a94e5",
         "salesforce-wd12-external-career-site-ai-builder-emerging-talent-italian-market-719d99",
         "reducto-head-of-platform-engineering-7a6c4b"
+      ]
+    },
+    {
+      "date": "2026-09-22",
+      "pickedAt": "2026-09-22T03:51:35.070Z",
+      "slugs": [
+        "nagarro1-principal-engineer-agentic-ai-66d661",
+        "federato-staff-software-engineer-ai-systems-fa42a4",
+        "carta-senior-ai-engineer-post-training-7abc19",
+        "capitalone-wd12-capital-one-ai-engineer-5-ai-foundations-llm-core-and-agentic-ai-7b8aa5",
+        "capitalone-wd12-capital-one-ai-engineer-5-ai-foundations-llm-core-and-agentic-ai-5e5cd9"
       ]
     }
   ]
