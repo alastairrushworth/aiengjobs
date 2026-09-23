@@ -1,7 +1,7 @@
 import type { APIRoute } from "astro";
 import { openJobs, generatedAt, duplicateOf, fxRates } from "../lib/data.ts";
 import { CLUSTERS } from "@aiengjobs/shared/taxonomy";
-import { salaryMidpointUsd } from "../lib/format.ts";
+import { safeUrl, salaryMidpointUsd } from "../lib/format.ts";
 import type { Job } from "@aiengjobs/shared";
 
 // The whole board, minus descriptions, as one file. This is what the MCP server
@@ -47,7 +47,11 @@ export function toMcpJob(j: Job): McpJob {
     title: j.title,
     company: j.companyName,
     companySlug: j.companySlug,
-    applyUrl: j.applyUrl,
+    // Through the same guard as the job page's Apply button. This file feeds the
+    // MCP server, whose output lands in other people's assistants: an apply
+    // link that isn't https (or isn't a URL) shouldn't reach them either.
+    // Empty renders as plain text with no link (mcp/src/render.ts).
+    applyUrl: safeUrl(j.applyUrl) ?? "",
     location: j.locationRaw ?? null,
     country: j.country ?? null,
     city: j.city ?? null,

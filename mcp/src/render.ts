@@ -106,21 +106,42 @@ export function postedAgo(postedAt: string | null, generatedAt: string): string 
   return `${Math.floor(days / 30)}mo ago`;
 }
 
-/** `]` in a title would otherwise close the link early. */
-const escapeLinkText = (s: string) => s.replace(/([[\]])/g, "\\$1");
+/**
+ * Feed text outside the description fence is always one line. A newline is the
+ * one character that lets an employer-written title or company name leave its
+ * heading or row and open a paragraph that reads as ours — and the engine's
+ * entity decoding can produce one from an encoded `&#10;`. The engine collapses
+ * whitespace too (normalize.ts); this is the boundary that doesn't depend on it.
+ */
+const oneLine = (s: string) => s.replace(/\s+/g, " ").trim();
+
+/** `]` in a title would otherwise close the link early, and `*`/`_`/backticks
+ *  would bend the bold row the link sits in ("Engineer I** Hybrid…" is a real
+ *  title). */
+const escapeLinkText = (s: string) => oneLine(s).replace(/([\\`*_[\]<>])/g, "\\$1");
 
 /** Feed-supplied text used as prose rather than as link text. Neutralises the
  *  markers that would otherwise let an advert's location or company name bend
  *  the surrounding markdown ("**Remote**" arriving as emphasis, a leading "#"
- *  becoming a heading). Distortion only, not injection — but the facts line is
- *  our voice, and it should read as ours. */
-const escapeInline = (s: string) => s.replace(/([\\`*_[\]()<>#|])/g, "\\$1");
+ *  becoming a heading). The facts line is our voice, and it should read as
+ *  ours. */
+const escapeInline = (s: string) => oneLine(s).replace(/([\\`*_[\]()<>#|])/g, "\\$1");
 
 /**
  * Angle brackets around every destination. Apply URLs routinely carry parens and
  * commas from ATS query strings, and a bare `)` ends the link at the wrong place.
+ *
+ * Inside `<…>` the only characters that end the destination are `>`, `<` and a
+ * line break, so those — and any other whitespace — are percent-encoded rather
+ * than trusted: an apply URL is feed data, and a raw `>` would put the rest of it
+ * outside the link as text in our voice. A destination that isn't http(s) gets
+ * no link at all.
  */
-const link = (text: string, url: string) => `[${escapeLinkText(text)}](<${url}>)`;
+const destination = (url: string) => url.trim().replace(/[<>\s]/g, (c) => encodeURIComponent(c));
+const link = (text: string, url: string) =>
+  /^https?:\/\//i.test(url.trim())
+    ? `[${escapeLinkText(text)}](<${destination(url)}>)`
+    : escapeLinkText(text);
 
 const REMOTE_LABEL: Record<string, string> = {
   remote: "Remote",
@@ -187,7 +208,7 @@ function fence(text: string): string {
 
 export function renderJob(detail: JobDetail): string {
   const facts = [
-    detail.location,
+    detail.location ? escapeInline(detail.location) : null,
     detail.seniority ? titleCase(detail.seniority) : null,
     detail.remote ? REMOTE_LABEL[detail.remote] : null,
     formatSalary(detail),
@@ -195,8 +216,10 @@ export function renderJob(detail: JobDetail): string {
   ].filter(Boolean);
 
   const parts = [
-    `# ${detail.title}`,
-    `**${detail.company}**${detail.companyDomain ? ` · ${detail.companyDomain}` : ""}`,
+    // Employer-written, and outside the fence: escaped and kept to one line,
+    // like every other field above the attribution line.
+    `# ${escapeInline(detail.title)}`,
+    `**${escapeInline(detail.company)}**${detail.companyDomain ? ` · ${escapeInline(detail.companyDomain)}` : ""}`,
     facts.join(" · "),
     "",
     `**${link("Apply on the employer's site", detail.applyUrl)}** · ${link("view on frontierroles", detail.jobUrl)}`,
@@ -227,7 +250,7 @@ export function renderJob(detail: JobDetail): string {
 
 export function renderCompany(result: CompanyResult): string {
   return [
-    `**${result.company}** — ${result.openRoles} open role${result.openRoles === 1 ? "" : "s"}`,
+    `**${escapeInline(result.company)}** — ${result.openRoles} open role${result.openRoles === 1 ? "" : "s"}`,
     "",
     result.jobs.map((j) => renderJobRow(j, result.generatedAt)).join("\n\n"),
     "",
@@ -244,7 +267,7 @@ export function renderStats(result: StatsResult): string {
     `${result.pricedJobs} publish pay (median ${usd(result.medianSalaryUsd)}).`;
 
   const rows = result.buckets.map(
-    (b) => `| ${b.key} | ${b.jobs} | ${usd(b.medianSalaryUsd)} | ${b.pricedJobs} |`,
+    (b) => `| ${escapeInline(String(b.key))} | ${b.jobs} | ${usd(b.medianSalaryUsd)} | ${b.pricedJobs} |`,
   );
 
   return [
