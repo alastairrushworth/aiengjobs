@@ -76,6 +76,7 @@ runtime, so the nightly site build updates what it serves with no deploy here.
 | Route | |
 |---|---|
 | `POST /mcp` | The MCP endpoint. Also accepted on `/` for clients configured with a bare origin. |
+| `GET`/`DELETE /mcp` | `405`: there is no standing SSE stream and no session to end. |
 | `GET /health` | `{ ok, jobCount, generatedAt }` — the board is the only dependency. |
 | `GET /` | Plain-text explanation for anyone who pastes the URL into a browser. |
 
