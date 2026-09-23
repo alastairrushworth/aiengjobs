@@ -110,33 +110,9 @@ CREATE TABLE IF NOT EXISTS job_skills (
   PRIMARY KEY (job_id, skill_id)
 );
 
--- Paid direct posts (spec §6.7).
-CREATE TABLE IF NOT EXISTS employer_orders (
-  id                TEXT PRIMARY KEY,
-  company_id        TEXT REFERENCES companies(id) ON DELETE SET NULL,
-  job_id            TEXT REFERENCES jobs(id) ON DELETE SET NULL,
-  stripe_payment_id TEXT,
-  plan              TEXT,
-  amount            INTEGER,
-  starts_at         TEXT,
-  ends_at           TEXT,
-  status            TEXT NOT NULL DEFAULT 'pending'
-);
-
--- Newsletter + job alerts (spec §7).
-CREATE TABLE IF NOT EXISTS subscribers (
-  id                TEXT PRIMARY KEY,
-  email             TEXT NOT NULL UNIQUE,
-  saved_search_json TEXT,
-  frequency         TEXT NOT NULL DEFAULT 'weekly',
-  confirmed_at      TEXT,
-  created_at        TEXT NOT NULL DEFAULT (datetime('now'))
-);
-
--- Candidate/employer accounts (later phases).
-CREATE TABLE IF NOT EXISTS users (
-  id         TEXT PRIMARY KEY,
-  email      TEXT NOT NULL UNIQUE,
-  role       TEXT NOT NULL DEFAULT 'candidate',          -- candidate|employer|admin
-  created_at TEXT NOT NULL DEFAULT (datetime('now'))
-);
+-- No personal data in this database, ever. The nightly run publishes it as the
+-- public `db-latest` release asset, so it may hold only what is already public:
+-- employers' postings. The unbuilt paid-post, newsletter and account tables
+-- (spec §6.7, §7) were removed for that reason, and migrate() drops them from
+-- the carried database (RETIRED_TABLES in db/index.ts). Anything that stores
+-- emails, payments or accounts needs a store that is never published.
