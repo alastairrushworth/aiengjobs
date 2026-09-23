@@ -37,6 +37,9 @@ const CORS: Record<string, string> = {
 function withCors(res: Response): Response {
   const headers = new Headers(res.headers);
   for (const [k, v] of Object.entries(CORS)) headers.set(k, v);
+  // Every body here is JSON or plain text; never let a browser sniff one into
+  // HTML.
+  headers.set("X-Content-Type-Options", "nosniff");
   return new Response(res.body, { status: res.status, statusText: res.statusText, headers });
 }
 
@@ -102,9 +105,13 @@ export default {
         );
       } catch (err) {
         // The board is the only dependency, so failing to load it is the only
-        // interesting failure — say so plainly rather than 500ing blankly.
+        // interesting failure — say so plainly rather than 500ing blankly. The
+        // error itself goes to the Worker's logs, not to whoever asked: it can
+        // carry upstream URLs and runtime detail, and a public health check has
+        // no reason to hand those out.
+        console.error("health: board failed to load", err);
         return withCors(
-          Response.json({ ok: false, error: String(err) }, { status: 503 }),
+          Response.json({ ok: false, error: "board unavailable" }, { status: 503 }),
         );
       }
     }
