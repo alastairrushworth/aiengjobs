@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { probeImage, candidates, manifestUrls } from "../engine/src/logos.ts";
+import { probeImage, candidates, manifestUrls, isInertSvg } from "../engine/src/logos.ts";
 
 /** A minimal but structurally valid PNG header: signature + IHDR dimensions. */
 function png(width: number, height: number, signature?: Buffer): Buffer {
@@ -31,6 +31,31 @@ describe("probeImage", () => {
   it("reports an SVG's true proportions rather than a fixed size", () => {
     const wordmark = Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 283 110">');
     expect(probeImage(wordmark)).toEqual({ ext: "svg", width: 283, height: 110 });
+  });
+});
+
+describe("SVG logos carry no active content", () => {
+  // Logos are served from our own origin. Inert inside <img>, but opened
+  // directly an SVG runs its script as frontierroles.com.
+  const svg = (body: string) => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">${body}</svg>`;
+
+  it.each([
+    ["a script element", '<script>alert(1)</script>'],
+    ["a namespaced script", '<svg:script>alert(1)</svg:script>'],
+    ["an event handler", '<rect width="64" height="64" onload="alert(1)"/>'],
+    ["a javascript: link", '<a href="javascript:alert(1)"><rect/></a>'],
+    ["a foreignObject", '<foreignObject><iframe src="https://evil.example"/></foreignObject>'],
+    ["an embedded HTML document", '<image href="data:text/html;base64,PHNjcmlwdD4="/>'],
+  ])("refuses %s", (_label, body) => {
+    expect(isInertSvg(svg(body))).toBe(false);
+    expect(probeImage(Buffer.from(svg(body)))).toBeNull();
+  });
+
+  it("accepts plain shapes and an embedded raster image", () => {
+    // sieve.svg is a PNG wrapped in an SVG; that is fine.
+    const ok = svg('<path d="M0 0h64v64H0z" fill="#000"/><image href="data:image/png;base64,iVBORw0KGgo="/>');
+    expect(isInertSvg(ok)).toBe(true);
+    expect(probeImage(Buffer.from(ok))).toEqual({ ext: "svg", width: 64, height: 64 });
   });
 });
 
