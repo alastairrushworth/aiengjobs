@@ -1,17 +1,6 @@
 {
   "picks": [
     {
-      "date": "2026-08-23",
-      "pickedAt": "2026-08-24T03:33:41.345Z",
-      "slugs": [
-        "ciandt-job-30817-senior-ai-engineer-brazil-0e1453",
-        "ciandt-job-31057-master-generative-ai-developer-brazil-bc75c8",
-        "ciandt-job-31069-senior-generative-ai-developer-brazil-680fee",
-        "dialpad-ai-transformation-engineer-45177a",
-        "dialpad-software-engineer-agentic-systems-03e3be"
-      ]
-    },
-    {
       "date": "2026-08-24",
       "pickedAt": "2026-08-25T03:37:09.100Z",
       "slugs": [
@@ -326,6 +315,17 @@
         "carta-senior-ai-engineer-post-training-7abc19",
         "capitalone-wd12-capital-one-ai-engineer-5-ai-foundations-llm-core-and-agentic-ai-7b8aa5",
         "capitalone-wd12-capital-one-ai-engineer-5-ai-foundations-llm-core-and-agentic-ai-5e5cd9"
+      ]
+    },
+    {
+      "date": "2026-09-23",
+      "pickedAt": "2026-09-23T04:09:45.595Z",
+      "slugs": [
+        "invisibletech-research-engineer-d52133",
+        "capitalone-wd12-capital-one-ai-engineer-3-c7154f",
+        "relx-wd3-relx-data-scientist-iii-12d67c",
+        "relx-wd3-relx-senior-data-scientist-i-29cf5b",
+        "capitalone-wd12-capital-one-ai-engineer-5-genai-platform-agentic-infrastructure-2c7976"
       ]
     }
   ]
