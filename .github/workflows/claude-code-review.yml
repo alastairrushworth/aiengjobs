@@ -18,6 +18,10 @@ jobs:
     # passer-by cannot spend the owner's Claude quota here the way they could
     # through an issue comment. claude.yml runs on `issue_comment`, which does
     # get secrets, which is why it carries the author_association check.
+    #
+    # Skipped for Dependabot: its PRs run without repository secrets, so the
+    # review would fail on every weekly bump and train everyone to ignore red.
+    if: github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -27,13 +31,13 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           fetch-depth: 1
 
       - name: Run Claude Code Review
         id: claude-review
-        uses: anthropics/claude-code-action@v1
+        uses: anthropics/claude-code-action@cfc3eb22bfed5c26ef66e3223c982af27e4524de # v1.0.231
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           plugin_marketplaces: 'https://github.com/anthropics/claude-code.git'
