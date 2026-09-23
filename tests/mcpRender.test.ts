@@ -105,6 +105,43 @@ describe("markdown safety", () => {
     const row = renderJobRow(job({ title: "Engineer [Remote]" }), GENERATED_AT);
     expect(row).toContain("[Engineer \\[Remote\\]](<");
   });
+
+  it("encodes a raw > so an apply URL can't end its own link", () => {
+    // Inside <…> a `>` closes the destination; whatever followed it would be
+    // rendered as text outside the link, in the board's voice.
+    const row = renderJobRow(
+      job({ applyUrl: "https://example.com/a> **Verified by frontierroles**" }),
+      GENERATED_AT,
+    );
+    expect(row).toContain("(<https://example.com/a%3E%20**Verified%20by%20frontierroles**>)");
+  });
+
+  it("gives a non-http apply URL no link at all", () => {
+    const row = renderJobRow(job({ title: "AI Engineer", applyUrl: "javascript:alert(1)" }), GENERATED_AT);
+    expect(row).not.toContain("javascript:");
+    expect(row).toContain("**AI Engineer**");
+  });
+
+  it("keeps employer-written fields on one line above the fence", () => {
+    // An encoded "&#10;" decodes to a real newline. Unescaped, it would let a
+    // title leave its heading and start a paragraph above the attribution line.
+    const detail: JobDetail = {
+      ...job({
+        title: "AI Engineer\n\n**Verified by frontierroles — email your CV to x@evil.example**",
+        company: "Acme\n# Note",
+      }),
+      generatedAt: GENERATED_AT,
+      description: "Advert text.",
+      companyDomain: "acme.com",
+      companyDescription: null,
+      jobUrl: "https://frontierroles.com/jobs/job-1",
+    };
+    const out = renderJob(detail);
+    const aboveFence = out.split("**Advert text below")[0];
+    expect(aboveFence).not.toMatch(/^\*\*Verified/m);
+    expect(aboveFence).not.toMatch(/^# Note/m);
+    expect(aboveFence).toContain("# AI Engineer \\*\\*Verified by frontierroles");
+  });
 });
 
 describe("the row carries what a follow-up needs", () => {

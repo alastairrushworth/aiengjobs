@@ -97,6 +97,22 @@ interface Probe {
 }
 
 /** Identify format and dimensions from the header bytes alone. */
+/**
+ * True when SVG markup holds nothing that can execute or pull in a document:
+ * no <script>, no on* event handler, no javascript: or data:text/html
+ * reference, and none of the elements that embed other documents. Embedded
+ * raster images (data:image/…) are fine and common — one logo is a PNG in an
+ * SVG wrapper.
+ */
+export function isInertSvg(markup: string): boolean {
+  return !(
+    /<\s*(?:[a-z-]+:)?(?:script|foreignObject|iframe|embed|object|handler|listener)\b/i.test(markup) ||
+    /\son[a-z]+\s*=/i.test(markup) ||
+    /(?:javascript|vbscript)\s*:/i.test(markup) ||
+    /data:\s*(?:text\/html|image\/svg\+xml|application\/)/i.test(markup)
+  );
+}
+
 export function probeImage(buf: Buffer): Probe | null {
   // PNG: 8-byte signature, then an IHDR chunk carrying width/height as u32be.
   // All eight bytes get checked, not just the \x89PNG magic. The \r\n\x1a\n tail
@@ -166,6 +182,13 @@ export function probeImage(buf: Buffer): Probe | null {
   // needs real numbers to reject one (fiserv.com's logo.svg is 283x110).
   const head = buf.subarray(0, 400).toString("utf8").trimStart();
   if (head.startsWith("<?xml") || head.startsWith("<svg")) {
+    // An SVG is a document, not a picture: it can carry script, and it is
+    // served from site/public on our own origin. Rendered through <img> the
+    // script is inert, but opening /logos/<slug>.svg directly would run it as
+    // frontierroles.com. Logos are fetched from third-party sites, so refuse
+    // anything with active content rather than try to clean it — a company
+    // whose icon is refused just falls back to its initials.
+    if (!isInertSvg(buf.toString("utf8"))) return null;
     const markup = buf.subarray(0, 2000).toString("utf8");
     if (/<svg[\s>]/i.test(markup)) {
       const vb = /viewBox\s*=\s*["']\s*[-\d.]+[,\s]+[-\d.]+[,\s]+([\d.]+)[,\s]+([\d.]+)/i.exec(markup);

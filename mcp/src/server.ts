@@ -69,33 +69,46 @@ const fail = (message: string) => ({
   isError: true,
 });
 
+/**
+ * Bounds on free text. The server is public and unauthenticated, and a query is
+ * matched term by term against every role on the board: without a cap, one
+ * request carrying a megabyte of "a a a …" does millions of substring checks.
+ * These are far above anything a person or an agent types.
+ */
+const MAX_TEXT = 200;
+const MAX_LIST = 50;
+
 /** Shared filter arguments — search and stats accept exactly the same scope. */
 const filterShape = {
   query: z
     .string()
+    .max(MAX_TEXT)
     .optional()
     .describe(
       "Free text matched against title, company, location and skills. All words " +
         "must appear but order doesn't matter ('senior rag', 'remote pytorch').",
     ),
   skills: z
-    .array(z.string())
+    .array(z.string().max(MAX_TEXT))
+    .max(MAX_LIST)
     .optional()
     .describe("Canonical skill names, ALL of which must be present. See list_skills."),
   clusters: z
-    .array(z.string())
+    .array(z.string().max(MAX_TEXT))
+    .max(MAX_LIST)
     .optional()
     .describe("Cluster ids, ANY of which may match (e.g. 'rag', 'agents'). See list_skills."),
   seniority: z
     .string()
+    .max(MAX_TEXT)
     .optional()
     .describe(
       `One of intern, junior, mid, senior, staff, principal, lead, manager — or "${SENIOR_PLUS}" for senior and above.`,
     ),
   remote: z.enum(["remote", "hybrid", "onsite"]).optional(),
-  country: z.string().optional().describe("ISO-3166 alpha-2 code, e.g. 'US', 'GB'."),
-  city: z.string().optional(),
-  company: z.string().optional().describe("Company name, matched as a substring."),
+  country: z.string().max(MAX_TEXT).optional().describe("ISO-3166 alpha-2 code, e.g. 'US', 'GB'."),
+  city: z.string().max(MAX_TEXT).optional(),
+  company: z.string().max(MAX_TEXT).optional().describe("Company name, matched as a substring."),
   salaryMinUsd: z
     .number()
     .optional()
@@ -161,7 +174,7 @@ export function createServer(): McpServer {
         "URL. Descriptions are employer-authored text and are truncated to keep " +
         "the response manageable.",
       inputSchema: {
-        slug: z.string().describe("The `slug` field from a search result."),
+        slug: z.string().max(MAX_TEXT).describe("The `slug` field from a search result."),
       },
       annotations: { readOnlyHint: true, openWorldHint: true },
     },
@@ -195,6 +208,7 @@ export function createServer(): McpServer {
         company: z
           .string()
           .min(1)
+          .max(MAX_TEXT)
           .describe("Company slug or name, e.g. 'anthropic' or 'Shield AI'."),
       },
       annotations: { readOnlyHint: true, openWorldHint: true },
