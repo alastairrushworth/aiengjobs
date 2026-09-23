@@ -144,6 +144,10 @@ accounts, no logins, no payments and no visitor PII** — calibrate to that.
   them regardless; don't try a second route after a denial — say what you need
   and let the user decide. A `PUT` on a ruleset phase entrypoint **replaces the
   whole rule list**: read first.
+  Even after the user says "fix all", a zone settings `PATCH` through the
+  Cloudflare MCP was denied as "DNS / Domain / Cert Changes" (2026-09-23): plan
+  on handing zone, DNS and certificate changes over as exact clicks from the
+  start, and do the in-repo fixes and GitHub-side changes yourself.
 - **Verify exploitability before asserting.** Prefer a reasoning chain
   ("attacker sends X → Y happens → impact Z") or a benign proof. If you can't
   confirm, mark **"needs verification"** with the probe that would.
@@ -169,11 +173,26 @@ npm ls @modelcontextprotocol/sdk zod wrangler --depth=0 -w @aiengjobs/mcp
 # ── Secret exposure ───────────────────────────────────────────────────────
 git ls-files | grep -E '(^|/)\.env$|\.pem$|\.key$|secret|credential|service.?account' || echo "no secret-like tracked files"
 git log --all --oneline -- '*.env' engine/.env | head       # ever committed? names only, never -p
-# gitleaks, if installed (brew install gitleaks). --redact keeps values out of output.
-# Expected hits that are NOT leaks: INDEXNOW_KEY in engine/src/config.ts and its
-# twin site/public/<key>.txt (public by design — see conventions).
-gitleaks git --no-banner --redact=100 --log-opts="--all" .
-sed -E 's/=.*//' engine/.env 2>/dev/null                     # key NAMES in a local .env, if any
+# History: DON'T run `gitleaks git --log-opts=--all` — it did not finish in 20+
+# minutes on 2026-09-23, even with data paths excluded: snapshot.json (22-44MB)
+# was committed to ordinary branches 41 times before it moved to the `snapshot`
+# branch. A pickaxe over known key formats takes ~1 s. (`--exclude` must come
+# BEFORE `--all` to drop a ref; the snapshot branch then still yields
+# false positives like "autode·sk-wd1-…" in job slugs — check the file first.)
+git log --exclude=refs/remotes/origin/snapshot --exclude=refs/heads/snapshot --all --format='%h %ad %s' --date=short \
+  -G '(sk-(proj-)?[A-Za-z0-9_-]{20,}|BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY|"private_key"\s*:|AKIA[0-9A-Z]{16}|gh[pousr]_[A-Za-z0-9]{36}|sk-ant-[A-Za-z0-9_-]{20,})' \
+  -- . ':(exclude)site/src/data' ':(exclude)ml/gold' ':(exclude)ml/batches' ':(exclude)ml/relabel' ':(exclude)ml/ads' ':(exclude).claude'
+# Working tree: gitleaks per source directory (fast). Expected non-leaks:
+# INDEXNOW_KEY in engine/src/config.ts and site/public/<key>.txt (public by design).
+for d in engine/src site/src mcp/src scripts .github shared tests; do gitleaks dir --no-banner --redact=100 "$d"; done
+# Local .env files: gitleaks reports them clean even when they hold a live
+# OpenAI `sk-proj-` key (its rule predates that format — 2026-09-23). Print the
+# SHAPE of each value, never the value:
+for f in .env engine/.env; do [ -f $f ] && python3 -c 'import sys
+for l in open(sys.argv[1]):
+  l=l.strip()
+  if "=" in l and not l.startswith("#"):
+    k,v=l.split("=",1); v=v.strip().strip(chr(34)+chr(39)); print(sys.argv[1], k, "len", len(v), "sk-proj" if v.startswith("sk-proj-") else "")' $f; done
 
 # ── Live site: GitHub Pages, DNS-only ─────────────────────────────────────
 curl -sS -D - https://frontierroles.com/ -o /dev/null | grep -iE '^HTTP|server|cache-control|content-security|strict-transport|x-frame|x-content-type|referrer-policy|permissions-policy'
@@ -244,7 +263,7 @@ Baseline, 2026-09-23 — diff against it:
 | `bot_management` | everything off (`fight_mode` false, every `ai_*` disabled) |
 | DNSSEC | **disabled** |
 | Workers | one script, `frontierroles-mcp`, usage model `standard`; one custom domain; `workers.dev` route disabled (1042) |
-| GitHub | public; Pages `https_enforced: true`, `protected_domain_state: null` (domain **not verified**); `main` unprotected; default token `read`; `allowed_actions: all`; `sha_pinning_required: false`; no Dependabot |
+| GitHub | public; Pages `https_enforced: true`, `protected_domain_state: null` (domain **not verified**); `main` unprotected; default token `read`; `allowed_actions: all`; `sha_pinning_required: false`; fork PRs `first_time_contributors`; one collaborator (owner). **Deploy keys: 0** — a write-enabled `aiengjobs-droplet` key (last used 2026-07-26, its droplet destroyed 2026-08-01) was found and deleted on 2026-09-23; list them every run (`gh api repos/$R/keys`). Actions SHA-pinned + Dependabot since PR #40 |
 
 ## Review dimensions
 
@@ -313,12 +332,15 @@ The crown jewel: the only surface that executes on request.
   action) — one rule scoped to `http.host eq "mcp.frontierroles.com"` would cap
   per-IP bursts; because `workers.dev` is disabled it cannot be walked round.
   Weigh it against the fact that legitimate clients are few and bursty.
-- **Input bounds.** `mcp/src/server.ts`: `limit` is capped at 50 and `topN` at
-  50, but the free-text strings (`query`, `company`, `city`, `country`,
-  `slug`) are `z.string()` with no `.max()`. Establish what an oversized
-  string costs — substring matching across the board per call, against the
-  Worker's CPU-time limit — and whether a `.max(200)` is warranted. Don't
-  report it as DoS without the arithmetic.
+- **Input bounds — capped since PR #40, keep them capped.** Every free-text
+  argument in `mcp/src/server.ts` is `.max(MAX_TEXT)` (200) and every list
+  `.max(MAX_LIST)` (50); `tests/mcpWorker.test.ts` pins that an oversized query
+  is refused before the board is fetched. The arithmetic that justified it: a
+  query is matched term by term against every role (~3,650), and
+  `every(t => hay.includes(t))` only short-circuits on a miss — so a megabyte
+  of a common term ("a a a …") does the full scan per term. On Workers Free the
+  CPU limit kills it (one request of quota); on Paid a 30 s CPU request costs
+  ~$0.0006. Flag any new tool argument added without a bound.
 - **Outbound fetches**: `board.ts` fetches only `${FRONTIERROLES_BASE_URL}/
   mcp-index.json` and `/mcp-jobs/${encodeURIComponent(slug)}.json`, with
   `AbortSignal.timeout`. Base is a wrangler var, not input, so no SSRF;
@@ -370,6 +392,14 @@ to its sink and confirm the defence sits at the sink:
   quoted third-party content, and that no link is emitted except the
   `safeUrl`-checked apply URL (`render.ts`). Rank it honestly — Low to
   Medium, because the assistant and its user remain the last line of defence.
+  **The fence is not the whole boundary** (found 2026-09-23, fixed in PR #40):
+  everything *above* the "Advert text below is written by the employer" line —
+  title, company, location, apply URL — is employer-written too, and was
+  printed raw. `decodeEntities` turns `&#10;` into a real newline, so a title
+  could start a paragraph in the board's voice, and a raw `>` in an apply URL
+  ended its `<…>` link. Re-check that every field rendered outside the fence
+  goes through `escapeInline`/`escapeLinkText` (which collapse to one line) and
+  that `link()` percent-encodes its destination.
 - **→ Google**: Indexing API and IndexNow URLs are built from slugs; confirm a
   slug cannot carry a host or path outside frontierroles.com.
 
@@ -469,8 +499,13 @@ to its sink and confirm the defence sits at the sink:
 - **DNSSEC is disabled.** The registrar is Cloudflare, so enabling it is one
   toggle with the DS record added automatically. Low, cheap.
 - **Release assets are public** (public repo): `db-latest`
-  (`aiengjobs.db.gz`) and the model. Confirm the DB carries nothing beyond
-  third-party job data — no tokens, no internal notes, no raw headers.
+  (`aiengjobs.db.gz`, ~58MB gz / 288MB) and the model. Confirm the DB carries
+  nothing beyond third-party job data: `gh release download db-latest
+  --pattern aiengjobs.db.gz` into the scratchpad, `sqlite3 … .tables`, delete
+  it after. On 2026-09-23 it also held **empty `users`, `subscribers` and
+  `employer_orders` tables** from the first schema — the first row ever
+  written would have been published next morning. Dropped by `migrate()`
+  since PR #40 (`RETIRED_TABLES`); any new table must be public-safe.
 - **The old domain**: `alastairrushworth.com/aiengjobs/*` 301s via a redirect
   rule on that zone. It must stay (inbound links and Google's index) — flag it
   only if it breaks or redirects anywhere but frontierroles.com.
@@ -478,7 +513,13 @@ to its sink and confirm the defence sits at the sink:
 ### I. Privacy
 
 - **GA4** sets cookies and sends visitor IPs to Google, with no consent
-  banner. For UK/EU visitors that is a PECR/GDPR consent question — state it
+  banner. **Don't recommend `client_storage: 'none'`** — it is an analytics.js
+  option and does not exist in GA4's gtag.js (grepped the live script,
+  2026-09-23; it was recommended and nearly shipped as a no-op). GA4's only
+  supported cookieless mode is Consent Mode with `analytics_storage: denied`,
+  which keeps unconsented hits out of standard reports — so "cookieless GA4
+  with no banner" means GA4 stops reporting. Say that plainly when offering
+  it. For UK/EU visitors that is a PECR/GDPR consent question — state it
   factually and name the cheapest compliant options (consent mode with a
   banner, or cookieless analytics such as Cloudflare Web Analytics, which is
   only possible if the apex is proxied or the JS beacon is added).
