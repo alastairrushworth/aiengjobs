@@ -58,6 +58,15 @@ const JOB_TRIGGERS: Record<string, string> = {
 };
 
 /**
+ * Tables the first schema reserved for features that were never built — paid
+ * posts, a newsletter, accounts — and that nothing reads or writes. They are
+ * dropped rather than left empty because this database is published: the
+ * nightly run uploads it as the public `db-latest` release asset, so the first
+ * row anyone ever wrote to them would be world-readable the next morning.
+ */
+export const RETIRED_TABLES = ["employer_orders", "subscribers", "users"] as const;
+
+/**
  * Bring an existing database up to the current schema. Idempotent, and cheap
  * enough (one PRAGMA) to run on every open — which is the point: no code path
  * should be able to reach a table that is missing a column the engine writes.
@@ -79,6 +88,7 @@ export function migrate(db: DatabaseSync): void {
     }
   }
   for (const sql of Object.values(JOB_TRIGGERS)) db.exec(sql);
+  for (const table of RETIRED_TABLES) db.exec(`DROP TABLE IF EXISTS ${table}`);
 }
 
 export function openDb(): DatabaseSync {

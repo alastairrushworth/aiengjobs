@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { DatabaseSync } from "node:sqlite";
 import { readFileSync } from "node:fs";
-import { migrate } from "../engine/src/db/index.ts";
+import { migrate, RETIRED_TABLES } from "../engine/src/db/index.ts";
 import { upsertJob } from "../engine/src/db/repo.ts";
 
 const SCHEMA = readFileSync("engine/src/db/schema.sql", "utf8");
@@ -91,6 +91,35 @@ describe("migrate", () => {
     // Backfilled by a reclassify pass, not by the migration — a value invented
     // here would be indistinguishable from one the model produced.
     expect(row.model_score).toBeNull();
+    db.close();
+  });
+});
+
+describe("retired tables", () => {
+  const tables = (db: DatabaseSync) =>
+    (db.prepare("SELECT name FROM sqlite_master WHERE type = 'table'").all() as { name: string }[]).map(
+      (t) => t.name,
+    );
+
+  it("are dropped from a carried database, which is published every night", () => {
+    const db = new DatabaseSync(":memory:");
+    db.exec(SCHEMA);
+    // What the nightly database still carried on 2026-09-23.
+    db.exec(`
+      CREATE TABLE employer_orders (id TEXT PRIMARY KEY);
+      CREATE TABLE subscribers (id TEXT PRIMARY KEY, email TEXT NOT NULL UNIQUE);
+      CREATE TABLE users (id TEXT PRIMARY KEY, email TEXT NOT NULL UNIQUE);
+    `);
+    migrate(db);
+    for (const t of RETIRED_TABLES) expect(tables(db)).not.toContain(t);
+    expect(tables(db)).toContain("jobs");
+    db.close();
+  });
+
+  it("are not created by the schema", () => {
+    const db = new DatabaseSync(":memory:");
+    db.exec(SCHEMA);
+    for (const t of RETIRED_TABLES) expect(tables(db)).not.toContain(t);
     db.close();
   });
 });
