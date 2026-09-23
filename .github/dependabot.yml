@@ -1,0 +1,28 @@
+# Keeps the SHA-pinned actions and the npm lockfile current. Actions are pinned
+# to commit SHAs (a moved tag would run someone else's code with the job's
+# secrets in scope), and a pin nobody bumps goes stale — this is what bumps them.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ["*"]
+
+  # One root lockfile covers all four workspaces (shared, site, engine, mcp).
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      minor-and-patch:
+        update-types: [minor, patch]
+    ignore:
+      # The classifier's runtime and tokenizer are pinned so inference
+      # reproduces training exactly (ml/TRAINING_INFERENCE_PARITY.md). Bump them
+      # by hand, with the parity test and ml/acceptance/run.ts, never unattended.
+      - dependency-name: onnxruntime-node
+      - dependency-name: "@huggingface/transformers"
