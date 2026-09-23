@@ -1,12 +1,12 @@
 ---
 name: audit-site
-description: Run a thorough, deep-thinking review of the aiengjobs Astro site for bugs, correctness issues, SEO concerns (including Google for Jobs / JobPosting structured data), the paginated landing-page system and RSS feeds, accessibility, performance, responsive rendering across mobile and desktop, and big-picture/architecture problems. Use when the user asks to audit, review, or sanity-check the whole site (or a major area of it) rather than a single diff. Covers the rendered site and front-end (site/ — Astro pages, layouts, components, CSS, inline browser JS) as OUTPUT: what a user, a crawler, or a feed reader receives. Source-level code quality, security-guard implementation, the ingestion engine, deploy tooling and CI belong to the audit-code skill. For a full sweep across source, rendered output and UI together, use audit-all instead. Produces a prioritized findings report; read-only by default (does not edit files unless asked).
+description: Run a thorough, deep-thinking review of the frontierroles.com Astro site (the aiengjobs repo) for bugs, correctness issues, SEO concerns (including Google for Jobs / JobPosting structured data), the paginated landing-page system, RSS and JSON feeds, accessibility, performance, responsive rendering across mobile and desktop, and big-picture/architecture problems. Use when the user asks to audit, review, or sanity-check the whole site (or a major area of it) rather than a single diff — AND when they ask to check Google Search Console, GA4, indexing or coverage, crawl stats, 404s, "why isn't this page indexed" or search traffic for the site (§11 holds the baselines and the working-as-designed list). Covers the rendered site and front-end (site/ — Astro pages, layouts, components, CSS, inline browser JS) as OUTPUT: what a user, a crawler, or a feed reader receives. Source-level code quality, security-guard implementation, the ingestion engine, deploy tooling and CI belong to the audit-code skill; the adversarial security pass (headers, the MCP server, secrets, DNS) belongs to audit-security. For a full sweep across source, rendered output and UI together, use audit-all instead. Produces a prioritized findings report; read-only by default (does not edit files unless asked).
 ---
 
 # Site Audit — aiengjobs
 
 **Read `.claude/audit-conventions.md` first.** It carries the rules shared by
-all three audit skills — the scope split, operating rules, the data boundary,
+all the audit skills — the scope split, operating rules, the data boundary,
 known non-issues, severity tiers and report rules. This file adds only what's
 specific to auditing the rendered site.
 
@@ -94,10 +94,13 @@ reviewing a site that no longer exists.
    page ≥2), a city landing, `remote-ai-jobs`, a landing with exactly one page,
    an open job, a **closed-job tombstone** (find one via `isClosed`), a
    **duplicate job** that sets `dupCanonicalSlug` (`jobs/[slug].astro`, via
-  `duplicateOf()`), a
-   company page, `salaries/`, a salary cluster page, `stats/`, `404.html`,
-   `sitemap.xml`, `robots.txt`, `rss.xml`, a per-landing `<slug>/rss.xml`, and
-   `jobs-data.json`. **Re-derive this list from what you found in steps 1–2** —
+   `duplicateOfIn()` in `shared/indexable.ts`), a company page, `stats/`,
+   `mcp/`, `404.html`, `sitemap.xml`, `robots.txt`, `llms.txt`, `rss.xml`,
+   `daily/rss.xml`, a per-landing `<slug>/rss.xml`, `jobs-data.json` and a
+   per-landing `<slug>/jobs-data.json`, `mcp-index.json` plus one
+   `mcp-jobs/<slug>.json`, and a generated OG card (`og/<slug>.png`,
+   `og/cluster/<cluster>.png`). (The `salaries/` section was retired on
+   2026-07-31.) **Re-derive this list from what you found in steps 1–2** —
    if a page type exists that isn't named here, audit it and say so in the
    report.
 
@@ -113,9 +116,13 @@ file in `dist/`. Two things make this non-trivial at current size (dozens of
 landings × paginated slices × every job page), so:
 
 - **Script it** into the scratchpad rather than spot-checking by hand.
-- Account for the `/aiengjobs` base prefix **and** for `trailingSlash: "ignore"`
-  — naive matching produces false positives on the slash-less form. Normalize
-  before comparing.
+- Account for `trailingSlash: "ignore"` — naive matching produces false
+  positives on the slash-less form. Normalize before comparing. (`base` is `/`
+  since the move to frontierroles.com, so there is no path prefix to strip.)
+- **Keep the checker.** Write it under `.claude/skills/audit-site/scripts/`,
+  not the scratchpad: cyclearchive rebuilt its equivalent twice after losing it
+  with a session. A script that exits non-zero on a hard issue doubles as the
+  fix pass's regression gate.
 - **Report your coverage** ("checked 8,412 links across 1,203 pages, 3 broken")
   so a clean result is meaningful. If you sampled rather than swept, say which
   pages and why.
@@ -125,13 +132,16 @@ landings × paginated slices × every job page), so:
 §8 (responsive) cannot be done from source. Do this concretely:
 
 ```bash
-npm run dev -w @aiengjobs/site       # → http://localhost:4321/aiengjobs/
+npm run preview -w @aiengjobs/site   # serves dist/ — the artefacts you are auditing
 ```
 
-Then drive it with the **`claude-in-chrome`** tools — `tabs_create_mcp` +
-`navigate` to reach a page, `resize_window` to set each width, `computer` to
-screenshot. (`npm run preview` against `dist/` works equally well and is closer
-to production.) If no browser tooling is available in the session, **say so
+Then drive it with the **`claude-in-chrome`** tools. **Don't trust
+`resize_window`** — it reports success and leaves the viewport unchanged. Load
+each page into a same-origin `<iframe>` of the target CSS width in a throwaway
+tab, measure `scrollWidth > clientWidth` inside the frame for overflow, and
+screenshot the frames for overlap and truncation (see "Browser tooling" in the
+shared conventions for the rest of the gotchas). Sweep the local preview, not
+the live site. If no browser tooling is available in the session, **say so
 explicitly in the report** and mark §8 as source-only — do not quietly skip it,
 because layout overflow and overlap are invisible in source.
 
@@ -147,15 +157,16 @@ nothing to report gets one line** ("clean — checked X, Y, Z"), not padding.
 - The snapshot shape guard in `site/src/lib/data.ts` — does it still match what
   the exporter emits? Silent schema drift between `shared/types.ts`,
   `exportSnapshot.ts`, and the site's assumptions is the classic failure here.
-- **Base-path integrity.** The site is served under `base: "/aiengjobs"`.
-  Every internal link, asset reference, and redirect must go through the
-  `url()` helper (`site/src/lib/url.ts`). Grep pages/components/CSS/inline JS
-  for hardcoded root-relative paths (`href="/…"`, `fetch("/…")`, `url(/…)`)
-  that would 404 in production but work if dev happened to mask them.
+- **Base-path discipline.** The site is served at the apex (`base: "/"`), so a
+  hardcoded root-relative path (`href="/…"`, `fetch("/…")`, `url(/…)`) works
+  today. The `url()` helper (`site/src/lib/url.ts`) is kept so a move back under
+  a path costs nothing — anything that bypasses it is a Low consistency
+  finding, not a live bug. Also grep for leftovers of the old home:
+  `alastairrushworth.com` or `/aiengjobs` in `site/src/` or `dist/`.
 - Rendering logic bugs in page front-matter: sorting/filter-count computations
   in `index.astro`; `getStaticPaths` in `[topic]/[...page].astro`,
-  `jobs/[slug].astro`, `companies/[slug].astro`, `salaries/[cluster].astro`,
-  `[topic]/rss.xml.ts` (slug collisions between a city and a cluster, jobs in
+  `jobs/[slug].astro`, `companies/[slug].astro`, `mcp-jobs/[slug].json.ts`,
+  `og/[slug].png.ts`, `[topic]/rss.xml.ts` (slug collisions between a city and a cluster, jobs in
   zero clusters, companies with no open jobs); related-jobs selection; salary
   aggregation.
 - Edge inputs: zero open jobs, a job missing `postedAt`/salary/location/
@@ -230,9 +241,6 @@ each paginated at `PAGE_SIZE`, each with its own RSS feed.
 - Are city/cluster landings **differentiated** from each other and from the
   homepage — distinct h1, intro, counts, stats block — or thin permutations of
   one job list?
-- **Coverage asymmetry:** `salaries/[cluster].astro` covers clusters only, not
-  cities or remote. Is that deliberate (salary data too thin per city) or a gap?
-  Say which, and check the nav doesn't imply pages that don't exist.
 
 **RSS feeds**
 - `rss.xml` (site-wide) and `<slug>/rss.xml` (per landing, `[topic]/rss.xml.ts`)
@@ -269,22 +277,24 @@ covered in §2 — don't duplicate them here.)
   `dupCanonicalSlug` duplicate doesn't emit a competing JobPosting for the same
   role. Spot-check emitted JSON from `dist/` parses and is well-typed.
 - **Other JSON-LD:** `ItemList`/`CollectionPage`/`Organization`/`BreadcrumbList`
-  blocks on the homepage, landings, company and salary pages — valid,
+  blocks on the homepage, landings and company pages — valid,
   non-duplicative, consistent `@id`s, and every block routed through
   `jsonLdScript()`.
 - **Titles & descriptions:** unique, present, sensibly-lengthed on **every page
   type in your Step 0.5 sample**. Watch for pages inheriting the generic default
   description in `Base.astro`, and for near-duplicate titles between a cluster
-  landing and its `/salaries/<cluster>` twin.
+  landing and a city landing that lists mostly the same roles.
 - **Canonicals & the trailing-slash story:** `Base.astro` canonicalizes to the
   trailing-slash form (what GitHub Pages actually serves; slash-less 301s).
   Verify sitemap URLs, internal links, feed links, and canonicals all agree — a
-  sitemap or nav full of 301s wastes crawl budget. Also: github.io 301s to
-  alastairrushworth.com; `site` config, canonicals, and OG URLs must all use
-  the final domain.
+  sitemap or nav full of 301s wastes crawl budget. The final domain is
+  `https://frontierroles.com`: `site` config, canonicals, OG URLs, feed links
+  and JSON-LD `@id`s must all use it. The old `alastairrushworth.com/aiengjobs/*`
+  URLs 301 via a Cloudflare redirect rule on that zone — spot-check that a deep
+  old URL lands on its *own* new page, not the homepage.
 - **Sitemap** (`site/src/pages/sitemap.xml.ts`): every indexable URL present
-  (home, stats, salaries, every landing + its slices, salary clusters, companies
-  with open jobs, open jobs); nothing noindexed or closed listed; tombstones
+  (home, stats, `mcp/`, every landing + its slices, companies with open jobs,
+  listed jobs); nothing noindexed or closed listed; tombstones
   correctly absent; `lastmod` values sane (job `updatedAt ?? postedAt`
   fallback); companies whose last job just closed drop out cleanly. Note the
   total URL count and whether it's approaching the 50k/50MB limit that would
@@ -293,10 +303,11 @@ covered in §2 — don't duplicate them here.)
   sitemap URL absolute and base-prefixed. Should `jobs-data.json` be crawlable?
 - **Indexability:** `noindex` only on tombstones and 404 — nothing real
   accidentally noindexed, and nothing that *should* be noindexed left open.
-- **Open Graph / Twitter cards:** per-page title/description/url; everything
-  shares one `og-default.png` — flag whether per-job/per-landing OG would be
-  worth it, and check the default image exists, is sized right (1200×630),
-  and isn't bloated.
+- **Open Graph / Twitter cards:** per-page title/description/url. Job and
+  cluster pages get generated cards (`site/src/lib/og/`, `pages/og/`); the rest
+  fall back to `og-default.png`. Check a generated card renders (not blank, no
+  overflowing title), every card is 1200×630 and not bloated, and `og:image`
+  points at the right card for its page.
 - **Freshness signals:** "Updated {date}", `lastmod` in the sitemap, feed
   `pubDate`s, `datePosted`/`validThrough` in JobPosting — all derive from
   `generatedAt`; verify they agree and behave when the snapshot is stale.
@@ -432,9 +443,11 @@ Tag every responsive finding with the viewport(s) it affects (e.g. `≤480px`,
 
 ### 9. Security hygiene (rendered output)
 
-`audit-code` owns whether the guards are correctly *implemented*. This section
+`audit-code` owns whether the guards are correctly *implemented*; this section
 owns whether they're **used everywhere they must be** — the attack surface is
-untrusted ATS feed data reaching a rendered page.
+untrusted ATS feed data reaching a rendered page. The deep pass — live headers
+and TLS, the MCP server, CI secrets, DNS, the Cloudflare account, consent —
+belongs to **`audit-security`**: flag it here in one line, don't review it.
 
 - Every `set:html` in `site/src/` — JSON-LD must go through `jsonLdScript()`;
   any HTML-bodied content (job descriptions) must be sanitized at the source or
@@ -474,9 +487,64 @@ untrusted ATS feed data reaching a rendered page.
   can it get before it's actively harmful (wrong "posted X days ago", expired
   `validThrough`, ghost jobs on a "no ghost jobs" board)? Is there any staleness
   guard at build time?
-- The custom-domain migration noted in `astro.config.mjs` (dropping `base` for
-  a dedicated domain): would today's code survive it, or are there hidden
-  hardcoded-base assumptions that will bite?
+- The domain move (to the frontierroles.com apex, `base: "/"`) is done. Would
+  the site survive moving back under a path — i.e. does everything still go
+  through `url()`? Low priority; say so in one line either way.
+
+### 11. Search Console & analytics (via the browser)
+
+Google Search Console (the frontierroles.com property) and GA4
+(`G-F8NGE6G65G`) are the only external evidence of how the site is actually
+crawled and used. The apex is DNS-only at Cloudflare, so there is **no edge
+analytics for the site** — only for the MCP Worker. Read GSC and GA4 in the
+browser on a full audit, or whenever the user asks about traffic or indexing.
+
+**Start from the baseline, don't re-derive it.**
+- **Impressions collapsed on 2026-08-24**, three days after Google's August
+  2026 spam update finished rolling out (18–21 Aug): from ~800–1,000/day to
+  ~30–50/day. No manual action, no security issue, sitemap read fine, job pages
+  200 with valid JobPosting markup. It reads as an algorithmic demotion of a
+  programmatic aggregator (thousands of ATS-copied pages, deep paginated
+  landings, one-role company pages). Site changes from 21–22 Aug were checked
+  and ruled out.
+- **Indexing API pings are accepted and ignored** (checked 2026-09-17): 592
+  `URL_UPDATED` + 759 `URL_DELETED` over nine nights, all HTTP 200, and the
+  sampled URLs were still "URL is unknown to Google". Discovery crawl ~0/day
+  since 24 Aug; total crawl ~300–450/day, 85% refresh, 13–20% on 404s of closed
+  roles. Indexed ~1.9K, not indexed ~3.9K, "Discovered – currently not indexed"
+  ~2.7K. Job Postings report: 3 valid items (peak ~95 around 20 Aug). The
+  service account is a delegated Owner, so it isn't permissions.
+- **So recovery is a content-quality problem, not a technical-SEO bug hunt**:
+  fewer thin or duplicative URLs in the sitemap, more unique value per page
+  (the rule-based "At a glance" facts, pay benchmark and company hiring panels
+  shipped 2026-09-17 are that bet). Judge any new finding against that frame,
+  and don't recommend sending more pings — more quota would not help.
+
+**Reading GSC.**
+- **GSC reports the last crawl, not the current state.** `curl -sI` every URL
+  from a GSC error list before chasing it; on cyclearchive most were already
+  healthy.
+- Drill-down reports are addressable, which beats clicking a virtualised
+  table: `…/search-console/index/drilldown?resource_id=<property>&item_key=<key>`.
+  Keys that worked on cyclearchive's property (confirm here): 404 `CAMYDSAC`,
+  soft 404 `CAMYDiAC`, 5xx `CAMYEyAC`, robots `CAMYByAC`, redirect `CAMYCyAC`,
+  noindex `CAMYCCAC`, canonical `CAMYGCAC`, crawled-not-indexed `CAMYFyAC`,
+  discovered-not-indexed `CAMYFiAC`. Re-`navigate` between reports.
+- **Working as designed — do not "fix":** "Blocked by robots.txt" for `/*?`
+  filter URLs, `/mcp-jobs/` and `jobs-data.json` (`robots.txt.ts` explains
+  each); "Excluded by noindex" for closed-role tombstones; "Alternate page with
+  proper canonical" for duplicate postings consolidated by `duplicateOfIn`;
+  "Page with redirect" for slash-less and `www` variants and the old
+  `alastairrushworth.com/aiengjobs/*` URLs.
+- **The real lever is crawl budget** — the not-indexed pile is overwhelmingly
+  "Discovered". Levers: fewer, stronger URLs in the sitemap; `lastmod` that
+  only moves when content does; internal links to the pages that matter.
+
+**Reading GA4.** The tell for bot traffic is engagement, not volume: a spike
+of 100%-new users with zero engaged sessions from one country and one browser
+bucket is a headless sitemap walk, not readers (cyclearchive saw exactly this
+from Singapore). GA4 deep links can land on the wrong property — check the
+property id in the URL after every navigation before reading a number.
 
 ## Output — the report
 
@@ -506,6 +574,7 @@ links checked: <n across n pages>  ·  viewports rendered: <list, or "none — n
 | Content & UX          |  |  |
 | Responsive            |  |  |
 | Security hygiene      |  |  |
+| Search Console / GA4  |  | indexed vs not, impressions trend vs baseline |
 
 ## 🔴 Critical   (breaks the build, blocks indexing/Google for Jobs, or breaks for users)
 ## 🟠 High        (real SEO/a11y/correctness impact; should fix soon)
