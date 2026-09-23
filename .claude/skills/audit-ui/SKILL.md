@@ -1,12 +1,12 @@
 ---
 name: audit-ui
-description: Drive the running aiengjobs site in a real Chrome browser and review it as a designer would — visual hierarchy, layout, typography, spacing, colour, interaction quality, affordance clarity, journey friction, empty/loading/error states, and how it actually feels to use on a phone and a laptop. Walks representative journeys (browse → filter → evaluate a role → apply, plus landing pages, pagination, salaries and dead ends), clicking through real pages rather than reading source. Use when the user asks for a UI review, UX audit, design critique, "how does the site feel", "what could look better", or wants improvements to layout and usability. Correctness, SEO and a11y compliance belong to audit-site; source quality belongs to audit-code. For a full sweep across source, rendered output and UI together, use audit-all instead. Produces a prioritized, screenshot-backed improvement report; read-only (does not edit files unless asked).
+description: Drive the running aiengjobs site in a real Chrome browser and review it as a designer would — visual hierarchy, layout, typography, spacing, colour, interaction quality, affordance clarity, journey friction, empty/loading/error states, and how it actually feels to use on a phone and a laptop. Walks representative journeys (browse → filter → evaluate a role → apply, plus landing pages, pagination, stats and dead ends), clicking through real pages rather than reading source. Use when the user asks for a UI review, UX audit, design critique, "how does the site feel", "what could look better", or wants improvements to layout and usability. Correctness, SEO and a11y compliance belong to audit-site; source quality belongs to audit-code. For a full sweep across source, rendered output and UI together, use audit-all instead. Produces a prioritized, screenshot-backed improvement report; read-only (does not edit files unless asked).
 ---
 
 # UI/UX Audit — aiengjobs
 
 **Read `.claude/audit-conventions.md` first.** It carries the rules shared by
-all three audit skills — the scope split, operating rules, severity tiers and
+all the audit skills — the scope split, operating rules, severity tiers and
 report rules. This file adds only what's specific to a hands-on design review.
 
 A **hands-on design review**: open the site in a real browser, use it the way a
@@ -61,13 +61,21 @@ Specific to a design review:
   journey, scroll depth to the first useful thing, seconds to interactive.
 - **Don't trigger dialogs.** No `alert`/`confirm` paths, nothing that opens a
   browser modal — it freezes the extension for the rest of the session.
+- **Judge against the owner's settled calls, not generic taste.** On the job
+  page (2026-09-17, four iterations) the owner chose: one compact "At a glance"
+  label/value list rather than a tile grid; plain, conventional headings ("Job
+  description"); no captions explaining where data came from and no
+  disclaimers nobody asked for; new data folded into existing components
+  rather than new labelled panels. Content earns its place if a job-seeker
+  would use it. A recommendation that reverses one of these must say so and
+  argue for it.
 
 ## Setup
 
 Start the site (see Prerequisites in the shared conventions for the snapshot):
 
 ```bash
-npm run dev -w @aiengjobs/site      # → http://localhost:4321/aiengjobs/
+npm run dev -w @aiengjobs/site      # → http://localhost:4321/
 ```
 
 `npm run preview` against `dist/` also works and is closer to production; dev is
@@ -90,7 +98,12 @@ layout defects from built HTML.
 ### Tool sequence
 
 1. `tabs_context_mcp { createIfEmpty: true }` — always first, once per session.
-2. `resize_window` to set the viewport before screenshotting.
+2. **Set the viewport with a same-origin `<iframe>`, not `resize_window`** —
+   `resize_window` reports success and leaves the viewport unchanged (read
+   `innerWidth` back if in doubt). In a throwaway tab, lay out one or more
+   iframes of the target widths pointing at the page, then screenshot and click
+   inside them. See "Browser tooling" in the shared conventions for the other
+   gotchas (screenshot timeouts, the 45 s script limit, `&` in URLs).
 3. `browser_batch` for multi-step sequences (navigate → screenshot → click →
    screenshot). Batching is much faster than one call per action — use it for
    every journey below.
@@ -119,7 +132,7 @@ example URLs below still exist.
 
 ### Journey A — "Is there anything here for me?" (the 5-second test)
 
-1. Land on `/aiengjobs/`. **Before scrolling**, screenshot and answer: what is
+1. Land on `/`. **Before scrolling**, screenshot and answer: what is
    this site, who is it for, and what should I do next? If you can't tell in
    five seconds, that's the most important finding on the page.
 2. Squint at the screenshot (or `zoom` out): what does the eye hit first,
@@ -155,8 +168,10 @@ example URLs below still exist.
 10. Click a job card. Was the whole card clickable, or only the title? (Hover
     first — is the clickable region signposted?)
 11. On the job page, screenshot above the fold at both widths. Can you find
-    salary, location, seniority and the apply button without scrolling? On the
-    phone, how many scrolls to reach **Apply**?
+    salary, location, seniority and the apply button without scrolling? Does
+    the "At a glance" list scan quickly, or has it grown long enough to push
+    Apply down? On the phone, how many scrolls to reach **Apply**? Is "How the
+    pay compares" legible to someone who isn't an analyst?
 12. Read the description block: line length, paragraph rhythm, heading
     treatment, and how ATS-authored HTML actually renders (feed markup is
     inconsistent — look for cramped bullet lists, orphaned headings, walls of
@@ -171,8 +186,8 @@ example URLs below still exist.
 
 ### Journey D — "Browse by topic and place" (landing pages + pagination)
 
-16. Visit a cluster landing (e.g. `/aiengjobs/ai-agent-jobs`) and a city landing
-    (e.g. `/aiengjobs/ai-jobs-london`). Screenshot both.
+16. Visit a cluster landing (e.g. `/ai-agent-jobs/`) and a city landing
+    (e.g. `/ai-jobs-london/`). Screenshot both.
 17. Assess the stats block (page 1 only): are the tiles scannable, is the median
     salary given useful context, do the top-companies and top-skills lists earn
     their vertical space or push jobs below the fold?
@@ -186,13 +201,14 @@ example URLs below still exist.
     considered next step or a link dump? Is the RSS link doing useful work in
     that position?
 
-### Journey E — Salaries, stats and the edges
+### Journey E — Companies, stats and the edges
 
-21. `/aiengjobs/salaries` → a cluster page. Are the percentile figures (p10 /
-    median / p90) legible to a non-analyst? Is it obvious what population
-    they describe and how many roles back them?
-22. `/aiengjobs/stats`. Are the charts readable on a phone? Do labels collide?
-    Is there a takeaway, or just data?
+21. A **company page** (follow one from a job page). Do the hiring tiles say
+    something a candidate would act on? Is it obvious what they count and over
+    what period? Do one-role companies look thin or deliberate?
+22. `/stats/`. Are the charts readable on a phone? Do labels collide?
+    Is there a takeaway, or just data? And `/mcp/`: would a non-developer
+    understand what it is and whether it's for them?
 23. A **closed-job tombstone** (find one by following a stale link, or ask the
     user for a slug). Does it explain what happened and offer somewhere to go?
 24. The **404** page (visit any bad path). Same question.
