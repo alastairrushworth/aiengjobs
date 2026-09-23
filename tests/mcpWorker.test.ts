@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { resetCache } from "../mcp/src/board.ts";
 import worker from "../mcp/src/worker.ts";
 
 /**
@@ -55,5 +56,54 @@ describe("worker", () => {
     const res = await call("GET", "/");
     expect(res.status).toBe(200);
     expect(await res.text()).toContain(`${ORIGIN}/mcp`);
+  });
+  it("refuses an oversized query before searching the board", async () => {
+    // One request of "a a a …" would otherwise run a substring check per term
+    // against every role on the board.
+    const fetchSpy = vi.fn();
+    vi.stubGlobal("fetch", fetchSpy);
+    const res = await call("POST", "/mcp", {
+      jsonrpc: "2.0",
+      id: 2,
+      method: "tools/call",
+      params: { name: "search_jobs", arguments: { query: "a ".repeat(5_000) } },
+    });
+    const body = JSON.stringify(await res.json());
+    expect(body).toMatch(/too_big|at most|200/i);
+    expect(fetchSpy).not.toHaveBeenCalled();
+    vi.unstubAllGlobals();
+  });
+
+  it("marks every response nosniff", async () => {
+    for (const [method, path] of [["GET", "/"], ["GET", "/mcp"], ["GET", "/nope"]] as const) {
+      const res = await call(method, path);
+      expect(res.headers.get("x-content-type-options")).toBe("nosniff");
+    }
+  });
+});
+
+describe("health", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+    resetCache();
+  });
+
+  it("reports a failed board load without echoing the error", async () => {
+    resetCache();
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => {
+        throw new Error("connect ECONNREFUSED 10.0.0.7:443 via internal-proxy");
+      }),
+    );
+    const res = await call("GET", "/health");
+    expect(res.status).toBe(503);
+    const text = await res.text();
+    expect(text).not.toContain("ECONNREFUSED");
+    expect(JSON.parse(text)).toEqual({ ok: false, error: "board unavailable" });
+    // Still logged, where the owner can read it.
+    expect(console.error).toHaveBeenCalled();
   });
 });
