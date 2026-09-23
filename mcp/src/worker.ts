@@ -27,7 +27,7 @@ interface Env {
  */
 const CORS: Record<string, string> = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS",
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
   "Access-Control-Allow-Headers":
     "Content-Type, Authorization, mcp-session-id, mcp-protocol-version, last-event-id",
   "Access-Control-Expose-Headers": "mcp-session-id",
@@ -116,8 +116,19 @@ export default {
     if (isMcpPath && request.method === "POST") {
       return withCors(await handleMcp(request));
     }
+    // GET asks for a standing SSE stream of server-initiated messages, and
+    // DELETE asks to end a session. A stateless server has neither. Handing GET
+    // to the transport answered 200 with a stream that handleMcp then closed at
+    // once, so every idle client reconnected in a loop — two sessions made
+    // ~50k requests a week. 405 is the spec's "no stream here", and clients
+    // take it as final.
     if (url.pathname === "/mcp" && (request.method === "GET" || request.method === "DELETE")) {
-      return withCors(await handleMcp(request));
+      return withCors(
+        Response.json(
+          { jsonrpc: "2.0", error: { code: -32000, message: "Method not allowed." }, id: null },
+          { status: 405, headers: { Allow: "POST" } },
+        ),
+      );
     }
 
     if (url.pathname === "/" && request.method === "GET") {
