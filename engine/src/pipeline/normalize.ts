@@ -16,8 +16,16 @@ export function normalize(raw: RawPosting, companySlug: string): NormalizedJob {
   // ATS feeds deliver titles/locations with HTML entities ("&amp;", "&#8211;");
   // decode once here so every downstream consumer (site cards, JSON-LD, meta
   // tags) gets clean text. stripHtml already decodes descriptions.
-  const title = decodeEntities(raw.title);
-  const locationRaw = raw.locationRaw ? decodeEntities(raw.locationRaw) : undefined;
+  //
+  // Titles and locations are single-line fields, and decoding is what can make
+  // them multi-line: an encoded "&#10;" becomes a real newline, which lets a
+  // feed's title leave its heading in the MCP output and start a paragraph that
+  // reads as the board's own text. Collapse whitespace after decoding. Slugs and
+  // the content hash are unaffected — slugify already folds separator runs, and
+  // the hash reads the raw title.
+  const oneLine = (s: string) => s.replace(/\s+/g, " ").trim();
+  const title = oneLine(decodeEntities(raw.title));
+  const locationRaw = raw.locationRaw ? oneLine(decodeEntities(raw.locationRaw)) : undefined;
   const normalizedTitle = title
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, " ")
