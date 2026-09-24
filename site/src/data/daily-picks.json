@@ -1,17 +1,6 @@
 {
   "picks": [
     {
-      "date": "2026-08-24",
-      "pickedAt": "2026-08-25T03:37:09.100Z",
-      "slugs": [
-        "fractal-wd1-careers-lead-architect-7ebed4",
-        "fluidstack-machine-learning-engineer-03f01e",
-        "ema-ai-resident-4bb36c",
-        "grafanalabs-staff-ai-engineer-us-remote-90f605",
-        "grafanalabs-staff-ai-engineer-canada-remote-d00af1"
-      ]
-    },
-    {
       "date": "2026-08-25",
       "pickedAt": "2026-08-26T03:38:51.053Z",
       "slugs": [
@@ -326,6 +315,17 @@
         "relx-wd3-relx-data-scientist-iii-12d67c",
         "relx-wd3-relx-senior-data-scientist-i-29cf5b",
         "capitalone-wd12-capital-one-ai-engineer-5-genai-platform-agentic-infrastructure-2c7976"
+      ]
+    },
+    {
+      "date": "2026-09-24",
+      "pickedAt": "2026-09-24T04:13:16.861Z",
+      "slugs": [
+        "adobe-wd5-external-experienced-staff-machine-learning-engineer-ac0043",
+        "capitalone-wd12-capital-one-ai-engineer-5-gen-ai-platform-services-53e1a4",
+        "asos-senior-ai-engineer-ai-platform-2365e0",
+        "airwallex-software-engineer-infrastructure-ai-13f8bc",
+        "astrazeneca-wd3-careers-associate-principal-scientist-generative-ai-7cb330"
       ]
     }
   ]
