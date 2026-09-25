@@ -1,17 +1,6 @@
 {
   "picks": [
     {
-      "date": "2026-08-25",
-      "pickedAt": "2026-08-26T03:38:51.053Z",
-      "slugs": [
-        "inferact-member-of-technical-staff-inference-691a33",
-        "inferact-member-of-technical-staff-inference-35c71c",
-        "nexthink-senior-ai-engineer-834368",
-        "nasdaq-wd1-global-external-site-ai-engineer-specialist-4d2a53",
-        "salesloft-sr-software-engineer-ai-dcb730"
-      ]
-    },
-    {
       "date": "2026-08-27",
       "pickedAt": "2026-08-27T08:46:22.012Z",
       "slugs": [
@@ -326,6 +315,17 @@
         "asos-senior-ai-engineer-ai-platform-2365e0",
         "airwallex-software-engineer-infrastructure-ai-13f8bc",
         "astrazeneca-wd3-careers-associate-principal-scientist-generative-ai-7cb330"
+      ]
+    },
+    {
+      "date": "2026-09-25",
+      "pickedAt": "2026-09-25T04:01:11.975Z",
+      "slugs": [
+        "adobe-wd5-external-experienced-senior-machine-learning-engineer-5678e6",
+        "turing-senior-research-engineer-frontier-data-ef26d1",
+        "capitalone-wd12-capital-one-ai-engineer-5-fm-hosting-llm-inference-f2d183",
+        "verizon-wd12-verizon-careers-ai-workflow-engineer-fcd1af",
+        "turing-senior-research-engineer-enterprise-knowledge-495c6f"
       ]
     }
   ]
