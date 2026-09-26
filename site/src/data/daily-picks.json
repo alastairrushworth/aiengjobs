@@ -1,17 +1,6 @@
 {
   "picks": [
     {
-      "date": "2026-08-27",
-      "pickedAt": "2026-08-27T08:46:22.012Z",
-      "slugs": [
-        "spacex-software-engineer-inference-ai-data-engineering-16e848",
-        "soprasteria1-mid-level-python-developer-genai-4050c9",
-        "soprasteria1-genai-senior-software-engineer-09aac5",
-        "spacex-application-software-engineer-applied-ai-661dfd",
-        "spacex-application-software-engineer-applied-ai-c8b84d"
-      ]
-    },
-    {
       "date": "2026-08-28",
       "pickedAt": "2026-08-28T10:53:23.247Z",
       "slugs": [
@@ -326,6 +315,17 @@
         "capitalone-wd12-capital-one-ai-engineer-5-fm-hosting-llm-inference-f2d183",
         "verizon-wd12-verizon-careers-ai-workflow-engineer-fcd1af",
         "turing-senior-research-engineer-enterprise-knowledge-495c6f"
+      ]
+    },
+    {
+      "date": "2026-09-26",
+      "pickedAt": "2026-09-26T03:42:25.211Z",
+      "slugs": [
+        "verizon-wd12-verizon-careers-senior-agentic-ai-engineer-c044e2",
+        "snorkelai-senior-staff-software-engineer-ai-ml-6c1130",
+        "servicenow-senior-research-engineer-scientist-0cfa3c",
+        "snowflake-staff-software-engineer-frontier-security-team-d07149",
+        "roblox-software-engineer-genai-platform-f3665e"
       ]
     }
   ]
