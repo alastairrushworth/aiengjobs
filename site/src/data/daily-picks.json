@@ -1,17 +1,6 @@
 {
   "picks": [
     {
-      "date": "2026-08-28",
-      "pickedAt": "2026-08-28T10:53:23.247Z",
-      "slugs": [
-        "thinkingmachines-research-post-training-evals-6057db",
-        "thinkingmachines-research-engineer-infrastructure-inference-fa37b8",
-        "waymo-senior-staff-engineer-agentic-ai-engineering-54a0ec",
-        "thinkingmachines-rl-systems-infra-617cc5",
-        "togetherai-senior-software-engineer-infra-agent-systems-remote-india-9276e4"
-      ]
-    },
-    {
       "date": "2026-08-29",
       "pickedAt": "2026-08-29T08:07:10.579Z",
       "slugs": [
@@ -326,6 +315,17 @@
         "servicenow-senior-research-engineer-scientist-0cfa3c",
         "snowflake-staff-software-engineer-frontier-security-team-d07149",
         "roblox-software-engineer-genai-platform-f3665e"
+      ]
+    },
+    {
+      "date": "2026-09-27",
+      "pickedAt": "2026-09-27T02:05:54.258Z",
+      "slugs": [
+        "shieldai-staff-deep-learning-engineer-state-estimation-r5785-3fc1da",
+        "chaidiscovery-research-engineer-ml-infrastructure-04d3ad",
+        "handshake-senior-software-engineer-coding-2da843",
+        "perplexity-engineering-manager-multimodal-3a3932",
+        "wayve-senior-data-scientist-38df99"
       ]
     }
   ]
