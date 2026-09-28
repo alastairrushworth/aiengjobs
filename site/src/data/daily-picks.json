@@ -1,17 +1,6 @@
 {
   "picks": [
     {
-      "date": "2026-08-29",
-      "pickedAt": "2026-08-29T08:07:10.579Z",
-      "slugs": [
-        "asos-senior-ai-llm-engineer-528fdf",
-        "iambic-therapeutics-machine-learning-scientist-large-multimodal-models-post-training-bf46b7",
-        "iambic-therapeutics-machine-learning-scientist-large-multimodal-models-post-training-9cf409",
-        "axle-senior-data-scientist-agentic-ai-systems-26c3b8",
-        "isomorphiclabs-software-engineer-llm-engineering-london-7c5e49"
-      ]
-    },
-    {
       "date": "2026-08-30",
       "pickedAt": "2026-08-30T04:35:13.188Z",
       "slugs": [
@@ -326,6 +315,16 @@
         "handshake-senior-software-engineer-coding-2da843",
         "perplexity-engineering-manager-multimodal-3a3932",
         "wayve-senior-data-scientist-38df99"
+      ]
+    },
+    {
+      "date": "2026-09-28",
+      "pickedAt": "2026-09-28T02:22:52.287Z",
+      "slugs": [
+        "capitalone-wd12-capital-one-senior-staff-ai-engineer-agentic-ai-platform-remote-eligible-c7b743",
+        "field-ai-robotics-research-internship-humanoid-manipulation-spring-2027-phd-internship-7e13e6",
+        "field-ai-robotics-research-internship-humanoid-manipulation-summer-2027-phd-internship-2a62e8",
+        "servicenow-assoc-machine-learning-engineer-690e01"
       ]
     }
   ]
