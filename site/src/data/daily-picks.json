@@ -1,17 +1,6 @@
 {
   "picks": [
     {
-      "date": "2026-08-30",
-      "pickedAt": "2026-08-30T04:35:13.188Z",
-      "slugs": [
-        "zillow-wd5-zillow-group-external-agentic-ai-principal-machine-learning-engineer-1b66c6",
-        "tmobile-wd1-external-associate-ai-engineer-d604ff",
-        "waymo-research-scientist-rl-for-autonomous-planning-world-modeling-5c5e58",
-        "ro-senior-ai-engineer-2e2f9f",
-        "perplexity-member-of-technical-staff-ai-software-engineer-agents-157da6"
-      ]
-    },
-    {
       "date": "2026-08-31",
       "pickedAt": "2026-08-31T03:06:07.101Z",
       "slugs": [
@@ -325,6 +314,17 @@
         "field-ai-robotics-research-internship-humanoid-manipulation-spring-2027-phd-internship-7e13e6",
         "field-ai-robotics-research-internship-humanoid-manipulation-summer-2027-phd-internship-2a62e8",
         "servicenow-assoc-machine-learning-engineer-690e01"
+      ]
+    },
+    {
+      "date": "2026-09-29",
+      "pickedAt": "2026-09-29T05:28:39.965Z",
+      "slugs": [
+        "anaplan-principal-engineer-ai-b513a6",
+        "lyft-applied-scientist-intern-summer-2027-bb3707",
+        "anaplan-senior-data-engineer-ai-fbceb0",
+        "netcompany1-senior-ai-engineer-a03d82",
+        "coursera-ai-specialist-ii-2ad560"
       ]
     }
   ]
