@@ -1,15 +1,6 @@
 {
   "picks": [
     {
-      "date": "2026-08-31",
-      "pickedAt": "2026-08-31T03:06:07.101Z",
-      "slugs": [
-        "mastercard-wd1-corporatecareers-senior-software-engineer-8be9f8",
-        "mastercard-wd1-corporatecareers-lead-ai-platform-engineer-4640fb",
-        "wayve-software-engineer-data-flywheel-platform-ac29dc"
-      ]
-    },
-    {
       "date": "2026-09-01",
       "pickedAt": "2026-09-01T04:16:15.735Z",
       "slugs": [
@@ -325,6 +316,17 @@
         "anaplan-senior-data-engineer-ai-fbceb0",
         "netcompany1-senior-ai-engineer-a03d82",
         "coursera-ai-specialist-ii-2ad560"
+      ]
+    },
+    {
+      "date": "2026-09-30",
+      "pickedAt": "2026-09-30T04:45:43.999Z",
+      "slugs": [
+        "tennr-senior-backend-engineer-ml-f970cf",
+        "anthropic-research-engineer-research-scientist-rl-frontiers-5b6b31",
+        "careers-ice-engineer-platform-engineering-ai-1be9a4",
+        "capitalone-wd12-capital-one-ai-engineer-3-c6d750",
+        "servicenow-senior-research-scientist-agent-evaluation-f5c2cc"
       ]
     }
   ]
