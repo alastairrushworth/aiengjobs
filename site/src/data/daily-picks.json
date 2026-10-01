@@ -1,17 +1,6 @@
 {
   "picks": [
     {
-      "date": "2026-09-01",
-      "pickedAt": "2026-09-01T04:16:15.735Z",
-      "slugs": [
-        "truveta-senior-machine-learning-ml-engineer-2e0986",
-        "andurilindustries-agentic-ai-engineer-automation-fad14c",
-        "servicenow-senior-staff-research-engineer-scientist-b3ae49",
-        "servicenow-research-engineer-scientist-66d055",
-        "capitalone-wd12-capital-one-distinguished-ai-engineer-97bf20"
-      ]
-    },
-    {
       "date": "2026-09-02",
       "pickedAt": "2026-09-02T03:56:55.274Z",
       "slugs": [
@@ -327,6 +316,17 @@
         "careers-ice-engineer-platform-engineering-ai-1be9a4",
         "capitalone-wd12-capital-one-ai-engineer-3-c6d750",
         "servicenow-senior-research-scientist-agent-evaluation-f5c2cc"
+      ]
+    },
+    {
+      "date": "2026-10-01",
+      "pickedAt": "2026-10-01T04:49:08.221Z",
+      "slugs": [
+        "capitalone-wd12-capital-one-ai-engineer-5-a6f377",
+        "servicenow-agentic-ai-harness-architect-moveworks-e7f857",
+        "nscaleoperationsukltd-principal-ai-product-engineer-50ece2",
+        "brainco-machine-learning-engineer-applied-ai-1d912e",
+        "astrazeneca-wd3-careers-agentic-ai-sr-engineer-40f0f3"
       ]
     }
   ]
