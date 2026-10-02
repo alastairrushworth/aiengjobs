@@ -1,17 +1,6 @@
 {
   "picks": [
     {
-      "date": "2026-09-02",
-      "pickedAt": "2026-09-02T03:56:55.274Z",
-      "slugs": [
-        "relx-wd3-relx-senior-data-scientist-ii-158eae",
-        "togetherai-senior-software-engineer-infra-agent-systems-uk-7108f4",
-        "toast-staff-software-engineer-ai-agent-engineer-care-automation-40c21e",
-        "gradient-labs-ai-software-engineer-b203df",
-        "verizon-wd12-verizon-careers-distinguished-engineer-applied-ai-solutions-d5be25"
-      ]
-    },
-    {
       "date": "2026-09-03",
       "pickedAt": "2026-09-03T04:25:14.093Z",
       "slugs": [
@@ -327,6 +316,17 @@
         "nscaleoperationsukltd-principal-ai-product-engineer-50ece2",
         "brainco-machine-learning-engineer-applied-ai-1d912e",
         "astrazeneca-wd3-careers-agentic-ai-sr-engineer-40f0f3"
+      ]
+    },
+    {
+      "date": "2026-10-02",
+      "pickedAt": "2026-10-02T04:24:59.657Z",
+      "slugs": [
+        "zetaglobal-staff-software-engineer-4c49af",
+        "interview-kickstart-software-engineer-2-machine-learning-17fb65",
+        "workday-wd5-workday-senior-ai-engineer-7dd955",
+        "freshworks-principal-engineer-machine-learning-ee17c1",
+        "freshworks-principal-engineer-machine-learning-d17644"
       ]
     }
   ]
