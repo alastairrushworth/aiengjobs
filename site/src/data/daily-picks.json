@@ -1,17 +1,6 @@
 {
   "picks": [
     {
-      "date": "2026-09-03",
-      "pickedAt": "2026-09-03T04:25:14.093Z",
-      "slugs": [
-        "anaplan-principal-ai-engineer-05dfa3",
-        "anaplan-principal-engineer-ai-01a146",
-        "motorway-senior-generative-ai-engineer-95abdc",
-        "statestreet-wd1-global-llm-data-scientist-senior-associate-c25055",
-        "datadog-senior-applied-scientist-ai-platform-4411d6"
-      ]
-    },
-    {
       "date": "2026-09-04",
       "pickedAt": "2026-09-04T03:56:25.753Z",
       "slugs": [
@@ -327,6 +316,17 @@
         "workday-wd5-workday-senior-ai-engineer-7dd955",
         "freshworks-principal-engineer-machine-learning-ee17c1",
         "freshworks-principal-engineer-machine-learning-d17644"
+      ]
+    },
+    {
+      "date": "2026-10-03",
+      "pickedAt": "2026-10-03T04:09:26.702Z",
+      "slugs": [
+        "cerebras-senior-research-engineer-inference-ml-80105c",
+        "anthropic-staff-research-engineer-multi-agent-scaling-c52a72",
+        "verizon-wd12-verizon-careers-ai-platform-engineer-b97547",
+        "aviva-wd1-external-mid-or-senior-applied-ai-engineer-39e6b5",
+        "cisco-wd5-cisco-careers-cx-machine-learning-engineer-b2fe4a"
       ]
     }
   ]
