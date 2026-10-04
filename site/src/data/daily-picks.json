@@ -1,17 +1,6 @@
 {
   "picks": [
     {
-      "date": "2026-09-04",
-      "pickedAt": "2026-09-04T03:56:25.753Z",
-      "slugs": [
-        "verizon-wd12-verizon-careers-engr-iii-cslt-ai-ml-engrg-20020e",
-        "smartsheet-sr-software-engineer-ii-ai-engineering-remote-eligible-d0d662",
-        "cisco-wd5-cisco-careers-principal-ai-researcher-7276a2",
-        "servicenow-senior-staff-machine-learning-engineer-agentic-systems-moveworks-79a0ae",
-        "iambic-therapeutics-software-engineer-agentic-data-pipelines-c4f049"
-      ]
-    },
-    {
       "date": "2026-09-05",
       "pickedAt": "2026-09-05T03:21:59.189Z",
       "slugs": [
@@ -327,6 +316,17 @@
         "verizon-wd12-verizon-careers-ai-platform-engineer-b97547",
         "aviva-wd1-external-mid-or-senior-applied-ai-engineer-39e6b5",
         "cisco-wd5-cisco-careers-cx-machine-learning-engineer-b2fe4a"
+      ]
+    },
+    {
+      "date": "2026-10-04",
+      "pickedAt": "2026-10-04T03:23:32.467Z",
+      "slugs": [
+        "shifttechnology-staff-ai-engineer-architecture-skills-3f5d81",
+        "capitalone-wd12-capital-one-ai-engineer-5-mlx-agentic-ai-gen-ai-platform-services-429dfa",
+        "openai-software-engineer-openai-presence-eb0795",
+        "shieldai-senior-engineer-research-to-product-perception-r6022-593f81",
+        "dataleap-ex-founder-with-track-record-c40611"
       ]
     }
   ]
