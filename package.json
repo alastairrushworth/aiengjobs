@@ -18,7 +18,7 @@
     "snapshot:fetch": "git fetch --depth=1 origin snapshot && git cat-file blob FETCH_HEAD:snapshot.json > site/src/data/snapshot.json && echo 'Fetched site/src/data/snapshot.json'"
   },
   "devDependencies": {
-    "sharp": "^0.35.3",
+    "sharp": "^0.35.5",
     "typescript": "^6.0.3",
     "vitest": "^4.1.11"
   },
