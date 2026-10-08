@@ -6,15 +6,15 @@ import Base from "../layouts/Base.astro";
 import JobCard from "./JobCard.astro";
 import JobFilters from "./JobFilters.astro";
 import LandingStats from "./LandingStats.astro";
-import BrowseNav from "./BrowseNav.astro";
+import LocationNav from "./LocationNav.astro";
 import Pager from "./Pager.astro";
 import { url } from "../lib/url.ts";
 import { jsonLdScript } from "../lib/jsonld.ts";
 import { buildFilterOptions } from "../lib/filterOptions.ts";
 import { computeLandingStats } from "../lib/landingStats.ts";
-import { fxRates } from "../lib/data.ts";
-import { formatCount } from "../lib/format.ts";
-import { LOCATION_LANDINGS } from "../lib/landings.ts";
+import { BOARD_MEDIAN_USD, OPEN_BY_COUNTRY } from "../lib/boardContext.ts";
+import { fxRates, generatedAt } from "../lib/data.ts";
+import { countryName, formatCount } from "../lib/format.ts";
 import { adjacentPages } from "../lib/pager.ts";
 
 interface Props {
@@ -36,7 +36,18 @@ const title = `${landing.h1}${pageSuffix}`;
 // page 3 wants the same "roles in London" summary, and it keeps the numbers
 // consistent across the sequence. Only rendered on page 1, where it's the
 // distinguishing content; repeating it would make every slice near-duplicate.
-const stats = page.currentPage === 1 ? computeLandingStats(landing.jobs, fxRates) : null;
+//
+// Set against the board and, for a city, its country: "median $150k" means
+// more next to "board-wide $197k", and "117 of the UK's 289 roles" is a fact
+// about London no other page states.
+const country =
+  landing.kind === "city" && landing.country
+    ? { name: countryName(landing.country) ?? landing.country, total: OPEN_BY_COUNTRY.get(landing.country) ?? 0 }
+    : undefined;
+const stats =
+  page.currentPage === 1
+    ? computeLandingStats(landing.jobs, fxRates, generatedAt, { boardMedianUsd: BOARD_MEDIAN_USD, country })
+    : null;
 
 // Each slice gets its own ItemList covering exactly what it renders — a
 // numberOfItems that disagrees with the list is a structured-data error.
@@ -53,12 +64,12 @@ const itemList = {
   })),
 };
 
-// Location cross-links. Capped so the foot of every listing page isn't a link
-// farm. The cluster row that used to sit beside this one is gone — the footer
-// nav links all eight on every page, and two copies within 200px of each other
-// was the whole of what this row added.
-const otherLocations = LOCATION_LANDINGS.filter((l) => l.slug !== landing.slug).slice(0, 8);
-const locationLinks = otherLocations.map((l) => ({ href: url(`/${l.slug}/`), text: l.label }));
+// The location block at the foot of the page is components/LocationNav.astro:
+// every location page, grouped by country. It replaced a row capped at the
+// eight biggest locations — the cap kept the foot of the page from reading as
+// a link farm, and it also left 47 of 55 city pages with no inbound link from
+// anywhere (lib/landings, LOCATION_GROUPS). The cluster row that used to sit
+// beside it is gone too — the footer nav links all eight on every page.
 
 // The pager (components/Pager.astro) windows its page numbers; page 1 is the
 // bare landing URL, never /1/.
@@ -169,10 +180,9 @@ const noindex = page.currentPage > 1;
 
   {/* Stack cross-links removed: the footer nav carries all eight cluster pages
       on every page of the site, so this row was a second copy of them ~200px
-      above the first. Locations have no such duplicate, so they stay. */}
-  {locationLinks.length > 0 && (
-    <BrowseNav label="Browse by location:" links={locationLinks} ariaLabel="Browse by location" />
-  )}
+      above the first. Locations have no such duplicate, so they stay — all of
+      them, on every slice, so a crawler arriving anywhere finds every city. */}
+  <LocationNav current={landing.slug} />
 
   <script type="application/ld+json" set:html={jsonLdScript(itemList)} is:inline />
 </Base>
