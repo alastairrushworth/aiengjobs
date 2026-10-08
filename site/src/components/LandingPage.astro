@@ -7,6 +7,7 @@ import JobCard from "./JobCard.astro";
 import JobFilters from "./JobFilters.astro";
 import LandingStats from "./LandingStats.astro";
 import BrowseNav from "./BrowseNav.astro";
+import Pager from "./Pager.astro";
 import { url } from "../lib/url.ts";
 import { jsonLdScript } from "../lib/jsonld.ts";
 import { buildFilterOptions } from "../lib/filterOptions.ts";
@@ -14,6 +15,7 @@ import { computeLandingStats } from "../lib/landingStats.ts";
 import { fxRates } from "../lib/data.ts";
 import { formatCount } from "../lib/format.ts";
 import { LOCATION_LANDINGS } from "../lib/landings.ts";
+import { adjacentPages } from "../lib/pager.ts";
 
 interface Props {
   landing: Landing;
@@ -22,13 +24,9 @@ interface Props {
 
 const { landing, page } = Astro.props;
 
-// Astro emits slice URLs without a trailing slash (trailingSlash: "ignore"),
-// but GitHub Pages 301s that form — and canonicals, the sitemap and every other
-// internal link here use the slash. Normalize so pagination doesn't hand
-// crawlers a chain of redirects.
-const slash = (u?: string) => (u && !u.endsWith("/") ? `${u}/` : u);
-const prevUrl = slash(page.url.prev);
-const nextUrl = slash(page.url.next);
+// Trailing-slash prev/next for the <link> tags — the same URLs the pager's
+// Newer/Older buttons carry (lib/pager.ts says why the slash).
+const { prev: prevUrl, next: nextUrl } = adjacentPages(page);
 
 const paged = page.lastPage > 1;
 const pageSuffix = page.currentPage > 1 ? ` — page ${page.currentPage} of ${page.lastPage}` : "";
@@ -62,27 +60,9 @@ const itemList = {
 const otherLocations = LOCATION_LANDINGS.filter((l) => l.slug !== landing.slug).slice(0, 8);
 const locationLinks = otherLocations.map((l) => ({ href: url(`/${l.slug}/`), text: l.label }));
 
-// Newer/Older alone costs 21 clicks to reach the last page of a 22-page
-// landing. A windowed run of numbers puts any page one or two hops away while
-// keeping the row short enough to fit a phone.
-const pageHref = (n: number) =>
-  n === 1 ? url(`/${landing.slug}/`) : url(`/${landing.slug}/${n}/`);
-
-function pageWindow(current: number, last: number): (number | "gap")[] {
-  const wanted = new Set<number>([1, last, current]);
-  for (const n of [current - 1, current + 1]) {
-    if (n > 1 && n < last) wanted.add(n);
-  }
-  const out: (number | "gap")[] = [];
-  let prev = 0;
-  for (const n of [...wanted].sort((a, b) => a - b)) {
-    if (prev && n - prev > 1) out.push("gap");
-    out.push(n);
-    prev = n;
-  }
-  return out;
-}
-const pageNumbers = paged ? pageWindow(page.currentPage, page.lastPage) : [];
+// The pager (components/Pager.astro) windows its page numbers; page 1 is the
+// bare landing URL, never /1/.
+const firstPage = url(`/${landing.slug}/`);
 
 // Refining a landing is a page-1 affordance. Pages 2+ are slices of one
 // ordering, and a filter there would have to either silently jump you back to
@@ -185,34 +165,7 @@ const noindex = page.currentPage > 1;
     <p class="empty">No open roles here right now.</p>
   )}
 
-  {paged && (
-    <nav class="pager" aria-label="Pagination">
-      {prevUrl ? (
-        <a rel="prev" href={prevUrl}>← Newer</a>
-      ) : (
-        <span class="disabled">← Newer</span>
-      )}
-      <span class="pager-nums">
-        <span class="sr-only">Page {page.currentPage} of {page.lastPage}.</span>
-        {pageNumbers.map((n) =>
-          n === "gap" ? (
-            <span class="pager-gap" aria-hidden="true">…</span>
-          ) : n === page.currentPage ? (
-            <span class="pager-num current" aria-current="page">{n}</span>
-          ) : (
-            <a class="pager-num" href={pageHref(n)}>
-              <span class="sr-only">Page </span>{n}
-            </a>
-          ),
-        )}
-      </span>
-      {nextUrl ? (
-        <a rel="next" href={nextUrl}>Older →</a>
-      ) : (
-        <span class="disabled">Older →</span>
-      )}
-    </nav>
-  )}
+  <Pager page={page} first={firstPage} />
 
   {/* Stack cross-links removed: the footer nav carries all eight cluster pages
       on every page of the site, so this row was a second copy of them ~200px
@@ -237,63 +190,4 @@ const noindex = page.currentPage > 1;
   .crumbs .feed { color: var(--muted); font-size: 0.85rem; padding-block: 3px; }
   .crumbs .feed:hover { text-decoration: underline; }
   .empty { text-align: center; color: var(--muted); padding: 32px 0; }
-  .pager {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-wrap: wrap;
-    gap: 20px;
-    margin: 28px 0 4px;
-    font-size: 0.9rem;
-  }
-  .pager a {
-    color: var(--accent-text);
-    border: 1px solid var(--border-strong);
-    border-radius: 10px;
-    /* ≥44px tall so it's a comfortable touch target on a phone. */
-    padding: 12px 18px;
-  }
-  .pager a:hover,
-  .pager a:focus-visible { border-color: var(--accent); }
-  .pager .disabled { color: var(--muted); padding: 12px 18px; }
-  .pager-nums {
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 2px;
-  }
-  /* Numbers are plain targets, not the bordered buttons Newer/Older use — the
-     border treatment on nine elements turns the pager into a wall of boxes. */
-  .pager .pager-num {
-    border: none;
-    padding: 12px 4px;
-    /* ≥44px wide so each digit is still a comfortable touch target. */
-    min-width: 44px;
-    text-align: center;
-  }
-  .pager .pager-num.current {
-    color: var(--text);
-    font-weight: 700;
-    background: var(--surface-2);
-    border: 1px solid var(--border-strong);
-  }
-  .pager .pager-num:hover,
-  .pager .pager-num:focus-visible { color: var(--text); background: var(--surface-2); }
-  .pager-gap { color: var(--muted); }
-  /* Narrow: give the numbers their own row rather than letting the flex line
-     break wherever it runs out. "← Newer", five numbers and "Older →" need
-     ~440px; at 390 the line wrapped after the numbers and left "Older →"
-     stranded alone and centred underneath — the forward control, on the pages
-     where paging forward is the whole point, looking like a mistake. Ordering
-     the number run last puts the deliberate break between the two directional
-     buttons and the digits, so both rows read as intended. */
-  @media (max-width: 560px) {
-    .pager { gap: 10px 12px; }
-    .pager-nums { order: 2; flex: 0 0 100%; }
-  }
-  @media (max-width: 420px) {
-    .pager a, .pager .disabled { padding: 12px 10px; }
-    .pager .pager-num { min-width: 40px; padding: 12px 2px; }
-  }
 </style>

@@ -1,0 +1,184 @@
+---
+import type { GetStaticPaths, InferGetStaticPropsType } from "astro";
+import Base from "../../../layouts/Base.astro";
+import JobCard from "../../../components/JobCard.astro";
+import BrowseNav from "../../../components/BrowseNav.astro";
+import CompanyLogo from "../../../components/CompanyLogo.astro";
+import Pager from "../../../components/Pager.astro";
+import { markupLogo } from "../../../lib/logos.ts";
+import { companyUrl, formatCount } from "../../../lib/format.ts";
+import { CLUSTER_PAGES } from "../../../lib/clusters.ts";
+import { url } from "../../../lib/url.ts";
+import { jsonLdScript } from "../../../lib/jsonld.ts";
+import { PAGE_SIZE } from "../../../lib/landings.ts";
+import { adjacentPages } from "../../../lib/pager.ts";
+import { companies, openJobsByCompany, companyPageIndexable } from "../../../lib/data.ts";
+import { companyHiring } from "../../../lib/companyContext.ts";
+import CompanyHiringStats from "../../../components/CompanyHiringStats.astro";
+
+// Paged on the landings' PAGE_SIZE. A company page grows with the employer, and
+// the biggest had become the heaviest pages on the site: Capital One rendered
+// 119 cards into 126KB and ~2,100 elements (150 cards and 157KB before
+// duplicate requisitions were folded) against 76KB for the largest landing
+// slice, and it was the one listing nothing capped. Page 1 stays at
+// /companies/<slug>/ — the URL the sitemap, the job pages' breadcrumbs and
+// every "at <company>" link already point at — and an employer with no more
+// than PAGE_SIZE roles gets exactly one slice, so its page renders as before.
+export const getStaticPaths = (({ paginate }) =>
+  companies
+    .filter((c) => openJobsByCompany.has(c.slug))
+    .flatMap((company) =>
+      paginate(openJobsByCompany.get(company.slug)!, {
+        params: { slug: company.slug },
+        props: { company },
+        pageSize: PAGE_SIZE,
+      }),
+    )) satisfies GetStaticPaths;
+
+type Props = InferGetStaticPropsType<typeof getStaticPaths>;
+// `page` is Astro's pagination object over this company's open roles.
+const { company, page } = Astro.props as Props;
+const jobs = openJobsByCompany.get(company.slug)!;
+const isFirst = page.currentPage === 1;
+const paged = page.lastPage > 1;
+const { prev: prevUrl, next: nextUrl } = adjacentPages(page);
+
+// A one-role company page is its role's page under another heading. It stays
+// built and linked, but is not offered for indexing — see
+// MIN_INDEXED_COMPANY_ROLES, which the sitemap applies too.
+//
+// Slices past the first are noindexed on the landings' reasoning
+// (components/LandingPage.astro): the same template over the next 50 cards,
+// with nothing about the employer that page 1 doesn't say better. They stay
+// built and followed, so every role keeps an in-site path through the pager,
+// and the sitemap lists page 1 alone.
+const noindex = !isFirst || !companyPageIndexable(company.slug);
+const pageSuffix = isFirst ? "" : ` — page ${page.currentPage} of ${page.lastPage}`;
+
+// Company domains come from seed data, but validate the shape anyway before
+// composing a URL from it (lib/format — the job page's sameAs uses the same
+// guard, so the two can't disagree about what a usable domain is).
+const domainHref = companyUrl(company.domain);
+
+// The employer's hiring as a set, and over time — the part of this page that is
+// not a filtered copy of the job list. See lib/companyHiring.ts.
+const hiring = companyHiring(company.slug);
+
+// Distinct stack across this company's roles — all of them, on every slice, so
+// the description names the same stack whichever slice it heads.
+const stack = [...new Set(jobs.flatMap((j) => j.skills))].slice(0, 14);
+const withSalary = jobs.filter((j) => j.salaryMin || j.salaryMax).length;
+
+// Absolute, as schema.org requires — and only for a logo big enough to be
+// worth indexing, so we never point Google at a 404 or a blurry favicon.
+const markLogo = markupLogo(company.slug);
+const logoUrl = markLogo ? new URL(url(`/logos/${markLogo.file}`), Astro.site).href : null;
+
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  name: company.name,
+  ...(domainHref ? { url: domainHref } : {}),
+  ...(logoUrl ? { logo: logoUrl } : {}),
+};
+
+// Breadcrumbs replace the raw URL in the SERP, which matters on a board whose
+// job slugs run to 110 characters. Two levels only — the board root and this
+// company — because that is the hierarchy that is actually true here.
+const breadcrumbJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  itemListElement: [
+    {
+      "@type": "ListItem",
+      position: 1,
+      name: "AI engineering jobs",
+      item: new URL(url("/"), Astro.site).href,
+    },
+    {
+      "@type": "ListItem",
+      position: 2,
+      name: company.name,
+      item: new URL(url(`/companies/${company.slug}/`), Astro.site).href,
+    },
+  ],
+};
+---
+
+<Base
+  title={`${company.name} AI engineering jobs${pageSuffix}`}
+  description={`Open AI-engineering roles at ${company.name}${stack.length ? ` — ${stack.slice(0, 6).join(", ")}.` : "."}${
+    isFirst ? "" : ` Page ${page.currentPage} of ${page.lastPage}.`
+  }`}
+  noindex={noindex}
+  prev={prevUrl}
+  next={nextUrl}
+>
+  <section class="hero" style="padding-bottom:8px;text-align:left">
+    <p style="margin:0"><a class="back" href={url("/")}><span class="arrow" aria-hidden="true">←</span>All jobs</a></p>
+    <div class="company-head">
+      <CompanyLogo name={company.name} slug={company.slug} size={56} />
+      <h1>{company.name}</h1>
+    </div>
+    <p>
+      {formatCount(jobs.length)} open AI-engineering role{jobs.length === 1 ? "" : "s"}
+      {withSalary > 0 ? ` · ${formatCount(withSalary)} with salary` : ""}
+      {company.stage ? ` · ${company.stage}-stage` : ""}
+      {domainHref ? (
+        <>
+          {" · "}
+          <a
+            href={domainHref}
+            target="_blank"
+            rel="noopener noreferrer nofollow"
+            style="color:var(--accent-text)"
+          >{company.domain}<span class="sr-only"> (opens in new tab)</span></a>
+        </>
+      ) : null}
+      {/* Unlike a landing, a company page has no filter bar to state page 1's
+          range, so every slice of a paged company says which roles it shows. */}
+      {paged && ` · showing ${formatCount(page.start + 1)}–${formatCount(page.end + 1)}`}
+    </p>
+  </section>
+
+  {/* The hiring stats and the stack describe the employer, not the slice, and
+      are the part of this page that isn't a list of cards — page 1's
+      distinguishing content, as the stats block is a landing's. Repeated down
+      the slices they would make each one a near-copy of page 1 with different
+      cards, and put the cards a page-2 visitor came for below the fold. */}
+  {isFirst && <CompanyHiringStats hiring={hiring} companyName={company.name} />}
+
+  {isFirst && stack.length > 0 && (
+    <div class="meta" style="margin:6px 0 20px;display:flex;flex-wrap:wrap;gap:8px">
+      {stack.map((s) => <span class="badge skill">{s}</span>)}
+    </div>
+  )}
+
+  {/* Past page 1 the cards sit straight under the hero, above the fold, so the
+      first few load their marks eagerly as a landing's do (see CompanyLogo).
+      Page 1's cards start below the stats block and keep the lazy default. */}
+  <ul class="jobs">
+    {page.data.map((job, i) => <JobCard job={job} href={url(`/jobs/${job.slug}/`)} eager={!isFirst && i < 6} />)}
+  </ul>
+
+  <Pager page={page} first={url(`/companies/${company.slug}/`)} />
+
+  <BrowseNav
+    label="Browse:"
+    links={[
+      ...CLUSTER_PAGES.map((p) => ({ href: url(`/${p.slug}/`), text: p.label })),
+    ]}
+  />
+
+  {/* Organization and BreadcrumbList describe the company, not a slice, and
+      page 1 is the URL they name. Slices are noindexed, so Google drops their
+      structured data anyway — a copy on each would only be more bytes saying
+      the same thing about a page that isn't this one. */}
+  {isFirst && <script type="application/ld+json" set:html={jsonLdScript(jsonLd)} is:inline />}
+  {isFirst && <script type="application/ld+json" set:html={jsonLdScript(breadcrumbJsonLd)} is:inline />}
+</Base>
+
+<style>
+  .company-head { display: flex; align-items: center; gap: 14px; }
+  .company-head h1 { margin: 0; overflow-wrap: anywhere; }
+</style>

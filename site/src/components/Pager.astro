@@ -1,0 +1,113 @@
+---
+import { adjacentPages, pageWindow } from "../lib/pager.ts";
+
+interface Props {
+  /** Astro's pagination object for the current slice. */
+  page: { currentPage: number; lastPage: number; url: { prev?: string; next?: string } };
+  /**
+   * The sequence's page-1 URL, trailing slash included (already base-prefixed).
+   * Page 1 lives at the bare path rather than /1/, and slice n at `${first}n/`.
+   */
+  first: string;
+}
+
+const { page, first } = Astro.props;
+const { prev: prevUrl, next: nextUrl } = adjacentPages(page);
+
+// One slice needs no pager; render nothing, so a caller can place this
+// unconditionally.
+const paged = page.lastPage > 1;
+const pageHref = (n: number) => (n === 1 ? first : `${first}${n}/`);
+const pageNumbers = paged ? pageWindow(page.currentPage, page.lastPage) : [];
+---
+
+{paged && (
+  <nav class="pager" aria-label="Pagination">
+    {prevUrl ? (
+      <a rel="prev" href={prevUrl}>← Newer</a>
+    ) : (
+      <span class="disabled">← Newer</span>
+    )}
+    <span class="pager-nums">
+      <span class="sr-only">Page {page.currentPage} of {page.lastPage}.</span>
+      {pageNumbers.map((n) =>
+        n === "gap" ? (
+          <span class="pager-gap" aria-hidden="true">…</span>
+        ) : n === page.currentPage ? (
+          <span class="pager-num current" aria-current="page">{n}</span>
+        ) : (
+          <a class="pager-num" href={pageHref(n)}>
+            <span class="sr-only">Page </span>{n}
+          </a>
+        ),
+      )}
+    </span>
+    {nextUrl ? (
+      <a rel="next" href={nextUrl}>Older →</a>
+    ) : (
+      <span class="disabled">Older →</span>
+    )}
+  </nav>
+)}
+
+<style>
+  .pager {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 20px;
+    margin: 28px 0 4px;
+    font-size: 0.9rem;
+  }
+  .pager a {
+    color: var(--accent-text);
+    border: 1px solid var(--border-strong);
+    border-radius: 10px;
+    /* ≥44px tall so it's a comfortable touch target on a phone. */
+    padding: 12px 18px;
+  }
+  .pager a:hover,
+  .pager a:focus-visible { border-color: var(--accent); }
+  .pager .disabled { color: var(--muted); padding: 12px 18px; }
+  .pager-nums {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 2px;
+  }
+  /* Numbers are plain targets, not the bordered buttons Newer/Older use — the
+     border treatment on nine elements turns the pager into a wall of boxes. */
+  .pager .pager-num {
+    border: none;
+    padding: 12px 4px;
+    /* ≥44px wide so each digit is still a comfortable touch target. */
+    min-width: 44px;
+    text-align: center;
+  }
+  .pager .pager-num.current {
+    color: var(--text);
+    font-weight: 700;
+    background: var(--surface-2);
+    border: 1px solid var(--border-strong);
+  }
+  .pager .pager-num:hover,
+  .pager .pager-num:focus-visible { color: var(--text); background: var(--surface-2); }
+  .pager-gap { color: var(--muted); }
+  /* Narrow: give the numbers their own row rather than letting the flex line
+     break wherever it runs out. "← Newer", five numbers and "Older →" need
+     ~440px; at 390 the line wrapped after the numbers and left "Older →"
+     stranded alone and centred underneath — the forward control, on the pages
+     where paging forward is the whole point, looking like a mistake. Ordering
+     the number run last puts the deliberate break between the two directional
+     buttons and the digits, so both rows read as intended. */
+  @media (max-width: 560px) {
+    .pager { gap: 10px 12px; }
+    .pager-nums { order: 2; flex: 0 0 100%; }
+  }
+  @media (max-width: 420px) {
+    .pager a, .pager .disabled { padding: 12px 10px; }
+    .pager .pager-num { min-width: 40px; padding: 12px 2px; }
+  }
+</style>

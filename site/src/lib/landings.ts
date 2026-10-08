@@ -145,9 +145,11 @@ function buildCityLandings(reserved: Set<string>): Landing[] {
  * the phones most of this traffic arrives on, while still giving each role a
  * crawlable in-site link (previously the sitemap was doing that alone).
  *
- * Only [topic]/[...page].astro paginates on this now. The sitemap used to
- * derive a page count from it to list every slice; slices past the first are
- * noindexed today (components/LandingPage.astro), so it lists page 1 alone.
+ * [topic]/[...page].astro and companies/[slug]/[...page].astro paginate on
+ * this — a company page is a listing that grows with the employer, and the
+ * biggest had outgrown every landing slice. The sitemap used to derive a page
+ * count from it to list every slice; slices past the first are noindexed today
+ * (components/LandingPage.astro), so it lists page 1 alone, for both.
  */
 export const PAGE_SIZE = 50;
 
