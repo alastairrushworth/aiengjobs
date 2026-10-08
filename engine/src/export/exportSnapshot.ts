@@ -240,6 +240,7 @@ interface JobRow {
   updated_at: string | null;
   ingested_at: string;
   last_seen_at: string | null;
+  delisted_at: string | null;
 }
 
 interface CompanyRow {
@@ -364,6 +365,12 @@ export async function exportSnapshot(): Promise<void> {
       clusters: [...sk.clusters],
       ...(closed ? { isClosed: true } : {}),
       ...(delisted ? { isDelisted: true } : {}),
+      // The date a tombstone was born, so the site can retire its page well
+      // before the row leaves the snapshot (shared/types.ts, closedAt). A
+      // closed role's last sighting is its closure to within a night; a
+      // delisted one's is stamped by the trigger that moved it out of scope.
+      ...(closed && r.last_seen_at ? { closedAt: r.last_seen_at } : {}),
+      ...(delisted && r.delisted_at ? { delistedAt: r.delisted_at } : {}),
       postedAt: r.posted_at ?? undefined,
       updatedAt: r.updated_at ?? undefined,
       ingestedAt: r.ingested_at,

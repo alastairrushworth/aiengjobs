@@ -1,7 +1,7 @@
 ---
 import type { PayBenchmark } from "../lib/payBenchmark.ts";
 import { IN_LINE_BAND, payChart } from "../lib/payBenchmark.ts";
-import { kUsd } from "../lib/format.ts";
+import { formatCount, kUsd } from "../lib/format.ts";
 import { url } from "../lib/url.ts";
 
 interface Props {
@@ -56,7 +56,7 @@ const pos = (left: number, width?: number) =>
       </>
     ) : (
       <>
-        This posting doesn't publish pay. {pay.pricedCount} of the {pay.total}{" "}
+        This posting doesn't publish pay. {formatCount(pay.pricedCount)} of the {formatCount(pay.total)}{" "}
         <a href={poolHref}>{pool}</a> on this board do: the middle half
         pay <strong>{kUsd(pay.p25)}–{kUsd(pay.p75)}</strong>, with a median of{" "}
         <strong>{kUsd(pay.medianUsd)}</strong>.
@@ -108,7 +108,7 @@ const pos = (left: number, width?: number) =>
 
   <p class="legend">
     {role && <span class="key"><i class="swatch role-swatch" />This role</span>}
-    <span class="key"><i class="swatch box-swatch" />Middle half of the {pay.pricedCount} that publish pay</span>
+    <span class="key"><i class="swatch box-swatch" />Middle half of the {formatCount(pay.pricedCount)} that publish pay</span>
     <span class="key"><i class="swatch median-swatch" />Median</span>
     <span class="key"><i class="swatch whisker-swatch" />10th–90th percentile</span>
     <span class="key usd">Annual, USD</span>

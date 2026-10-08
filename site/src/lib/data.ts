@@ -73,7 +73,15 @@ export { MAX_JOB_AGE_DAYS };
 
 const ageDays = (j: Job): number | null => jobAgeDays(j, data.generatedAt);
 
-/** Open roles, newest first (roles without a posted date sink to the bottom). */
+/**
+ * Every open role, newest first (roles without a posted date sink to the
+ * bottom) — duplicate requisitions included.
+ *
+ * This is the set that gets a /jobs/ page: a duplicate is still a live posting
+ * with its own apply link, and its page canonicalizes onto the newest of its
+ * set rather than disappearing. Anything that *lists* or *counts* roles wants
+ * `uniqueOpenJobs` below instead.
+ */
 export const openJobs: Job[] = listedJobs(data);
 
 /** Recently-closed roles — rendered as noindexed tombstone pages, not listed. */
@@ -92,10 +100,47 @@ export const delistedJobs: Job[] = data.jobs
   .filter((j) => !j.isClosed && j.isDelisted)
   .map(withCanonicalCity);
 
-/** Open roles per employer, in listing order. Built once for the company pages and the sitemap. */
+// Employers routinely open several ATS requisitions for one role at one site
+// (6x "Software Engineer · Cisco · Budapest" on 2026-10-08). Each is a
+// distinct posting with its own apply URL, but they render byte-identical
+// pages, so we nominate the newest as canonical. The rest stay live and
+// applicable — they just point their canonical at it, skip the JobPosting
+// markup and stay out of the sitemap, so Google consolidates them deliberately
+// instead of picking one arbitrarily and calling the others duplicate content.
+//
+// The keying itself lives in shared/indexable.ts: losing to a duplicate strips
+// a page's JobPosting markup, so the engine has to reach the same verdict
+// before it submits anything to Google's Indexing API.
+const canonicalByKey = canonicalByDupKey(openJobs);
+
+/** The slug of the posting this one duplicates, or null when it's canonical. */
+export function duplicateOf(job: Job): string | null {
+  return duplicateOfIn(canonicalByKey, job);
+}
+
+/**
+ * Open roles with duplicate requisitions folded into their canonical posting,
+ * newest first — the board as a reader sees it.
+ *
+ * Every listing, count and stat is built from this. The sitemap, the feeds,
+ * the JobPosting markup, the MCP index and llms.txt all folded duplicates
+ * already, while the homepage, /stats, the landings and the company pages
+ * listed every requisition: "Browse 3616 roles" on the homepage against 3523
+ * in llms.txt on 2026-10-08, and six identical "Software Engineer · Budapest"
+ * cards on Cisco's page. Two counts of one board is one too many, and the
+ * reader's is the deduplicated one — the six cards are one job.
+ */
+export const uniqueOpenJobs: Job[] = openJobs.filter((j) => duplicateOf(j) === null);
+
+/**
+ * Open roles per employer, in listing order, duplicates folded. Built once for
+ * the company pages, the sitemap and the job pages' "More at" links. Its keys
+ * are every employer with an open role — a duplicate's canonical is open at the
+ * same employer, so folding can't empty an entry.
+ */
 export const openJobsByCompany: ReadonlyMap<string, Job[]> = (() => {
   const m = new Map<string, Job[]>();
-  for (const j of openJobs) {
+  for (const j of uniqueOpenJobs) {
     const list = m.get(j.companySlug);
     if (list) list.push(j);
     else m.set(j.companySlug, [j]);
@@ -121,21 +166,46 @@ export const companyPageIndexable = (companySlug: string): boolean =>
   (openJobsByCompany.get(companySlug)?.length ?? 0) >= MIN_INDEXED_COMPANY_ROLES;
 
 /**
- * How long a role that aged out of the listings keeps a tombstone before its
- * URL is allowed to 404.
+ * How long a role that left the board keeps a tombstone page before its URL
+ * is allowed to 404 — one window for all three exits (closed, delisted,
+ * aged out).
  *
- * Mirrors the engine's CLOSED_RETENTION_DAYS (exportSnapshot.ts): a closed role
- * gets 30 days of tombstone so links from search results, newsletters and
- * shares land somewhere useful. A role that crossed MAX_JOB_AGE_DAYS is in the
- * same position — it was listed, indexed and shared right up until the refresh
- * that dropped it — but it used to 404 immediately, which is the one exit from
- * the board that got no landing at all. 2,051 URLs were in that state.
+ * A tombstone exists for the reader who follows a stale link: a search
+ * result, a newsletter, a share, an assistant's answer from the MCP server.
+ * It used to last 30 days, matching the engine's CLOSED_RETENTION_DAYS, and
+ * that produced ~3,100 noindexed pages against ~3,600 listed roles — nearly
+ * half the site. Google kept re-crawling them (Search Console's noindex
+ * examples on 2026-10-08 were all tombstones fetched that week) while 3,175
+ * live pages sat "discovered, never crawled", and the Search traffic those
+ * tombstones were built to catch amounted to 43 clicks in three months. A
+ * week covers the stale-link case that actually happens; after that the 404
+ * page, with its browse links, is the honest answer.
  *
- * Bounded rather than open-ended for the same reason the engine bounds closed
- * roles: two thirds of the aged-out set is 180+ days old and long gone from any
- * index, so building pages for it is cost without a reader.
+ * The engine still retains closed rows for 30 days: lib/landings reads them
+ * as the evidence that a city page was recently above MIN_CITY_JOBS. Only the
+ * page-building window shrinks, hence closedAt/delistedAt on the snapshot.
  */
-export const AGED_OUT_TOMBSTONE_DAYS = 30;
+export const TOMBSTONE_DAYS = 7;
+
+/**
+ * Whether a closure or delisting is recent enough to still earn a page. The
+ * date is absent on snapshots older than the field; an exit of unknown age
+ * is treated as recent, so an old snapshot builds what it used to.
+ */
+const withinTombstoneWindow = (iso: string | undefined): boolean => {
+  if (!iso) return true;
+  const t = Date.parse(iso);
+  if (!Number.isFinite(t)) return true;
+  return (Date.parse(data.generatedAt) - t) / 86_400_000 <= TOMBSTONE_DAYS;
+};
+
+/** The closed roles that still get a tombstone page (see TOMBSTONE_DAYS). */
+export const closedTombstones: Job[] = closedJobs.filter((j) => withinTombstoneWindow(j.closedAt));
+
+/** The delisted roles that still get a tombstone page (see TOMBSTONE_DAYS). */
+export const delistedTombstones: Job[] = delistedJobs.filter((j) =>
+  withinTombstoneWindow(j.delistedAt),
+);
 
 /**
  * Roles still open at the ATS that have passed MAX_JOB_AGE_DAYS, within the
@@ -151,26 +221,8 @@ export const agedOutJobs: Job[] = data.jobs
     return (
       age !== null &&
       age > MAX_JOB_AGE_DAYS &&
-      age <= MAX_JOB_AGE_DAYS + AGED_OUT_TOMBSTONE_DAYS
+      age <= MAX_JOB_AGE_DAYS + TOMBSTONE_DAYS
     );
   })
   .map(withCanonicalCity)
   .sort((a, b) => postedTs(b) - postedTs(a));
-
-// Employers routinely open several ATS requisitions for one role at one site
-// (6x "Forward Deployed Engineer · Workato · Hyderabad" today). Each is a
-// distinct posting with its own apply URL, but they render byte-identical
-// pages, so we nominate the newest as canonical. The rest stay live and
-// applicable — they just point their canonical at it, skip the JobPosting
-// markup and stay out of the sitemap, so Google consolidates them deliberately
-// instead of picking one arbitrarily and calling the others duplicate content.
-//
-// The keying itself lives in shared/indexable.ts: losing to a duplicate strips
-// a page's JobPosting markup, so the engine has to reach the same verdict
-// before it submits anything to Google's Indexing API.
-const canonicalByKey = canonicalByDupKey(openJobs);
-
-/** The slug of the posting this one duplicates, or null when it's canonical. */
-export function duplicateOf(job: Job): string | null {
-  return duplicateOfIn(canonicalByKey, job);
-}

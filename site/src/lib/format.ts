@@ -147,10 +147,25 @@ export function median(xs: number[]): number {
   return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
 }
 
+const COUNT_FORMAT = new Intl.NumberFormat("en-US");
+
+/**
+ * A count as a reader sees it: "3,523 open roles", not "3523".
+ *
+ * Pinned to en-US rather than the runtime's locale, because the same string is
+ * written twice — by the build into the HTML and by the filter script into the
+ * same element once it hydrates — and a browser in de-DE would otherwise swap
+ * "3,523" for "3.523" under the reader's eyes. For text only: years, ids and
+ * anything machine-read (JSON-LD, feeds, numberOfItems) keep plain digits.
+ */
+export const formatCount = (n: number): string => COUNT_FORMAT.format(n);
+
 /** "$123k" — display formatting for annual USD figures. */
 export const kUsd = (n: number) => `$${Math.round(n / 1000)}k`;
 
-const COUNTRY_NAMES = new Intl.DisplayNames(["en"], { type: "region" });
+// PURE so the filter script, which imports formatCount from this module, can
+// shake it out — the bundler can't tell a constructor has no side effects.
+const COUNTRY_NAMES = /* @__PURE__ */ new Intl.DisplayNames(["en"], { type: "region" });
 
 /** Readable country name for an ISO code ("US" → "United States"). */
 export function countryName(code?: string): string | undefined {
@@ -209,8 +224,8 @@ export function seniorityLabel(s?: Seniority): string | null {
   return s ? SENIORITY_LABELS[s] : null;
 }
 
-/** Seniority ids + labels in ladder order — drives filter options and stats. */
-export const SENIORITY_OPTIONS = SENIORITIES.map((id) => ({
+/** Seniority ids + labels in ladder order — drives filter options and stats. PURE: see COUNTRY_NAMES. */
+export const SENIORITY_OPTIONS = /* @__PURE__ */ SENIORITIES.map((id) => ({
   id,
   label: SENIORITY_LABELS[id],
 }));

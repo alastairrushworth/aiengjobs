@@ -1,6 +1,6 @@
 import type { APIRoute } from "astro";
 import { buildRssFeed } from "../lib/feed.ts";
-import { openJobs, generatedAt, duplicateOf } from "../lib/data.ts";
+import { uniqueOpenJobs, generatedAt } from "../lib/data.ts";
 
 // Deduped, like the sitemap, the JobPosting markup and the MCP index.
 //
@@ -15,7 +15,7 @@ export const GET: APIRoute = ({ site }) =>
       "The newest AI engineering roles — RAG, agents, evals, inference, fine-tuning. First-party ATS listings, refreshed nightly.",
     pagePath: "/",
     feedPath: "/rss.xml",
-    jobs: openJobs.filter((j) => duplicateOf(j) === null),
+    jobs: uniqueOpenJobs,
     site,
     generatedAt,
   });

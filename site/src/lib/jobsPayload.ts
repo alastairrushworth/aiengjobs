@@ -1,6 +1,6 @@
 import { formatSalary, postedAgo, remoteLabel, seniorityLabel } from "./format.ts";
 import { logo } from "./logos.ts";
-import { openJobs, fxRates, generatedAt } from "./data.ts";
+import { uniqueOpenJobs, fxRates, generatedAt } from "./data.ts";
 import type { JobEntry } from "./jobEntry.ts";
 import type { Job } from "@aiengjobs/shared";
 
@@ -13,7 +13,7 @@ import type { Job } from "@aiengjobs/shared";
  *   treat as "newest first". Defaults to the whole board (the homepage); each
  *   landing passes its own slice so its filter never has to scope client-side.
  */
-export function buildJobsPayload(jobs: Job[] = openJobs): JobEntry[] {
+export function buildJobsPayload(jobs: Job[] = uniqueOpenJobs): JobEntry[] {
   return jobs.map((j) => ({
     slug: j.slug,
     t: j.title,
