@@ -1,6 +1,7 @@
 ---
 import FilterControls from "./FilterControls.astro";
 import { jobsUrl } from "../lib/url.ts";
+import { formatCount } from "../lib/format.ts";
 import type { FilterOptions } from "../lib/filterOptions.ts";
 
 interface Props extends FilterOptions {
@@ -66,7 +67,7 @@ const showAllHidden = hasPager || total <= initial;
   <div class="results-bar">
     <p class="results-meta" role="status">
       <span id="status-text">
-        {quiet ? "" : `Showing the ${shown} newest of ${total} ${noun}`}
+        {quiet ? "" : `Showing the ${formatCount(shown)} newest of ${formatCount(total)} ${noun}`}
       </span>
     </p>
     {/* One chip per active filter, each its own way out — undoing the one
@@ -88,7 +89,7 @@ const showAllHidden = hasPager || total <= initial;
   </div>
   <div class="show-more-wrap">
     <button class="btn-secondary" id="show-all" hidden={showAllHidden}>
-      Show all {total} roles
+      Show all {formatCount(total)} roles
     </button>
   </div>
 </div>
@@ -141,6 +142,9 @@ const showAllHidden = hasPager || total <= initial;
 <script>
   import { CARD_CLASS as C, CARD_LOGO_PX } from "../lib/jobCardShape.ts";
   import { FILTER_LINK_REL } from "../lib/url.ts";
+  // The same formatter the server rendered these lines with, so hydrating
+  // rewrites "3,523" as "3,523" rather than flashing it to "3523".
+  import { formatCount } from "../lib/format.ts";
   import type { JobEntry } from "../lib/jobEntry.ts";
   import {
     EMPTY_STATE,
@@ -439,7 +443,7 @@ const showAllHidden = hasPager || total <= initial;
       for (const opt of el.options) {
         if (!opt.value) continue; // "Any …" — no count to give
         const n = opt.value === SENIOR_PLUS ? groupCount : (tally.get(opt.value) ?? 0);
-        opt.textContent = `${labels.get(opt.value) ?? opt.value} (${n})`;
+        opt.textContent = `${labels.get(opt.value) ?? opt.value} (${formatCount(n)})`;
         // An option that can only produce an empty list is worse than a "(0)"
         // beside it — the number explains the dead end only after you've walked
         // into it. Never hide what's currently selected: a select can't display
@@ -522,7 +526,7 @@ const showAllHidden = hasPager || total <= initial;
       const btn = document.createElement("button");
       btn.type = "button";
       btn.className = "link-btn";
-      btn.textContent = `${suggestionLabel(r)} (${r.count})`;
+      btn.textContent = `${suggestionLabel(r)} (${formatCount(r.count)})`;
       btn.addEventListener("click", () => {
         state = r.state;
         showAll = false;
@@ -586,11 +590,11 @@ const showAllHidden = hasPager || total <= initial;
     const capped = visible.length < matches.length;
     statusText.textContent = filtering
       ? capped
-        ? `${visible.length} of ${matches.length} matching roles`
-        : `${matches.length} matching roles`
+        ? `${formatCount(visible.length)} of ${formatCount(matches.length)} matching roles`
+        : `${formatCount(matches.length)} matching roles`
       : showAll
-        ? `Showing all ${total} ${NOUN}`
-        : `Showing the ${Math.min(INITIAL, total)} newest of ${total} ${NOUN}`;
+        ? `Showing all ${formatCount(total)} ${NOUN}`
+        : `Showing the ${formatCount(Math.min(INITIAL, total))} newest of ${formatCount(total)} ${NOUN}`;
 
     empty.hidden = matches.length !== 0;
     if (!matches.length) renderSuggestions(data);
@@ -601,8 +605,8 @@ const showAllHidden = hasPager || total <= initial;
     // only way to see past the first 50.
     showAllBtn.hidden = !capped || (hasPager && !filtering);
     showAllBtn.textContent = filtering
-      ? `Show all ${matches.length} matching roles`
-      : `Show all ${matches.length} roles`;
+      ? `Show all ${formatCount(matches.length)} matching roles`
+      : `Show all ${formatCount(matches.length)} roles`;
     // The pager describes the unfiltered sequence; while a filter is up, the
     // list beneath it isn't that sequence any more.
     if (pager) pager.hidden = filtering || showAll;

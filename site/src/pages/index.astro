@@ -2,12 +2,25 @@
 import Base from "../layouts/Base.astro";
 import JobCard from "../components/JobCard.astro";
 import JobFilters from "../components/JobFilters.astro";
+import LocationNav from "../components/LocationNav.astro";
 import { url } from "../lib/url.ts";
 import { buildFilterOptions } from "../lib/filterOptions.ts";
-import { openJobs } from "../lib/data.ts";
+import { uniqueOpenJobs, openJobsByCompany, companyBySlug, companyPageIndexable } from "../lib/data.ts";
+import { formatCount } from "../lib/format.ts";
 import { jsonLdScript } from "../lib/jsonld.ts";
 
-const jobs = openJobs; // newest first (see lib/data)
+const jobs = uniqueOpenJobs; // newest first, duplicates folded (see lib/data)
+
+// The employers hiring most, for the row at the foot of the page. Company
+// pages were linked from nowhere but their own roles' pages — and those pages
+// are the ones Google wasn't fetching — so the biggest employers get a link
+// from the one page every crawl starts at, and /companies/ carries the rest.
+const TOP_EMPLOYERS = 12;
+const topEmployers = [...openJobsByCompany]
+  .filter(([slug]) => companyPageIndexable(slug))
+  .map(([slug, list]) => ({ slug, name: companyBySlug.get(slug)?.name ?? slug, count: list.length }))
+  .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name))
+  .slice(0, TOP_EMPLOYERS);
 
 // The landing view server-renders only the newest INITIAL cards; the rest ship
 // as a compact JSON payload and hydrate on the first filter/sort/show-all
@@ -60,7 +73,7 @@ const jsonLd = [
   <section class="hero">
     <h1>The job board for AI developers</h1>
     <p>
-      Browse <span class="count">{jobs.length}</span> first-party roles in AI research,
+      Browse <span class="count">{formatCount(jobs.length)}</span> first-party roles in AI research,
       agents, evals and inference.
     </p>
   </section>
@@ -88,11 +101,26 @@ const jsonLd = [
     </ul>
   </JobFilters>
 
-  {/* The location row that sat here is gone. City landings keep their internal
-      links from the cross-link row at the foot of every landing page (see
-      LandingPage.astro) — the homepage reaches them through the footer nav's
-      cluster pages — and the City select in the filter bar covers the same
-      ground for anyone already here. */}
+  {/* Below the listing, not above it: the location row that used to sit
+      between the hero and the cards cost a row of the fold on every device.
+      Down here it costs nothing a reader hasn't already scrolled past, and it
+      is the homepage's link to every city page — which had been reachable
+      from the homepage only through two hops the crawler wasn't taking. */}
+  {topEmployers.length > 0 && (
+    <nav class="employers" aria-label="Browse by employer">
+      <h2>Hiring most</h2>
+      <p class="line">
+        {topEmployers.map((c) => (
+          <span class="item">
+            <a href={url(`/companies/${c.slug}/`)}>{c.name}</a>
+            <span class="n">{formatCount(c.count)}</span>
+          </span>
+        ))}
+        <span class="item"><a href={url("/companies/")}>All companies →</a></span>
+      </p>
+    </nav>
+  )}
+  <LocationNav />
 
   {/* jsonLdScript escapes <, >, & — job titles are untrusted feed content that
       could otherwise break out of these script elements. */}
@@ -100,3 +128,29 @@ const jsonLd = [
     <script type="application/ld+json" set:html={jsonLdScript(block)} is:inline />
   ))}
 </Base>
+
+<style>
+  /* The same row grammar as LocationNav, which sits directly below. */
+  .employers { margin: 36px 0 0; }
+  .employers h2 {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin: 0 0 6px;
+  }
+  .line {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 2px 14px;
+    margin: 0;
+    font-size: 0.9rem;
+    line-height: 1.6;
+  }
+  .line .item { white-space: nowrap; }
+  .line .n { color: var(--muted); font-size: 0.78rem; margin-left: 3px; }
+  .line a { color: var(--accent-text); display: inline-block; padding-block: 4px; }
+  .line a:hover { text-decoration: underline; }
+</style>

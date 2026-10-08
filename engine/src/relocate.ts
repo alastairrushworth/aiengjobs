@@ -1,15 +1,15 @@
 import { openDb } from "./db/index.ts";
 import { canonicalCity } from "@aiengjobs/shared/city";
-import { parseLocation } from "./pipeline/location.ts";
+import { firstSegmentCity, parseLocation, type LocationInfo } from "./pipeline/location.ts";
 import { inferRegion } from "./pipeline/region.ts";
 
 /**
- * One-off, inference-free backfill of `country`, `region` and `city` onto
- * postings missing them — run once after changing the country hints in
- * pipeline/location.ts, the division tables in pipeline/region.ts, or the
- * canonicalization rules in shared/city.ts. The nightly ingest skips
- * content-unchanged postings, so a rule added today never reaches a row
- * ingested last month without this.
+ * Inference-free backfill of `country`, `region` and `city` onto postings
+ * missing them, under the current country hints in pipeline/location.ts, the
+ * division tables in pipeline/region.ts and the canonicalization rules in
+ * shared/city.ts. Runs in the nightly refresh between ingest and export
+ * (cli.ts): ingest skips content-unchanged postings, so a rule added today
+ * would otherwise never reach a row ingested last month.
  *
  * None of the three is cosmetic. Country is the one field Google requires of a
  * JobPosting's location, in both the TELECOMMUTE and the on-site shape, so a row
@@ -26,13 +26,15 @@ import { inferRegion } from "./pipeline/region.ts";
  * countries — "Chengdu" → CN, "Almaty, Kazakhstan" → KZ, "Quito, Ecuador" → EC
  * — costing more markup than the pass recovers.
  *
- * Country and region are therefore NULL-only. City has one extra case, and it
- * is narrow: a stored city that `canonicalCity` no longer accepts. That is a
- * value the current rules would never have written, so replacing it cannot
- * discard a good extractor answer — "Chengdu" canonicalizes to itself and is
+ * Country and region are therefore NULL-only. City has two extra cases, both
+ * narrow. The first is a stored city that `canonicalCity` no longer accepts.
+ * That is a value the current rules would never have written, so replacing it
+ * cannot discard a good extractor answer — "Chengdu" canonicalizes to itself and is
  * untouched, while "Cn", "Va", "Ontario" and "N" (all of them live
  * addressLocality values, from "CN - Shanghai", "VA - Reston, 11951 Freedom Dr",
- * "Ontario, CAN" and "N/A") are not.
+ * "Ontario, CAN" and "N/A") are not. The second is a stored city that is the
+ * engine's own first-segment reading of a location the parser now reads broad
+ * → narrow — "Washington" for "Washington - Bellevue" — see relocateRow.
  *
  * Those same extractor-supplied values are an asset here: a region is derived
  * against whatever country and city the row already holds, so a posting the LLM
@@ -72,38 +74,21 @@ export function relocate(opts: { dryRun?: boolean } = {}): void {
     // Only the country, region and city are read. The remote/hybrid/on-site
     // verdict parseLocation also returns is left alone — this pass is not
     // licensed to move roles between the board's work-type filters.
-    const parsed = parseLocation(r.locationRaw);
-    const country = r.country ?? parsed.country;
-    if (!r.country && country) {
-      if (!opts.dryRun) setCountry.run(country, r.id);
-      byCountry.set(country, (byCountry.get(country) ?? 0) + 1);
+    const next = relocateRow(parseLocation(r.locationRaw), r);
+    if (next.country !== r.country) {
+      if (!opts.dryRun) setCountry.run(next.country, r.id);
+      byCountry.set(next.country!, (byCountry.get(next.country!) ?? 0) + 1);
       countries++;
     }
-
-    // Re-derive from location_raw first — it is the source of truth and
-    // recovers a real place ("VA - Reston, 11951 Freedom Dr" → Reston) where
-    // re-canonicalizing the stored code could only ever discard one. Falling
-    // back to the re-canonicalized stored value keeps the cases where the raw
-    // string is the thing the alias table fixed ("TLV" → Tel Aviv).
-    const recanonicalized = canonicalCity(r.city);
-    const city = parsed.city ?? recanonicalized ?? null;
-    if (r.city === null) {
-      if (city) {
-        if (!opts.dryRun) setCity.run(city, r.id);
-        citiesFilled++;
-      }
-    } else if (recanonicalized !== r.city) {
-      if (!opts.dryRun) setCity.run(city, r.id);
-      if (city) citiesRepaired++;
+    if (next.city !== r.city) {
+      if (!opts.dryRun) setCity.run(next.city, r.id);
+      if (r.city === null) citiesFilled++;
+      else if (next.city) citiesRepaired++;
       else citiesCleared++;
     }
-
-    if (!r.region) {
-      const region = inferRegion(r.locationRaw, country, city ?? undefined);
-      if (region) {
-        if (!opts.dryRun) setRegion.run(region, r.id);
-        regions++;
-      }
+    if (next.region !== r.region) {
+      if (!opts.dryRun) setRegion.run(next.region, r.id);
+      regions++;
     }
   }
 
@@ -119,4 +104,56 @@ export function relocate(opts: { dryRun?: boolean } = {}): void {
       `repaired ${citiesRepaired} and cleared ${citiesCleared} cities the current ` +
       `rules reject, across ${rows.length} located postings`,
   );
+}
+
+interface Located {
+  locationRaw: string;
+  country: string | null;
+  region: string | null;
+  city: string | null;
+}
+
+/**
+ * The country, region and city one stored row should hold under the current
+ * rules — the decision `relocate` applies, separated from the SQL so it can be
+ * measured against a snapshot without a database. See relocate for the rules.
+ */
+export function relocateRow(
+  parsed: LocationInfo,
+  r: Located,
+): { country: string | null; region: string | null; city: string | null } {
+  const country = r.country ?? parsed.country ?? null;
+
+  // Re-derive from location_raw first — it is the source of truth and
+  // recovers a real place ("VA - Reston, 11951 Freedom Dr" → Reston) where
+  // re-canonicalizing the stored code could only ever discard one. Falling
+  // back to the re-canonicalized stored value keeps the cases where the raw
+  // string is the thing the alias table fixed ("TLV" → Tel Aviv).
+  const recanonicalized = canonicalCity(r.city);
+  const derived = parsed.city ?? recanonicalized ?? null;
+  // The second narrow case: a stored city the current parser *reads past*.
+  // "Washington - Bellevue" was stored as Washington because the first segment
+  // was taken for the city; parseLocation now recognises the state in front
+  // and answers Bellevue. Gated on the stored value being exactly what the
+  // first-segment reading yields, so it can only ever replace the engine's own
+  // mechanical answer, never a city the extractor supplied.
+  const readPast =
+    parsed.city !== undefined &&
+    parsed.city !== r.city &&
+    r.city === firstSegmentCity(r.locationRaw);
+  const city = r.city === null || recanonicalized !== r.city || readPast ? derived : r.city;
+
+  // parseLocation's own region when it agrees on country and city — it alone
+  // knows the broad → narrow shape, where the division sits in front of the
+  // city — and otherwise one derived against whatever the row holds.
+  const ownRegion =
+    parsed.country === (country ?? undefined) && parsed.city === (city ?? undefined)
+      ? parsed.region
+      : undefined;
+  const region =
+    r.region ??
+    ownRegion ??
+    inferRegion(r.locationRaw, country ?? undefined, city ?? undefined) ??
+    null;
+  return { country, region, city };
 }

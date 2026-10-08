@@ -110,7 +110,7 @@ describe("submitIndexing", () => {
     expect(result.skipped).toBe(1);
   });
 
-  it("signs a scoped assertion and sends deletions before updates", async () => {
+  it("signs a scoped assertion and sends updates before deletions", async () => {
     const h = await serve();
     const { submitIndexing } = await load({
       GOOGLE_INDEXING_KEY: serviceAccount(`${h.origin}/token`),
@@ -126,11 +126,12 @@ describe("submitIndexing", () => {
     expect(result).toMatchObject({ updated: 2, deleted: 1, failed: 0, skipped: 0 });
     expect(result.stopped).toBeUndefined();
 
-    // A dead listing in someone's results is worse than a new one arriving late.
+    // A page that lost its markup is noindex already and Google drops it on
+    // its own; a new page is the one the ping can actually help.
     expect(h.published).toEqual([
-      { url: "https://x/gone-1/", type: "URL_DELETED" },
       { url: "https://x/new-1/", type: "URL_UPDATED" },
       { url: "https://x/new-2/", type: "URL_UPDATED" },
+      { url: "https://x/gone-1/", type: "URL_DELETED" },
     ]);
 
     // One token, reused for every notification.
@@ -148,7 +149,7 @@ describe("submitIndexing", () => {
     expect(claims.exp - claims.iat).toBe(3600);
   });
 
-  it("spends the daily quota on deletions first and skips the overflow", async () => {
+  it("spends the daily quota on updates first and skips the overflow", async () => {
     const h = await serve();
     const { submitIndexing } = await load({
       GOOGLE_INDEXING_KEY: serviceAccount(`${h.origin}/token`),
@@ -161,8 +162,8 @@ describe("submitIndexing", () => {
       ["https://x/gone-1/"],
     );
 
-    expect(result).toMatchObject({ updated: 1, deleted: 1, skipped: 1, failed: 0 });
-    expect(h.published.map((p) => p.url)).toEqual(["https://x/gone-1/", "https://x/new-1/"]);
+    expect(result).toMatchObject({ updated: 2, deleted: 0, skipped: 1, failed: 0 });
+    expect(h.published.map((p) => p.url)).toEqual(["https://x/new-1/", "https://x/new-2/"]);
   });
 
   it("stops on the daily-quota rejection instead of collecting identical 429s", async () => {

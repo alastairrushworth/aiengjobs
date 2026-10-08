@@ -157,6 +157,18 @@ export interface Job {
    * with isClosed: a delisted role that then closes is a closed role.
    */
   isDelisted?: boolean;
+  /**
+   * When a closed role was last found on its feed — the closure date, to
+   * within a night. Set only alongside isClosed. The engine retains closed
+   * rows for CLOSED_RETENTION_DAYS so the site can tell a city that just
+   * shrank from one that was always small; the site builds a tombstone page
+   * for only the first few days of that (CLOSED_TOMBSTONE_DAYS in
+   * site/src/lib/data.ts), and needs the date to draw that shorter line.
+   * Absent on snapshots older than the field, which the site reads as recent.
+   */
+  closedAt?: string;
+  /** When the classifier ruled the role out of scope. Set only alongside isDelisted; see closedAt. */
+  delistedAt?: string;
 
   postedAt?: string;
   updatedAt?: string;

@@ -1,8 +1,10 @@
 import type { Job } from "@aiengjobs/shared";
 import { citySlug } from "@aiengjobs/shared/city";
+import { canonicalByDupKey, duplicateOfIn } from "@aiengjobs/shared/indexable";
 import { CLUSTER_PAGES } from "./clusters.ts";
+import { cityPlaces } from "./cityPlaces.ts";
 import { countryName } from "./format.ts";
-import { closedJobs, openJobs } from "./data.ts";
+import { closedJobs, uniqueOpenJobs } from "./data.ts";
 
 /**
  * Every top-level listing page the board publishes: the stack-native cluster
@@ -21,6 +23,10 @@ export interface Landing {
   intro: string;
   /** Fills "…roles in {where}" / "Hiring snapshot for {where}" copy. */
   where: string;
+  /** ISO country code of a city page — the location nav groups by it. */
+  country?: string;
+  /** The bare city name, for a link that already sits under its country. */
+  place?: string;
   jobs: Job[];
 }
 
@@ -57,10 +63,10 @@ const clusterLandings: Landing[] = CLUSTER_PAGES.map((p) => ({
   h1: p.h1,
   intro: p.intro,
   where: p.label,
-  jobs: openJobs.filter((j) => j.clusters.includes(p.id)),
+  jobs: uniqueOpenJobs.filter((j) => j.clusters.includes(p.id)),
 }));
 
-const remoteJobs = openJobs.filter((j) => j.remoteType === "remote");
+const remoteJobs = uniqueOpenJobs.filter((j) => j.remoteType === "remote");
 
 const remoteLanding: Landing[] = remoteJobs.length >= MIN_CITY_JOBS
   ? [
@@ -79,72 +85,64 @@ const remoteLanding: Landing[] = remoteJobs.length >= MIN_CITY_JOBS
 
 // City pages, built from the canonicalized city names in the snapshot (see
 // @aiengjobs/shared/city — "New York City", "NYC" and "New York Office" all
-// have to land on one page or every count here is understated).
-function buildCityLandings(): Landing[] {
-  const byCity = new Map<string, Job[]>();
-  for (const j of openJobs) {
-    if (!j.city) continue;
-    const list = byCity.get(j.city);
-    if (list) list.push(j);
-    else byCity.set(j.city, [j]);
-  }
-
-  // Roles closed within the engine's retention window, per city — the evidence
-  // that a city below MIN_CITY_JOBS was above it recently (see RETAIN_CITY_JOBS).
-  const recentlyClosedByCity = new Map<string, number>();
-  for (const j of closedJobs) {
-    if (!j.city) continue;
-    recentlyClosedByCity.set(j.city, (recentlyClosedByCity.get(j.city) ?? 0) + 1);
-  }
+// have to land on one page or every count here is understated), split by
+// country only where the name is genuinely shared (lib/cityPlaces).
+function buildCityLandings(reserved: Set<string>): Landing[] {
+  // Roles closed within the engine's retention window — the evidence that a
+  // city below MIN_CITY_JOBS was above it recently (see RETAIN_CITY_JOBS).
+  // Folded like the listings: a closed requisition whose twin is still open,
+  // or that duplicated another closed one, was never a separate card, so it is
+  // no evidence the page was bigger.
+  const dupKeys = canonicalByDupKey([...uniqueOpenJobs, ...closedJobs]);
+  const recentlyClosed = closedJobs.filter((j) => duplicateOfIn(dupKeys, j) === null);
 
   const landings: Landing[] = [];
-  for (const [city, jobs] of byCity) {
-    const recentFootprint = jobs.length + (recentlyClosedByCity.get(city) ?? 0);
+  for (const place of cityPlaces(uniqueOpenJobs, recentlyClosed)) {
+    const { city, country, jobs } = place;
+    const recentFootprint = jobs.length + place.recentlyClosed;
     const publishes = jobs.length >= MIN_CITY_JOBS;
     const retains = jobs.length >= RETAIN_CITY_JOBS && recentFootprint >= MIN_CITY_JOBS;
     if (!publishes && !retains) continue;
     const slug = citySlug(city);
     if (!slug) continue;
 
-    // Name the country that owns the page and stop there.
-    //
-    // This used to list every country present, to disambiguate genuinely shared
-    // city names (Cambridge, Birmingham). That intent is sound but no such city
-    // clears MIN_CITY_JOBS, so in practice the clause only ever surfaced
-    // upstream mislabels: "Covers San Francisco in United States, Netherlands"
-    // off one stray role in 600, London picking up the United States off 5 in
-    // 223, and Berlin and Sydney both acquiring the United Kingdom. A share
-    // threshold cut the worst of it but couldn't separate a real split from a
-    // bad country code, because the difference isn't in the numbers.
-    //
-    // The dominant country is accurate for the overwhelming majority of roles
-    // on every one of these pages and is what a reader actually needs. If a
-    // genuine 60/40 city ever grows large enough to earn a landing, this is
-    // where the disambiguation goes back — and the real fix for the strays is
-    // in the location pipeline, not in this copy.
-    const countryCounts = new Map<string, number>();
-    for (const j of jobs) {
-      if (j.country) countryCounts.set(j.country, (countryCounts.get(j.country) ?? 0) + 1);
-    }
-    const dominant = [...countryCounts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0];
-    const named = dominant ? (countryName(dominant) ?? dominant) : null;
+    // Name the country that owns the page. Every city page names it in the
+    // intro and the stats block ("roles in London, United Kingdom"); a city
+    // whose name is shared names it in the heading and the nav label too, or
+    // two pages would carry the same h1 and the same link text.
+    const named = country ? (countryName(country) ?? country) : null;
     const where = named ? `${city}, ${named}` : city;
+    const heading = place.shared ? where : city;
 
     landings.push({
-      slug: `ai-jobs-${slug}`,
+      slug: place.twin ? `ai-jobs-${slug}-${citySlug(named!)}` : `ai-jobs-${slug}`,
       kind: "city",
-      label: city,
-      h1: `AI engineer jobs in ${city}`,
+      label: heading,
+      h1: `AI engineer jobs in ${heading}`,
       intro:
         `AI engineering roles in ${where} — LLM apps, RAG, agents, evals and inference. ` +
         `Pulled from company career sites, never scraped aggregators.`,
       where,
+      country: country ?? undefined,
+      place: city,
       jobs,
     });
   }
 
-  // Biggest first — this order drives the browse nav.
-  return landings.sort((a, b) => b.jobs.length - a.jobs.length);
+  // Biggest first — this order drives the browse nav. Then first claim wins a
+  // slug: "ai-jobs-<city>-<country>" is built from feed text and could one day
+  // spell an existing page's slug, and two landings on one route would have
+  // the build pick between them silently.
+  return landings
+    .sort((a, b) => b.jobs.length - a.jobs.length)
+    .filter((l) => {
+      if (reserved.has(l.slug)) {
+        console.warn(`[landings] slug ${l.slug} is already taken — skipping the ${l.where} page`);
+        return false;
+      }
+      reserved.add(l.slug);
+      return true;
+    });
 }
 
 /**
@@ -153,14 +151,68 @@ function buildCityLandings(): Landing[] {
  * the phones most of this traffic arrives on, while still giving each role a
  * crawlable in-site link (previously the sitemap was doing that alone).
  *
- * Only [topic]/[...page].astro paginates on this now. The sitemap used to
- * derive a page count from it to list every slice; slices past the first are
- * noindexed today (components/LandingPage.astro), so it lists page 1 alone.
+ * [topic]/[...page].astro and companies/[slug]/[...page].astro paginate on
+ * this — a company page is a listing that grows with the employer, and the
+ * biggest had outgrown every landing slice. The sitemap used to derive a page
+ * count from it to list every slice; slices past the first are noindexed today
+ * (components/LandingPage.astro), so it lists page 1 alone, for both.
  */
 export const PAGE_SIZE = 50;
 
-export const CITY_LANDINGS: Landing[] = buildCityLandings();
+export const CITY_LANDINGS: Landing[] = buildCityLandings(
+  new Set([...clusterLandings, ...remoteLanding].map((l) => l.slug)),
+);
 export const LOCATION_LANDINGS: Landing[] = [...remoteLanding, ...CITY_LANDINGS];
 export const LANDINGS: Landing[] = [...clusterLandings, ...LOCATION_LANDINGS];
 
 export const landingBySlug = new Map(LANDINGS.map((l) => [l.slug, l]));
+
+/**
+ * The location pages grouped for navigation: remote first, then each country
+ * biggest first, its cities biggest first.
+ *
+ * Every location page is in here, and the homepage, every landing and
+ * /locations/ render the whole list (components/LocationNav.astro). Before
+ * this, a landing linked the eight biggest locations and nothing linked the
+ * rest: on 2026-10-08, 47 of the 55 city pages had no inbound link from any
+ * page — Search Console showed /ai-jobs-austin/ with the sitemap as its only
+ * referrer and "Discovered – currently not indexed" since August. A page only
+ * the sitemap vouches for is one Google can decline to fetch indefinitely.
+ */
+export interface LocationGroup {
+  /** ISO code; absent for the remote row and for cities the feed gave no country. */
+  country?: string;
+  label: string;
+  landings: Landing[];
+  total: number;
+}
+
+export const LOCATION_GROUPS: LocationGroup[] = (() => {
+  const groups = new Map<string, LocationGroup>();
+  for (const l of LOCATION_LANDINGS) {
+    const key = l.kind === "remote" ? "remote" : (l.country ?? "");
+    let g = groups.get(key);
+    if (!g) {
+      g = {
+        country: l.country,
+        label:
+          l.kind === "remote"
+            ? "Remote"
+            : l.country
+              ? (countryName(l.country) ?? l.country)
+              : "Elsewhere",
+        landings: [],
+        total: 0,
+      };
+      groups.set(key, g);
+    }
+    g.landings.push(l);
+    g.total += l.jobs.length;
+  }
+  // Remote stays first whatever its size: it is the one row that isn't a place.
+  return [...groups.values()].sort((a, b) => {
+    if (a.label === "Remote") return -1;
+    if (b.label === "Remote") return 1;
+    return b.total - a.total || a.label.localeCompare(b.label);
+  });
+})();

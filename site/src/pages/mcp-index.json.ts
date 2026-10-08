@@ -1,5 +1,5 @@
 import type { APIRoute } from "astro";
-import { openJobs, generatedAt, duplicateOf, fxRates } from "../lib/data.ts";
+import { uniqueOpenJobs, generatedAt, fxRates } from "../lib/data.ts";
 import { CLUSTERS } from "@aiengjobs/shared/taxonomy";
 import { safeUrl, salaryMidpointUsd } from "../lib/format.ts";
 import type { Job } from "@aiengjobs/shared";
@@ -73,7 +73,7 @@ export function toMcpJob(j: Job): McpJob {
 }
 
 /** Canonical open roles — the set both this index and /mcp-jobs are built from. */
-export const mcpJobs: Job[] = openJobs.filter((j) => duplicateOf(j) === null);
+export const mcpJobs: Job[] = uniqueOpenJobs;
 
 export const GET: APIRoute = () =>
   new Response(

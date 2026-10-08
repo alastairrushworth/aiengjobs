@@ -25,8 +25,10 @@ import CompanyLogo from "../../components/CompanyLogo.astro";
 import { markupLogo } from "../../lib/logos.ts";
 import {
   openJobs,
-  closedJobs,
-  delistedJobs,
+  uniqueOpenJobs,
+  openJobsByCompany,
+  closedTombstones,
+  delistedTombstones,
   agedOutJobs,
   companyBySlug,
   generatedAt,
@@ -40,23 +42,28 @@ import { hasUsableLocation } from "@aiengjobs/shared/indexable";
 export function getStaticPaths() {
   // <title> needs whole-corpus knowledge: it trims over-long feed titles, but
   // only where the trim doesn't merge two distinct roles. See lib/jobTitle.
-  const titles = buildJobTitles([...openJobs, ...closedJobs, ...delistedJobs, ...agedOutJobs]);
+  const titles = buildJobTitles([
+    ...openJobs,
+    ...closedTombstones,
+    ...delistedTombstones,
+    ...agedOutJobs,
+  ]);
 
-  // Two indexes over openJobs, built once.
+  // Two indexes over the listings, built once.
   //
   // `related` runs for every page — 6,106 of them — and used to scan all 4,917
   // open roles two or three times inside each call, which is tens of millions
   // of comparisons for a handful of links. Both lookups are exact-match on a
   // key, so a Map answers them in the same order the array would.
-  const byCompany = new Map<string, Job[]>();
-  for (const j of openJobs) {
-    const list = byCompany.get(j.companySlug);
-    if (list) list.push(j);
-    else byCompany.set(j.companySlug, [j]);
-  }
+  //
+  // Over uniqueOpenJobs, like every other listing. Built over every
+  // requisition, 18 pages offered a copy of their own role under "More at"
+  // on 2026-10-08, and Barclays' offered "Senior AI Platform Engineer · Canary
+  // Wharf" twice. The by-company index is the one the company pages use.
+  const byCompany = openJobsByCompany;
   const byCluster = new Map<string, Job[]>();
   const position = new Map<string, number>();
-  for (const [i, j] of openJobs.entries()) {
+  for (const [i, j] of uniqueOpenJobs.entries()) {
     position.set(j.slug, i);
     for (const c of j.clusters) {
       const list = byCluster.get(c);
@@ -65,9 +72,14 @@ export function getStaticPaths() {
     }
   }
 
-  const related = (job: Job) => {
+  const related = (job: Job, listed = false) => {
+    // A listed duplicate's canonical is the same role at another URL, and
+    // offering it under "More at" would offer the page the reader is already
+    // on. Only for listed roles: on a tombstone, the same role still open
+    // under a newer requisition is the most useful link the page can carry.
+    const twin = listed ? duplicateOf(job) : null;
     const atCompany = (byCompany.get(job.companySlug) ?? [])
-      .filter((j) => j.slug !== job.slug)
+      .filter((j) => j.slug !== job.slug && j.slug !== twin)
       .slice(0, 3);
     const elsewhere = (j: Job) => j.companySlug !== job.companySlug && j.slug !== job.slug;
     // Shared cluster is the good match, but 343 open roles (8%) carry no
@@ -81,7 +93,7 @@ export function getStaticPaths() {
     // recency, not the first three of its first cluster — that would silently
     // re-rank every multi-cluster role. Each bucket is already newest-first, so
     // the three newest overall are somewhere in the first three of each: gather
-    // that handful, then order it by position in openJobs.
+    // that handful, then order it by position in uniqueOpenJobs.
     const seen = new Set<string>();
     const candidates: Job[] = [];
     for (const c of job.clusters) {
@@ -98,24 +110,28 @@ export function getStaticPaths() {
     const shared = candidates
       .sort((a, b) => position.get(a.slug)! - position.get(b.slug)!)
       .slice(0, 3);
-    const similar = shared.length > 0 ? shared : openJobs.filter(elsewhere).slice(0, 3);
+    const similar = shared.length > 0 ? shared : uniqueOpenJobs.filter(elsewhere).slice(0, 3);
     return { atCompany, similar };
   };
 
   return [
-    // Open roles get full, indexable pages.
+    // Open roles get full pages — every requisition, duplicates included: a
+    // duplicate is still a live posting with its own apply link. Canonical
+    // ones are indexable; a duplicate's page canonicalizes onto the newest of
+    // its set instead (dupCanonicalSlug, below).
     ...openJobs.map((job) => ({
       params: { slug: job.slug },
       props: {
         job,
         retired: null,
         pageTitle: titles.get(job.slug)!,
-        ...related(job),
+        ...related(job, true),
       },
     })),
     // Recently-closed roles keep a noindexed tombstone page instead of 404ing
-    // links from search results, newsletters, and shares.
-    ...closedJobs.map((job) => ({
+    // links from search results, newsletters, and shares — for TOMBSTONE_DAYS
+    // (lib/data), not for as long as the snapshot retains the row.
+    ...closedTombstones.map((job) => ({
       params: { slug: job.slug },
       props: {
         job,
@@ -126,7 +142,7 @@ export function getStaticPaths() {
     })),
     // Roles the classifier has since ruled out of scope. Still live at the
     // ATS, so the apply link stays; the board just no longer lists them.
-    ...delistedJobs.map((job) => ({
+    ...delistedTombstones.map((job) => ({
       params: { slug: job.slug },
       props: {
         job,
@@ -139,7 +155,7 @@ export function getStaticPaths() {
     // tombstone — these URLs were listed and shared right up until the refresh
     // that dropped them — but the role itself is still live at the ATS, so the
     // page keeps its description and its apply link and only the board's
-    // endorsement is withdrawn. See AGED_OUT_TOMBSTONE_DAYS.
+    // endorsement is withdrawn. See TOMBSTONE_DAYS.
     ...agedOutJobs.map((job) => ({
       params: { slug: job.slug },
       props: {
@@ -284,8 +300,19 @@ const VALID_THROUGH_DAYS = 30;
 // No per-role override: nothing in the pipeline ever set jobs.expires_at, so
 // the `job.expiresAt ?? …` this replaced had exactly one live branch while
 // implying the engine supplied a per-role expiry.
+//
+// Except the one expiry the board sets itself: a role stops being listed the
+// day it passes MAX_JOB_AGE_DAYS, and its page turns into a noindexed
+// tombstone with no markup. The 30-day window ignored that, so 774 of 3,358
+// postings (2026-10-08) told Google they were valid a median 15 days past the
+// date this board drops them — a live-looking result landing on "no longer
+// listed" until the next crawl. Unlike a closure, that date is known now.
+const listedUntil = job.postedAt ? Date.parse(job.postedAt) + MAX_JOB_AGE_DAYS * DAY_MS : NaN;
 const validThrough = new Date(
-  Date.parse(generatedAt) + VALID_THROUGH_DAYS * DAY_MS,
+  Math.min(
+    Date.parse(generatedAt) + VALID_THROUGH_DAYS * DAY_MS,
+    Number.isFinite(listedUntil) ? listedUntil : Infinity,
+  ),
 ).toISOString();
 // Google's credentialCategory vocabulary has one value above a bachelor's.
 const DEGREE_CREDENTIAL: Record<DegreeLevel, string> = {
@@ -446,7 +473,7 @@ if (jsonLd) {
 
 // Tombstones can outlive their company page (it's only built while the company
 // has open roles) — don't link into a 404.
-const companyPageExists = openJobs.some((j) => j.companySlug === job.companySlug);
+const companyPageExists = openJobsByCompany.has(job.companySlug);
 
 // Breadcrumbs replace the raw URL in the SERP, which is worth having on slugs
 // this long. The company page is the honest parent — a role sits in several
