@@ -46,7 +46,9 @@ export interface CompanyHiringSummary {
   clusters: Tally[];
   /** Every open posting on the employer's board in the listing window. */
   openPostings?: number;
-  /** openRoles / openPostings — how much of its hiring is in this board's scope. */
+  /** Of those, the postings this board lists — openRoles before duplicates fold. */
+  inScopePostings?: number;
+  /** In-scope postings / openPostings — how much of its hiring is in this board's scope. */
   scopeShare?: number;
   closedRoles?: number;
   medianDaysOpen?: number;
@@ -72,6 +74,14 @@ export function summarizeCompanyHiring(
   board: BoardHiring | undefined,
   generatedAt: string,
   fxRates: Record<string, number>,
+  /**
+   * In-scope postings to set against `openPostings`, when that differs from
+   * `jobs.length`. The listing folds duplicate requisitions into one role, but
+   * the employer's own count is of postings, so the share has to be postings
+   * over postings: Cisco's six Budapest requisitions are six of its open
+   * postings, not one.
+   */
+  inScopePostings: number = jobs.length,
 ): CompanyHiringSummary {
   const now = Date.parse(generatedAt);
   const mids: number[] = [];
@@ -109,8 +119,8 @@ export function summarizeCompanyHiring(
   // (the engine's database, the site's listing rules) and a share above 100%
   // is the kind of number that gets screenshotted.
   const scopeShare =
-    openPostings !== undefined && openPostings >= jobs.length && openPostings > 0
-      ? jobs.length / openPostings
+    openPostings !== undefined && openPostings >= inScopePostings && openPostings > 0
+      ? inScopePostings / openPostings
       : undefined;
 
   return {
@@ -133,7 +143,7 @@ export function summarizeCompanyHiring(
         slug: clusterPage.get(c.label)!.slug,
         count: c.count,
       })),
-    ...(scopeShare !== undefined ? { openPostings, scopeShare } : {}),
+    ...(scopeShare !== undefined ? { openPostings, inScopePostings, scopeShare } : {}),
     ...(company?.hiring ? { closedRoles: company.hiring.closedRoles } : {}),
     ...(company?.hiring?.medianDaysOpen !== undefined
       ? { medianDaysOpen: company.hiring.medianDaysOpen }

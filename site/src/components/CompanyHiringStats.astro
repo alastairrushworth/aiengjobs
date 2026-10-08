@@ -1,7 +1,7 @@
 ---
 import type { CompanyHiringSummary } from "../lib/companyHiring.ts";
 import { sharePct, RECENT_DAYS } from "../lib/companyHiring.ts";
-import { kUsd } from "../lib/format.ts";
+import { formatCount, kUsd } from "../lib/format.ts";
 import { url } from "../lib/url.ts";
 
 interface Props {
@@ -17,29 +17,29 @@ const tiles: { label: string; value: string; note?: string }[] = [
   h.scopeShare !== undefined && {
     label: "Share of its hiring",
     value: sharePct(h.scopeShare),
-    note: `${h.openRoles} of ${h.openPostings} open postings are AI engineering`,
+    note: `${formatCount(h.inScopePostings!)} of ${formatCount(h.openPostings!)} open postings are AI engineering`,
   },
   {
     label: `Posted in the last ${RECENT_DAYS} days`,
-    value: String(h.postedRecently),
-    note: `of ${h.openRoles} open role${h.openRoles === 1 ? "" : "s"}`,
+    value: formatCount(h.postedRecently),
+    note: `of ${formatCount(h.openRoles)} open role${h.openRoles === 1 ? "" : "s"}`,
   },
   h.medianUsd !== null
     ? {
         label: "Median pay",
         value: kUsd(h.medianUsd),
-        note: `${h.pricedCount} of ${h.openRoles} roles publish pay, USD`,
+        note: `${formatCount(h.pricedCount)} of ${formatCount(h.openRoles)} roles publish pay, USD`,
       }
     : {
         label: "Publish pay",
-        value: `${h.pricedCount} of ${h.openRoles}`,
+        value: `${formatCount(h.pricedCount)} of ${formatCount(h.openRoles)}`,
         note: h.payRangeUsd ? `${kUsd(h.payRangeUsd.lo)}–${kUsd(h.payRangeUsd.hi)}, USD` : "",
       },
   h.medianDaysOpen !== undefined && {
     label: "Time to close",
     value: `${h.medianDaysOpen} days`,
     note:
-      `median of ${h.closedRoles} roles closed in 90 days` +
+      `median of ${formatCount(h.closedRoles!)} roles closed in 90 days` +
       (h.boardMedianDaysOpen !== undefined ? ` · board-wide ${h.boardMedianDaysOpen}` : ""),
   },
 ].filter(Boolean) as { label: string; value: string; note?: string }[];
@@ -62,7 +62,7 @@ const tiles: { label: string; value: string; note?: string }[] = [
       {h.clusters.map((c) => (
         <span class="item">
           <a href={url(`/${c.slug}/`)}>{c.label}</a>
-          <span class="n">{c.count}</span>
+          <span class="n">{formatCount(c.count)}</span>
         </span>
       ))}
     </p>
@@ -71,16 +71,16 @@ const tiles: { label: string; value: string; note?: string }[] = [
     <p class="line">
       <span class="lead">Where:</span>
       {h.locations.map((l) => (
-        <span class="item">{l.label}<span class="n">{l.count}</span></span>
+        <span class="item">{l.label}<span class="n">{formatCount(l.count)}</span></span>
       ))}
-      {h.remoteCount > 0 && <span class="item">Remote<span class="n">{h.remoteCount}</span></span>}
+      {h.remoteCount > 0 && <span class="item">Remote<span class="n">{formatCount(h.remoteCount)}</span></span>}
     </p>
   )}
   {h.levels.length > 1 && (
     <p class="line">
       <span class="lead">Levels:</span>
       {h.levels.map((l) => (
-        <span class="item">{l.label}<span class="n">{l.count}</span></span>
+        <span class="item">{l.label}<span class="n">{formatCount(l.count)}</span></span>
       ))}
     </p>
   )}

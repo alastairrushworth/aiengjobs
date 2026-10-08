@@ -3,13 +3,14 @@ import Base from "../layouts/Base.astro";
 import { jobsUrl, url, FILTER_LINK_REL } from "../lib/url.ts";
 import {
   countryName,
+  formatCount,
   kUsd as k,
   median,
   salaryMidpointUsd,
   SENIORITY_OPTIONS,
 } from "../lib/format.ts";
 import { landingBySlug } from "../lib/landings.ts";
-import { openJobs as open, fxRates, generatedAt } from "../lib/data.ts";
+import { uniqueOpenJobs as open, fxRates, generatedAt } from "../lib/data.ts";
 import type { Job } from "@aiengjobs/shared";
 
 const pct = (n: number, d: number) => (d ? Math.round((n / d) * 100) : 0);
@@ -138,7 +139,7 @@ const maxCountry = topCountries[0]?.n ?? 1;
 
 <Base
   title="AI engineering job market stats"
-  description={`Live stats across ${totalRoles} open AI-engineering roles: median pay ${k(medianPay)}, top-paying companies, most-requested skills, remote split. Updated ${updated}.`}
+  description={`Live stats across ${formatCount(totalRoles)} open AI-engineering roles: median pay ${k(medianPay)}, top-paying companies, most-requested skills, remote split. Updated ${updated}.`}
 >
   <section class="hero" style="padding-bottom:10px">
     <h1>AI engineering market stats</h1>
@@ -148,8 +149,8 @@ const maxCountry = topCountries[0]?.n ?? 1;
       of the board, not slices of it, and a link that only re-showed everything
       would be a worse promise than no link. */}
   <div class="figures">
-    <a href={url("/")}><span class="num">{totalRoles}</span><span class="lbl">open roles</span></a>
-    <div><span class="num">{companyCount}</span><span class="lbl">companies hiring</span></div>
+    <a href={url("/")}><span class="num">{formatCount(totalRoles)}</span><span class="lbl">open roles</span></a>
+    <div><span class="num">{formatCount(companyCount)}</span><span class="lbl">companies hiring</span></div>
     <div><span class="num">{k(medianPay)}</span><span class="lbl">median salary</span></div>
     {remoteHref ? (
       <a href={remoteHref}><span class="num">{pct(remoteCount, totalRoles)}%</span><span class="lbl">fully remote</span></a>
@@ -157,7 +158,7 @@ const maxCountry = topCountries[0]?.n ?? 1;
       <div><span class="num">{pct(remoteCount, totalRoles)}%</span><span class="lbl">fully remote</span></div>
     )}
     <div><span class="num">{pct(paid.length, totalRoles)}%</span><span class="lbl">publish pay</span></div>
-    <div><span class="num">{postedThisWeek}</span><span class="lbl">posted this week</span></div>
+    <div><span class="num">{formatCount(postedThisWeek)}</span><span class="lbl">posted this week</span></div>
   </div>
 
   <!-- Top companies -->
@@ -186,7 +187,7 @@ const maxCountry = topCountries[0]?.n ?? 1;
             <span class="rank">{i + 1}</span>
             <a class="bl" href={url(`/companies/${c.slug}/`)}>{c.name}</a>
             <span class="bar"><span class="fill alt" style={`width:${(c.n / maxHireCo) * 100}%`}></span></span>
-            <span class="bv">{c.n}</span>
+            <span class="bv">{formatCount(c.n)}</span>
           </li>
         ))}
       </ol>
@@ -203,9 +204,9 @@ const maxCountry = topCountries[0]?.n ?? 1;
       <span class="seg onsite" style={`width:${pct(onsiteCount, totalRoles)}%`}></span>
     </div>
     <div class="legend">
-      <span><i class="dot remote"></i>Remote · {pct(remoteCount, totalRoles)}% ({remoteCount})</span>
-      <span><i class="dot hybrid"></i>Hybrid · {pct(hybridCount, totalRoles)}% ({hybridCount})</span>
-      <span><i class="dot onsite"></i>On-site · {pct(onsiteCount, totalRoles)}% ({onsiteCount})</span>
+      <span><i class="dot remote"></i>Remote · {pct(remoteCount, totalRoles)}% ({formatCount(remoteCount)})</span>
+      <span><i class="dot hybrid"></i>Hybrid · {pct(hybridCount, totalRoles)}% ({formatCount(hybridCount)})</span>
+      <span><i class="dot onsite"></i>On-site · {pct(onsiteCount, totalRoles)}% ({formatCount(onsiteCount)})</span>
     </div>
   </section>
 
@@ -219,7 +220,7 @@ const maxCountry = topCountries[0]?.n ?? 1;
           <li>
             <a class="bl" rel={FILTER_LINK_REL} href={skillUrl(s.name)}>{s.name}</a>
             <span class="bar"><span class="fill" style={`width:${(s.n / maxSkill) * 100}%`}></span></span>
-            <span class="bv">{s.n}</span>
+            <span class="bv">{formatCount(s.n)}</span>
           </li>
         ))}
       </ul>
@@ -249,7 +250,7 @@ const maxCountry = topCountries[0]?.n ?? 1;
           <li>
             <a class="bl" rel={FILTER_LINK_REL} href={jobsUrl({ level: s.id })}>{s.label}</a>
             <span class="bar"><span class="fill" style={`width:${(s.n / maxSen) * 100}%`}></span></span>
-            <span class="bv">{s.n}</span>
+            <span class="bv">{formatCount(s.n)}</span>
           </li>
         ))}
       </ul>
@@ -265,7 +266,7 @@ const maxCountry = topCountries[0]?.n ?? 1;
           <li>
             <a class="bl" rel={FILTER_LINK_REL} href={jobsUrl({ country: c.code })}>{c.label}</a>
             <span class="bar"><span class="fill alt" style={`width:${(c.n / maxCountry) * 100}%`}></span></span>
-            <span class="bv">{c.n}</span>
+            <span class="bv">{formatCount(c.n)}</span>
           </li>
         ))}
       </ul>

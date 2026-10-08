@@ -1,4 +1,4 @@
-import { boardHiring, companyBySlug, fxRates, generatedAt, openJobsByCompany } from "./data.ts";
+import { boardHiring, companyBySlug, fxRates, generatedAt, openJobs, openJobsByCompany } from "./data.ts";
 import { summarizeCompanyHiring, type CompanyHiringSummary } from "./companyHiring.ts";
 
 /**
@@ -10,6 +10,12 @@ import { summarizeCompanyHiring, type CompanyHiringSummary } from "./companyHiri
  */
 const cache = new Map<string, CompanyHiringSummary>();
 
+/** Open postings per employer before duplicates fold — the unit the engine's openPostings counts in. */
+const postingsByCompany = new Map<string, number>();
+for (const j of openJobs) {
+  postingsByCompany.set(j.companySlug, (postingsByCompany.get(j.companySlug) ?? 0) + 1);
+}
+
 export function companyHiring(companySlug: string): CompanyHiringSummary {
   let summary = cache.get(companySlug);
   if (!summary) {
@@ -19,6 +25,7 @@ export function companyHiring(companySlug: string): CompanyHiringSummary {
       boardHiring,
       generatedAt,
       fxRates,
+      postingsByCompany.get(companySlug) ?? 0,
     );
     cache.set(companySlug, summary);
   }

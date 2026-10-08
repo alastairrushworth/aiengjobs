@@ -1,7 +1,7 @@
 import type { APIRoute } from "astro";
 import { LANDINGS } from "../lib/landings.ts";
 import { url } from "../lib/url.ts";
-import { openJobs, generatedAt, duplicateOf } from "../lib/data.ts";
+import { uniqueOpenJobs, generatedAt } from "../lib/data.ts";
 
 /**
  * llms.txt — an orientation page for assistants that arrive without a query.
@@ -27,7 +27,7 @@ export const GET: APIRoute = ({ site }) => {
   };
   // Same count the board publishes elsewhere: deduplicated, so an employer
   // opening one requisition per office counts once.
-  const roleCount = openJobs.filter((j) => duplicateOf(j) === null).length;
+  const roleCount = uniqueOpenJobs.length;
   const day = generatedAt.slice(0, 10);
 
   const clusters = LANDINGS.filter((l) => l.kind === "cluster");

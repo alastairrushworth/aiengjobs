@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  formatCount,
   formatSalary,
   median,
   postedAgo,
@@ -26,6 +27,22 @@ describe("safeUrl", () => {
     expect(safeUrl("https://ats.example.com/r?next=http://x.io")).toBe(
       "https://ats.example.com/r?next=http://x.io",
     );
+  });
+});
+
+describe("formatCount", () => {
+  it("groups thousands the en-US way, whatever the runtime locale", () => {
+    expect(formatCount(3523)).toBe("3,523");
+    expect(formatCount(1_204_000)).toBe("1,204,000");
+    expect(formatCount(999)).toBe("999");
+    expect(formatCount(0)).toBe("0");
+  });
+
+  it("produces what the filter script's option-label parser strips", () => {
+    // JobFilters' stripCount has to recognise the server's own labels, or the
+    // first recount would append a second "(…)" to every option.
+    const label = `United States (${formatCount(2104)})`;
+    expect(label.replace(/\s*\(\d[\d,]*\)\s*$/, "")).toBe("United States");
   });
 });
 

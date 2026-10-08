@@ -1,6 +1,6 @@
 ---
 import type { LandingStats } from "../lib/landingStats.ts";
-import { kUsd } from "../lib/format.ts";
+import { formatCount, kUsd } from "../lib/format.ts";
 import { url, FILTER_LINK_REL } from "../lib/url.ts";
 
 interface Props {
@@ -16,7 +16,7 @@ const pct = (n: number) => Math.round((n / Math.max(stats.total, 1)) * 100);
 // Only the tiles we can actually fill — an empty "Median salary" box on a page
 // where nobody publishes ranges is worse than not showing the tile.
 const tiles: { label: string; value: string; note?: string }[] = [
-  { label: "Open roles", value: String(stats.total) },
+  { label: "Open roles", value: formatCount(stats.total) },
   stats.medianUsd !== null && {
     label: "Median salary",
     value: kUsd(stats.medianUsd),
@@ -24,7 +24,7 @@ const tiles: { label: string; value: string; note?: string }[] = [
     // "Open roles 120" while resting on 19 roles, and a reader has to do the
     // arithmetic to find that out. USD is stated because the figure is
     // FX-normalised: on the London page it sat above a column of £ ranges.
-    note: `median of ${stats.pricedCount} priced role${stats.pricedCount === 1 ? "" : "s"}, USD`,
+    note: `median of ${formatCount(stats.pricedCount)} priced role${stats.pricedCount === 1 ? "" : "s"}, USD`,
   },
   stats.remote > 0 && {
     label: "Remote",
@@ -67,7 +67,7 @@ const tiles: { label: string; value: string; note?: string }[] = [
           ) : (
             <span>{c.name}</span>
           )}
-          <span class="n">{c.count}</span>
+          <span class="n">{formatCount(c.count)}</span>
         </span>
       ))}
     </p>
@@ -84,7 +84,7 @@ const tiles: { label: string; value: string; note?: string }[] = [
       {stats.topSkills.map((s) => (
         <span class="item">
           <a rel={FILTER_LINK_REL} href={url(`/?skill=${encodeURIComponent(s.name)}`)}>{s.name}</a>
-          <span class="n">{s.count}</span>
+          <span class="n">{formatCount(s.count)}</span>
         </span>
       ))}
     </p>

@@ -2,11 +2,10 @@ import type { APIRoute } from "astro";
 import { LANDINGS } from "../lib/landings.ts";
 import { url } from "../lib/url.ts";
 import {
-  openJobs,
+  uniqueOpenJobs,
   openJobsByCompany,
   companyPageIndexable,
   generatedAt,
-  duplicateOf,
 } from "../lib/data.ts";
 
 export const GET: APIRoute = ({ site }) => {
@@ -57,8 +56,7 @@ export const GET: APIRoute = ({ site }) => {
   // Closed-job tombstones are noindexed and deliberately absent here, as are
   // duplicate requisitions — they canonicalize onto the newest of their set, and
   // submitting a URL we've told Google to ignore is a contradictory signal.
-  for (const j of openJobs) {
-    if (duplicateOf(j)) continue;
+  for (const j of uniqueOpenJobs) {
     entries.push({
       loc: abs(`/jobs/${j.slug}`),
       lastmod: day(j.updatedAt ?? j.postedAt) ?? day(generatedAt),
