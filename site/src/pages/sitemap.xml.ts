@@ -1,82 +1,23 @@
 import type { APIRoute } from "astro";
-import { LANDINGS } from "../lib/landings.ts";
 import { url } from "../lib/url.ts";
 import {
-  uniqueOpenJobs,
-  openJobsByCompany,
-  companyPageIndexable,
-  generatedAt,
-} from "../lib/data.ts";
+  hubEntries,
+  jobEntries,
+  newestLastmod,
+  sitemapIndex,
+  XML_HEADERS,
+} from "../lib/sitemap.ts";
 
+// The index. This is the URL robots.txt names and Search Console has had since
+// launch, so it keeps its address; the two files it points at are what changed
+// (lib/sitemap.ts says why there are two).
 export const GET: APIRoute = ({ site }) => {
-  // Trailing slashes throughout — GitHub Pages 301s the slash-less form, and a
-  // sitemap full of redirects wastes crawl budget.
-  const abs = (p: string) => {
-    const href = new URL(url(p.endsWith("/") ? p : `${p}/`), site).href;
-    return href.endsWith("/") ? href : `${href}/`; // url("/") drops the base's slash
-  };
-  /**
-   * The date part of an ISO timestamp, and only if it really is one.
-   *
-   * `loc` is safe by construction — every URL goes through `new URL()`, which
-   * percent-encodes anything XML would object to. `lastmod` is not: it comes
-   * from `updatedAt`, which the Ashby and Greenhouse connectors pass through
-   * from the feed verbatim and which nothing downstream validates. (`postedAt`
-   * is incidentally protected, because a role whose posted date won't parse is
-   * dropped from `openJobs` before it gets here — `updatedAt` has no such
-   * guard.) Slicing to ten characters bounded the length and nothing else, so
-   * ten characters of `&`, `<` or `"` would make the whole document
-   * ill-formed — and a sitemap that fails to parse fails entirely, taking
-   * every URL in it with it. No live row is malformed today; the shape of the
-   * input is what makes that luck rather than a property.
-   */
-  const day = (iso?: string) => {
-    const d = iso?.slice(0, 10);
-    return d && /^\d{4}-\d{2}-\d{2}$/.test(d) ? d : undefined;
-  };
-
-  const entries: { loc: string; lastmod?: string }[] = [
-    { loc: abs("/"), lastmod: day(generatedAt) },
-    { loc: abs("/stats"), lastmod: day(generatedAt) },
-    { loc: abs("/mcp"), lastmod: day(generatedAt) },
-  ];
-  // Landing pages: the first slice of each only. Pages 2+ are noindexed
-  // (components/LandingPage.astro says why), and a sitemap that lists a URL
-  // the page itself asks Google to ignore is a contradictory signal. Every
-  // role past page 1 is listed directly below, so nothing loses its entry.
-  for (const landing of LANDINGS) {
-    entries.push({ loc: abs(`/${landing.slug}`), lastmod: day(generatedAt) });
-  }
-  // Company pages with enough roles to be more than one role's page again —
-  // the same line the page draws for its own noindex (MIN_INDEXED_COMPANY_ROLES).
-  // Page 1 only, as for the landings: a big employer's later slices are
-  // noindexed, and each of their roles is listed directly below.
-  for (const slug of openJobsByCompany.keys()) {
-    if (!companyPageIndexable(slug)) continue;
-    entries.push({ loc: abs(`/companies/${slug}`), lastmod: day(generatedAt) });
-  }
-  // Closed-job tombstones are noindexed and deliberately absent here, as are
-  // duplicate requisitions — they canonicalize onto the newest of their set, and
-  // submitting a URL we've told Google to ignore is a contradictory signal.
-  for (const j of uniqueOpenJobs) {
-    entries.push({
-      loc: abs(`/jobs/${j.slug}`),
-      lastmod: day(j.updatedAt ?? j.postedAt) ?? day(generatedAt),
-    });
-  }
-
-  const body =
-    `<?xml version="1.0" encoding="UTF-8"?>\n` +
-    `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n` +
-    entries
-      .map(
-        (e) =>
-          `  <url><loc>${e.loc}</loc>${e.lastmod ? `<lastmod>${e.lastmod}</lastmod>` : ""}</url>`,
-      )
-      .join("\n") +
-    `\n</urlset>\n`;
-
-  return new Response(body, {
-    headers: { "Content-Type": "application/xml; charset=utf-8" },
-  });
+  const child = (p: string) => new URL(url(p), site).href;
+  return new Response(
+    sitemapIndex([
+      { loc: child("/sitemap-hubs.xml"), lastmod: newestLastmod(hubEntries(site)) },
+      { loc: child("/sitemap-jobs.xml"), lastmod: newestLastmod(jobEntries(site)) },
+    ]),
+    { headers: XML_HEADERS },
+  );
 };
