@@ -25,7 +25,8 @@ interface Props {
   ogImageAlt?: string;
   /**
    * Point the canonical at a different page (already base-prefixed). Used by
-   * duplicate ATS requisitions, which consolidate onto the newest of the set.
+   * duplicate ATS requisitions, which consolidate onto the newest of the set,
+   * and by 404.html, which GitHub Pages serves at whatever URL missed.
    */
   canonicalOverride?: string;
 }
