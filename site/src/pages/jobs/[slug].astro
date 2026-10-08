@@ -284,8 +284,19 @@ const VALID_THROUGH_DAYS = 30;
 // No per-role override: nothing in the pipeline ever set jobs.expires_at, so
 // the `job.expiresAt ?? …` this replaced had exactly one live branch while
 // implying the engine supplied a per-role expiry.
+//
+// Except the one expiry the board sets itself: a role stops being listed the
+// day it passes MAX_JOB_AGE_DAYS, and its page turns into a noindexed
+// tombstone with no markup. The 30-day window ignored that, so 774 of 3,358
+// postings (2026-10-08) told Google they were valid a median 15 days past the
+// date this board drops them — a live-looking result landing on "no longer
+// listed" until the next crawl. Unlike a closure, that date is known now.
+const listedUntil = job.postedAt ? Date.parse(job.postedAt) + MAX_JOB_AGE_DAYS * DAY_MS : NaN;
 const validThrough = new Date(
-  Date.parse(generatedAt) + VALID_THROUGH_DAYS * DAY_MS,
+  Math.min(
+    Date.parse(generatedAt) + VALID_THROUGH_DAYS * DAY_MS,
+    Number.isFinite(listedUntil) ? listedUntil : Infinity,
+  ),
 ).toISOString();
 // Google's credentialCategory vocabulary has one value above a bachelor's.
 const DEGREE_CREDENTIAL: Record<DegreeLevel, string> = {
