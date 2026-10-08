@@ -194,8 +194,9 @@ describe("exportSnapshot", () => {
 
     const snap = await runExport(dir);
 
-    expect(snap.jobs[0]).toMatchObject({ slug: "gone", isClosed: true });
+    expect(snap.jobs[0]).toMatchObject({ slug: "gone", isClosed: true, closedAt: RECENT });
     expect(snap.jobs[0]!.descriptionText).toBeUndefined();
+    expect(snap.jobs[0]!.delistedAt).toBeUndefined();
   });
 
   it("drops a role that closed longer ago than the retention window", async () => {
@@ -221,8 +222,9 @@ describe("exportSnapshot", () => {
 
     const snap = await runExport(dir);
 
-    expect(snap.jobs[0]).toMatchObject({ slug: "moved", isDelisted: true });
+    expect(snap.jobs[0]).toMatchObject({ slug: "moved", isDelisted: true, delistedAt: recent });
     expect(snap.jobs[0]!.isClosed).toBeUndefined();
+    expect(snap.jobs[0]!.closedAt).toBeUndefined();
     expect(snap.jobs[0]!.descriptionText).toBeUndefined();
     expect(snap.jobs[0]!.lastSeenAt).toBeUndefined();
     expect(snap.jobs[0]!.applyUrl).toBe("https://x/apply");
