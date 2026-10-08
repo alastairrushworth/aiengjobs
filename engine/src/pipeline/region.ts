@@ -93,7 +93,8 @@ const CITY_REGION: Record<string, Record<string, string>> = {
     dallas: "TX", houston: "TX", "salt lake city": "UT", pittsburgh: "PA",
     minneapolis: "MN", nashville: "TN", raleigh: "NC", durham: "NC",
     "ann arbor": "MI", boulder: "CO", irvine: "CA", pasadena: "CA",
-    "culver city": "CA", brooklyn: "NY", manhattan: "NY",
+    "culver city": "CA", brooklyn: "NY", manhattan: "NY", lehi: "UT",
+    alpharetta: "GA", ames: "IA",
   },
   CA: {
     toronto: "ON", vancouver: "BC", montréal: "QC", montreal: "QC",
@@ -130,8 +131,7 @@ export function inferRegion(
   city?: string,
 ): string | undefined {
   if (!country) return undefined;
-  const divisions = DIVISIONS[country];
-  if (!divisions) return undefined;
+  if (!DIVISIONS[country]) return undefined;
   const cities = CITY_REGION[country] ?? {};
 
   const segment = locationRaw.split(/[,|/]/)[1]?.trim();
@@ -140,11 +140,31 @@ export function inferRegion(
     // A second city in a list ("Chicago, New York, London") is not this city's
     // region. The city table is the only place we can recognise one.
     if (!cities[bare]) {
-      const upper = segment.toUpperCase();
-      if (upper.length <= 3 && CODES[country]!.has(upper)) return upper;
-      if (divisions[bare]) return divisions[bare];
+      const division = divisionOf(segment, country);
+      if (division) return division;
     }
   }
 
-  return city ? cities[city.toLowerCase()] : undefined;
+  return cityRegion(country, city);
+}
+
+/** The division a city on the curated list sits in, or undefined. */
+export function cityRegion(country?: string, city?: string): string | undefined {
+  return country && city ? CITY_REGION[country]?.[city.toLowerCase()] : undefined;
+}
+
+/**
+ * The canonical division a single segment names within `country` — "CA" and
+ * "California" both give "CA", "BC" gives "BC" — or undefined when the segment
+ * is not one of that country's divisions. Codes are matched as written in
+ * capitals or not, exactly as inferRegion always has; callers that need a code
+ * to *look* like a code check that themselves.
+ */
+export function divisionOf(segment: string, country?: string): string | undefined {
+  if (!country) return undefined;
+  const divisions = DIVISIONS[country];
+  if (!divisions) return undefined;
+  const upper = segment.trim().toUpperCase();
+  if (upper.length <= 3 && CODES[country]!.has(upper)) return upper;
+  return divisions[segment.toLowerCase().replace(/\./g, "").trim()];
 }

@@ -248,6 +248,54 @@ describe("relocate cities", () => {
     expect(cities(path)).toEqual({ llm: "Chengdu", ulm: "Ulm" });
   });
 
+  /**
+   * The stored value here is canonical — Washington is a real city — so the
+   * reject-only rule above can't reach it. It is replaced because it is
+   * exactly what the old first-segment reading of location_raw produced, and
+   * the parser now reads past the state to the city behind it.
+   */
+  it("replaces a city the parser now reads past", async () => {
+    const path = makeDb([
+      { id: "sea", locationRaw: "Washington - Seattle Campus", country: "US", city: "Washington" },
+      { id: "bel", locationRaw: "Washington - Bellevue", country: "US", city: "Washington" },
+      { id: "atl", locationRaw: "USA - Georgia - Alpharetta - 30005", country: "US", city: "Georgia" },
+    ]);
+
+    await run(path);
+
+    expect(cities(path)).toEqual({ sea: "Seattle", bel: "Bellevue", atl: "Alpharetta" });
+    expect(regions(path)).toEqual({ sea: "WA", bel: "WA", atl: "GA" });
+  });
+
+  it("leaves Washington, DC — and any city the parser didn't write — alone", async () => {
+    const path = makeDb([
+      { id: "dc", locationRaw: "Washington, DC", country: "US", city: "Washington" },
+      { id: "dc2", locationRaw: "Washington, D.C.", country: "US", city: "Washington" },
+      // Not what the first-segment reading gives, so not the engine's own
+      // answer: an extractor-supplied city survives even a shape the parser
+      // now reads differently.
+      { id: "llm", locationRaw: "Washington - Bellevue", country: "US", city: "Redmond" },
+    ]);
+
+    await run(path);
+
+    expect(cities(path)).toEqual({ dc: "Washington", dc2: "Washington", llm: "Redmond" });
+  });
+
+  it("fills the countries and cities the new hints and shapes place", async () => {
+    const path = makeDb([
+      { id: "bochum", locationRaw: "Bochum", city: "Bochum" },
+      { id: "can", locationRaw: "Ontario, CAN" },
+      { id: "farr", locationRaw: "Farringdon", city: "Farringdon" },
+      { id: "van", locationRaw: "Canada, BC, Vancouver", country: "CA", region: "BC" },
+    ]);
+
+    await run(path);
+
+    expect(countries(path)).toEqual({ bochum: "DE", can: "CA", farr: "GB", van: "CA" });
+    expect(cities(path)).toEqual({ bochum: "Bochum", can: null, farr: "London", van: "Vancouver" });
+  });
+
   it("writes no city on a dry run", async () => {
     const path = makeDb([{ id: "cn", locationRaw: "CN - Shanghai", city: "Cn" }]);
 
@@ -261,12 +309,13 @@ describe("relocate cities", () => {
       { id: "cn", locationRaw: "CN - Shanghai", city: "Cn" },
       { id: "hq", locationRaw: "*HQ - San Francisco, CA" },
       { id: "prov", locationRaw: "Ontario, CAN", city: "Ontario" },
+      { id: "sea", locationRaw: "Washington - Seattle Campus", country: "US", city: "Washington" },
     ]);
 
     await run(path);
-    const first = cities(path);
+    const first = [cities(path), regions(path), countries(path)];
     await run(path);
 
-    expect(cities(path)).toEqual(first);
+    expect([cities(path), regions(path), countries(path)]).toEqual(first);
   });
 });
