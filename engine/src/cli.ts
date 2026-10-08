@@ -30,12 +30,12 @@ async function main(): Promise<void> {
       break;
     case "relocate":
       // Fills country, region and city onto postings that have none, using the
-      // current hint, division and canonicalization tables — run once after
-      // editing pipeline/location.ts, pipeline/region.ts or shared/city.ts.
-      // Country and region are only ever filled, never overwritten, so the
-      // values the retired LLM extractor supplied survive it; a stored city is
-      // replaced only where the current rules reject it outright.
-      // --dry-run reports what it would fill and writes nothing.
+      // current hint, division and canonicalization tables. Part of the nightly
+      // refresh; by hand it's for --dry-run, which reports what it would fill
+      // and writes nothing. Country and region are only ever filled, never
+      // overwritten, so the values the retired LLM extractor supplied survive
+      // it; a stored city is replaced only where the current rules reject it
+      // or read past it (see relocateRow).
       relocate({ dryRun: process.argv.includes("--dry-run") });
       break;
     case "reclassify":
@@ -47,8 +47,18 @@ async function main(): Promise<void> {
     case "refresh":
       // nightly: re-seed (picks up companies.csv additions), poll feeds, then
       // regenerate the site snapshot. seed() upserts, so it's safe to re-run.
+      //
+      // relocate between the two because ingest skips content-unchanged
+      // postings: without it a location rule fixed today reaches only the roles
+      // first seen after today, and the ones already published — the ones the
+      // fix was written for — keep the old answer until they close. As a
+      // by-hand step it meant downloading the release database, running it and
+      // re-uploading around the nightly run. It is idempotent and fills or
+      // narrowly repairs only, so every night but the one after a rule change
+      // it writes nothing.
       seed();
       await ingest();
+      relocate();
       await exportSnapshot();
       break;
     case "logos":

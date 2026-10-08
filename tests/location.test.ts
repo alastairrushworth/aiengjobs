@@ -138,4 +138,146 @@ describe("parseLocation", () => {
   it("does not split a hyphenated place name", () => {
     expect(parseLocation("Kitchener-Waterloo").city).toBe("Kitchener-Waterloo");
   });
+
+  it("places the cities and countries the hint table had skipped", () => {
+    // Each was a live role with no country, and so no JobPosting.
+    const cases: [string, string][] = [
+      ["Almaty, Kazakhstan", "KZ"],
+      ["Bochum", "DE"],
+      ["Farringdon", "GB"],
+      ["Canary Wharf, 1 Churchill Place", "GB"],
+      ["BELO HORIZONTE", "BR"],
+      ["Lehi", "US"],
+      ["Alpharetta, Georgia", "US"],
+      ["ALPHARETTA, GEORGIA", "US"],
+      ["Knutsford, Radbroke Hall", "GB"],
+      ["Shanghai_Tianshan", "CN"],
+      ["KATO SCHOLARI 01", "GR"],
+      ["DLF CYBERCITY 12B", "IN"],
+      ["Doha, Qatar", "QA"],
+      ["Quito, Ecuador", "EC"],
+      ["Lima, Peru", "PE"],
+      ["Heredia, Heredia, Costa Rica", "CR"],
+      ["Bogotá", "CO"],
+    ];
+    for (const [raw, country] of cases) expect(parseLocation(raw).country, raw).toBe(country);
+    expect(parseLocation("Alpharetta, Georgia")).toMatchObject({ city: "Alpharetta", region: "GA" });
+    expect(parseLocation("Farringdon").city).toBe("London");
+  });
+
+  it("reads a standalone ISO alpha-3 code as the country it spells", () => {
+    const cases: [string, string][] = [
+      ["Ontario, CAN", "CA"],
+      ["Mohali, IND", "IN"],
+      ["IND-BLR-Divyasree Technopolis", "IN"],
+      ["PHL-Taguig City-CitiPlaza", "PH"],
+      ["VNM.Da Nang", "VN"],
+      ["Remote AUS", "AU"],
+    ];
+    for (const [raw, country] of cases) expect(parseLocation(raw).country, raw).toBe(country);
+    // EST is the timezone on this board, never Estonia; lowercase words and
+    // codes inside a longer token are not codes.
+    expect(parseLocation("Remote - EST").country).toBeUndefined();
+    expect(parseLocation("Remote, can relocate").country).toBeUndefined();
+    expect(parseLocation("INDIGO").country).toBeUndefined();
+  });
+
+  it("still leaves the ambiguous names without a country", () => {
+    // Each names a real city in two countries: San Carlos (California, and the
+    // Philippines, Uruguay, Costa Rica…), Halifax (Nova Scotia, Yorkshire),
+    // Markham (Ontario, Illinois), Sault Ste. Marie (Ontario, Michigan), St.
+    // John's (Newfoundland, Antigua), Lima (Peru, Ohio).
+    for (const raw of [
+      "San Carlos - Hybrid",
+      "Halifax",
+      "Markham",
+      "Sault Ste. Marie",
+      "St. John's",
+      "Lima",
+      "Remote - Ontario",
+    ]) {
+      expect(parseLocation(raw).country, raw).toBeUndefined();
+    }
+  });
+});
+
+describe("parseLocation broad → narrow", () => {
+  // Workday tenants write the state or country first. Reading the first
+  // segment as the city published Expedia's Seattle roles as Washington, DC
+  // and Equifax's Alpharetta roles in a city called Georgia.
+  it("reads the city after a leading US state", () => {
+    const cases: [raw: string, city: string, region: string][] = [
+      ["Washington - Seattle Campus", "Seattle", "WA"],
+      ["Washington - Bellevue", "Bellevue", "WA"],
+      ["USA - Georgia - Alpharetta - 30005", "Alpharetta", "GA"],
+      ["Georgia - Atlanta", "Atlanta", "GA"],
+      ["California - San Francisco", "San Francisco", "CA"],
+      ["USA - Illinois - Chicago", "Chicago", "IL"],
+      ["Virginia - Herndon", "Herndon", "VA"],
+      ["AMER - United States - Oregon - Portland", "Portland", "OR"],
+    ];
+    for (const [raw, city, region] of cases) {
+      expect(parseLocation(raw), raw).toMatchObject({ country: "US", city, region });
+    }
+  });
+
+  it("reads the city after a leading country, code or province", () => {
+    const cases: [raw: string, country: string, city: string, region?: string][] = [
+      ["Canada, BC, Vancouver", "CA", "Vancouver", "BC"],
+      ["USA, CA, Pleasanton", "US", "Pleasanton", "CA"],
+      ["CAN - Ontario - Toronto", "CA", "Toronto", "ON"],
+      ["AMER - Canada - Ontario - Toronto - University Ave", "CA", "Toronto", "ON"],
+      ["EMEA - United Kingdom - London - Agar St", "GB", "London"],
+      ["Ireland, Dublin", "IE", "Dublin"],
+      ["Israel, Tel Aviv", "IL", "Tel Aviv"],
+      ["Lithuania - Vilnius", "LT", "Vilnius"],
+      ["India (Bengaluru)", "IN", "Bangalore", "Karnataka"],
+    ];
+    for (const [raw, country, city, region] of cases) {
+      const got = parseLocation(raw);
+      expect(got, raw).toMatchObject({ country, city });
+      expect(got.region, raw).toBe(region);
+    }
+  });
+
+  it("still reads Washington, DC as the city", () => {
+    for (const raw of [
+      "Washington, DC",
+      "Washington D.C.",
+      "Washington, D.C.",
+      "Washington DC",
+      "Washington - DC",
+      "Washington, District of Columbia, United States",
+    ]) {
+      expect(parseLocation(raw), raw).toMatchObject({ country: "US", city: "Washington" });
+    }
+  });
+
+  it("does not read past a city that is also a state when a comma follows it", () => {
+    // Before a comma "New York" is the first city of a list far more often
+    // than it is the state.
+    expect(parseLocation("New York, London, Chicago").city).toBe("New York");
+    expect(parseLocation("New York, New York").city).toBe("New York");
+    expect(parseLocation("New York - Hybrid").city).toBe("New York");
+  });
+
+  it("emits no city when what follows the broad side is not a city", () => {
+    for (const raw of [
+      "US, UK, Singapore, Remote", // a list of countries, not a nest
+      "Colombia, Huila, Colombia", // City-Region-Country, reversed
+      "Americas (US time zones)",
+      "IND - India - Home based",
+      "AMER - Canada - Ontario - Offsite/Home",
+      "USA, Washington", // the last segment is the state itself
+      "India, Delhi",
+      "135 W 26th Street, New York, NY 10001", // an address, left alone
+    ]) {
+      expect(parseLocation(raw).city, raw).toBeUndefined();
+    }
+  });
+
+  it("leaves a codes-only prefix to canonicalCity's code loop", () => {
+    expect(parseLocation("CN - Shanghai").city).toBe("Shanghai");
+    expect(parseLocation("VA - Reston, 11951 Freedom Dr").city).toBe("Reston");
+  });
 });

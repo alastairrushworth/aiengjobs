@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { inferRegion } from "../engine/src/pipeline/region.ts";
+import { divisionOf, inferRegion } from "../engine/src/pipeline/region.ts";
 import { parseLocation } from "../engine/src/pipeline/location.ts";
 
 describe("inferRegion", () => {
@@ -69,6 +69,23 @@ describe("inferRegion", () => {
   });
 });
 
+describe("divisionOf", () => {
+  it("canonicalizes a division name or code within its own country", () => {
+    expect(divisionOf("California", "US")).toBe("CA");
+    expect(divisionOf("CA", "US")).toBe("CA");
+    expect(divisionOf("Georgia", "US")).toBe("GA");
+    expect(divisionOf("BC", "CA")).toBe("BC");
+    expect(divisionOf("Karnataka", "IN")).toBe("Karnataka");
+  });
+
+  it("yields nothing outside that country or without one", () => {
+    expect(divisionOf("Georgia", undefined)).toBeUndefined();
+    expect(divisionOf("Ontario", "US")).toBeUndefined();
+    expect(divisionOf("Bavaria", "DE")).toBeUndefined();
+    expect(divisionOf("Seattle", "US")).toBeUndefined();
+  });
+});
+
 describe("parseLocation region", () => {
   it("returns the region alongside the country and city", () => {
     expect(parseLocation("Austin, TX")).toMatchObject({
@@ -80,6 +97,15 @@ describe("parseLocation region", () => {
   });
 
   it("leaves region unset when the country is unknown", () => {
-    expect(parseLocation("Knutsford, Radbroke Hall").region).toBeUndefined();
+    // Knutsford used to be the example here; it now resolves to GB.
+    expect(parseLocation("Sault Ste. Marie, Algoma").region).toBeUndefined();
+  });
+
+  it("reads the division in front of the city in a broad → narrow location", () => {
+    // The city table would give Bellevue WA anyway; Herndon and Pleasanton
+    // aren't on it, so only the leading state can supply theirs.
+    expect(parseLocation("Washington - Bellevue").region).toBe("WA");
+    expect(parseLocation("Virginia - Herndon").region).toBe("VA");
+    expect(parseLocation("USA, CA, Pleasanton").region).toBe("CA");
   });
 });

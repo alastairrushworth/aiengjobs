@@ -154,6 +154,35 @@ describe("canonicalCity", () => {
     expect(canonicalCity("United States and Canada")).toBeUndefined();
   });
 
+  it("keeps the city in front of a Workday site number", () => {
+    // Cadence writes "<CITY> NN"; the digit check threw the whole value away.
+    expect(canonicalCity("BANGALORE 05")).toBe("Bangalore");
+    expect(canonicalCity("PUNE 05")).toBe("Pune");
+    expect(canonicalCity("CORK 01")).toBe("Cork");
+    // Anything else carrying digits is still not a city.
+    expect(canonicalCity("DLF CYBERCITY 12B")).toBeUndefined();
+    expect(canonicalCity("BUILDING 40")).toBeUndefined();
+    expect(canonicalCity("1/124, SHIVAJI GARDENS, MOONLI")).toBeUndefined();
+    expect(canonicalCity("Paris 15")).toBeUndefined();
+  });
+
+  it("resolves a district or business park to the city it is in", () => {
+    expect(canonicalCity("Farringdon")).toBe("London");
+    expect(canonicalCity("Canary Wharf")).toBe("London");
+    expect(canonicalCity("One-north")).toBe("Singapore");
+    expect(canonicalCity("Shanghai_Tianshan")).toBe("Shanghai");
+    // The underscore is not a general separator: here it stands for a space.
+    expect(canonicalCity("SAN-Santa_Fe")).not.toBe("Santa");
+  });
+
+  it("rejects the countries the board has only recently learned to place", () => {
+    // Each had been published as a city of its own.
+    for (const raw of ["Costa Rica", "Uruguay", "Kazakhstan", "Qatar", "Peru"]) {
+      expect(canonicalCity(raw), raw).toBeUndefined();
+    }
+    expect(canonicalCity("Heredia Costa Rica")).toBe("Heredia");
+  });
+
   it("treats '&' and 'and' as list separators like 'or'", () => {
     expect(canonicalCity("London & San Francisco")).toBe("London");
     expect(canonicalCity("London & Amsterdam")).toBe("London");
@@ -168,6 +197,9 @@ describe("canonicalCity", () => {
       "Kitchener-Waterloo",
       "São Paulo",
       "McLean",
+      "BANGALORE 05",
+      "Farringdon",
+      "Heredia Costa Rica",
     ]) {
       const once = canonicalCity(raw);
       expect(canonicalCity(once)).toBe(once);
