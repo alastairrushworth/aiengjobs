@@ -276,8 +276,24 @@ describe("parseLocation broad → narrow", () => {
     }
   });
 
+  it("reads Georgia as the country when a Georgian city follows it", () => {
+    // The bare word is never a country hint; Tbilisi is.
+    expect(parseLocation("Georgia - Tbilisi")).toMatchObject({ country: "GE", city: "Tbilisi" });
+    expect(parseLocation("Tbilisi, Georgia")).toMatchObject({ country: "GE", city: "Tbilisi" });
+    expect(parseLocation("Georgia - Atlanta")).toMatchObject({ country: "US", region: "GA", city: "Atlanta" });
+    expect(parseLocation("Atlanta, Georgia")).toMatchObject({ country: "US", region: "GA", city: "Atlanta" });
+    // Alone it names neither a city nor a country.
+    expect(parseLocation("Georgia").city).toBeUndefined();
+    expect(parseLocation("Georgia").country).toBeUndefined();
+  });
+
   it("leaves a codes-only prefix to canonicalCity's code loop", () => {
     expect(parseLocation("CN - Shanghai").city).toBe("Shanghai");
     expect(parseLocation("VA - Reston, 11951 Freedom Dr").city).toBe("Reston");
+    expect(parseLocation("IND - NonGBS-Pune-Kharadi")).toMatchObject({
+      country: "IN",
+      region: "Maharashtra",
+      city: "Pune",
+    });
   });
 });

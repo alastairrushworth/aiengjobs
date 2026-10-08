@@ -183,6 +183,26 @@ describe("canonicalCity", () => {
     expect(canonicalCity("Heredia Costa Rica")).toBe("Heredia");
   });
 
+  it("never takes Georgia for a city", () => {
+    // A US state and a country; stored as the city on "Georgia - Atlanta" and
+    // "USA - Georgia - Alpharetta - 30005".
+    expect(canonicalCity("Georgia")).toBeUndefined();
+    expect(canonicalCity("GEORGIA")).toBeUndefined();
+    expect(canonicalCity("Atlanta Georgia")).toBe("Atlanta");
+  });
+
+  it("skips an internal business-unit tag in a COUNTRY-Tag-City-Site code", () => {
+    expect(canonicalCity("IND - NonGBS-Pune-Kharadi")).toBe("Pune");
+    expect(canonicalCity("NonGBS")).toBeUndefined();
+    // The ordinary City-Site shape is untouched…
+    expect(canonicalCity("IND-Pune-Equifax Analytics-PEC")).toBe("Pune");
+    expect(canonicalCity("IND-Bangalore-TowerE,RMZ Infin")).toBe("Bangalore");
+    // …and so are the mixed-case names that put one capital after lowercase.
+    expect(canonicalCity("McLean")).toBe("McLean");
+    expect(canonicalCity("DeKalb")).toBe("DeKalb");
+    expect(canonicalCity("LaGrange")).toBe("LaGrange");
+  });
+
   it("treats '&' and 'and' as list separators like 'or'", () => {
     expect(canonicalCity("London & San Francisco")).toBe("London");
     expect(canonicalCity("London & Amsterdam")).toBe("London");
