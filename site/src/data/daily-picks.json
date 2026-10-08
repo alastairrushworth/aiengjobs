@@ -1,17 +1,6 @@
 {
   "picks": [
     {
-      "date": "2026-09-08",
-      "pickedAt": "2026-09-08T03:10:18.882Z",
-      "slugs": [
-        "genesis-data-agent-8c9158",
-        "cultureamp-senior-applied-ai-engineer-3e7f2f",
-        "dialpad-sr-software-engineer-applied-ai-systems-dd57c0",
-        "dialpad-sr-software-engineer-applied-ai-systems-55b8d2",
-        "dialpad-sr-software-engineer-applied-ai-systems-4889ab"
-      ]
-    },
-    {
       "date": "2026-09-09",
       "pickedAt": "2026-09-09T03:51:40.485Z",
       "slugs": [
@@ -327,6 +316,17 @@
         "elastic-agentic-ai-engineer-2f5fe1",
         "capitalone-wd12-capital-one-ai-engineer-5-gen-ai-platform-services-agentic-systems-411b25",
         "capitalone-wd12-capital-one-ai-engineer-5-gen-ai-platform-services-agentic-ai-guardrails-evaluation-95ad34"
+      ]
+    },
+    {
+      "date": "2026-10-08",
+      "pickedAt": "2026-10-08T05:36:55.625Z",
+      "slugs": [
+        "fa-ewmy-saasfaprod1-fa-ocs-oraclecloud-com-cx-1-lead-ai-engineer-eb11de",
+        "thinkingmachines-rl-systems-infra-f71423",
+        "toloka-principal-ml-researcher-734524",
+        "datadog-staff-research-scientist-post-training-for-agents-a9fb7b",
+        "fa-ewmy-saasfaprod1-fa-ocs-oraclecloud-com-cx-1-lead-agentic-ai-architect-5fbc75"
       ]
     }
   ]
