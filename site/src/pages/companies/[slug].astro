@@ -5,7 +5,7 @@ import JobCard from "../../components/JobCard.astro";
 import BrowseNav from "../../components/BrowseNav.astro";
 import CompanyLogo from "../../components/CompanyLogo.astro";
 import { markupLogo } from "../../lib/logos.ts";
-import { companyUrl } from "../../lib/format.ts";
+import { companyUrl, formatCount } from "../../lib/format.ts";
 import { CLUSTER_PAGES } from "../../lib/clusters.ts";
 import { url } from "../../lib/url.ts";
 import { jsonLdScript } from "../../lib/jsonld.ts";
@@ -91,8 +91,8 @@ const breadcrumbJsonLd = {
       <h1>{company.name}</h1>
     </div>
     <p>
-      {jobs.length} open AI-engineering role{jobs.length === 1 ? "" : "s"}
-      {withSalary > 0 ? ` · ${withSalary} with salary` : ""}
+      {formatCount(jobs.length)} open AI-engineering role{jobs.length === 1 ? "" : "s"}
+      {withSalary > 0 ? ` · ${formatCount(withSalary)} with salary` : ""}
       {company.stage ? ` · ${company.stage}-stage` : ""}
       {domainHref ? (
         <>

@@ -12,6 +12,7 @@ import { jsonLdScript } from "../lib/jsonld.ts";
 import { buildFilterOptions } from "../lib/filterOptions.ts";
 import { computeLandingStats } from "../lib/landingStats.ts";
 import { fxRates } from "../lib/data.ts";
+import { formatCount } from "../lib/format.ts";
 import { LOCATION_LANDINGS } from "../lib/landings.ts";
 
 interface Props {
@@ -117,7 +118,7 @@ const hide =
       : [];
 
 const feedHref = url(`/${landing.slug}/rss.xml`);
-const description = `${landing.intro} ${page.total} open role${page.total === 1 ? "" : "s"} right now.${
+const description = `${landing.intro} ${formatCount(page.total)} open role${page.total === 1 ? "" : "s"} right now.${
   page.currentPage > 1 ? ` Page ${page.currentPage} of ${page.lastPage}.` : ""
 }`;
 
@@ -141,8 +142,8 @@ const noindex = page.currentPage > 1;
         later pages: it describes the pager's slice, and JobFilters hides the
         pager the moment a filter is applied. */}
     <p class="count">
-      {page.total} open role{page.total === 1 ? "" : "s"}
-      {paged && page.currentPage > 1 && ` · showing ${page.start + 1}–${page.end + 1}`}
+      {formatCount(page.total)} open role{page.total === 1 ? "" : "s"}
+      {paged && page.currentPage > 1 && ` · showing ${formatCount(page.start + 1)}–${formatCount(page.end + 1)}`}
     </p>
   </section>
 

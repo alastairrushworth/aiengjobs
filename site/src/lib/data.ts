@@ -73,7 +73,15 @@ export { MAX_JOB_AGE_DAYS };
 
 const ageDays = (j: Job): number | null => jobAgeDays(j, data.generatedAt);
 
-/** Open roles, newest first (roles without a posted date sink to the bottom). */
+/**
+ * Every open role, newest first (roles without a posted date sink to the
+ * bottom) — duplicate requisitions included.
+ *
+ * This is the set that gets a /jobs/ page: a duplicate is still a live posting
+ * with its own apply link, and its page canonicalizes onto the newest of its
+ * set rather than disappearing. Anything that *lists* or *counts* roles wants
+ * `uniqueOpenJobs` below instead.
+ */
 export const openJobs: Job[] = listedJobs(data);
 
 /** Recently-closed roles — rendered as noindexed tombstone pages, not listed. */
@@ -92,10 +100,47 @@ export const delistedJobs: Job[] = data.jobs
   .filter((j) => !j.isClosed && j.isDelisted)
   .map(withCanonicalCity);
 
-/** Open roles per employer, in listing order. Built once for the company pages and the sitemap. */
+// Employers routinely open several ATS requisitions for one role at one site
+// (6x "Software Engineer · Cisco · Budapest" on 2026-10-08). Each is a
+// distinct posting with its own apply URL, but they render byte-identical
+// pages, so we nominate the newest as canonical. The rest stay live and
+// applicable — they just point their canonical at it, skip the JobPosting
+// markup and stay out of the sitemap, so Google consolidates them deliberately
+// instead of picking one arbitrarily and calling the others duplicate content.
+//
+// The keying itself lives in shared/indexable.ts: losing to a duplicate strips
+// a page's JobPosting markup, so the engine has to reach the same verdict
+// before it submits anything to Google's Indexing API.
+const canonicalByKey = canonicalByDupKey(openJobs);
+
+/** The slug of the posting this one duplicates, or null when it's canonical. */
+export function duplicateOf(job: Job): string | null {
+  return duplicateOfIn(canonicalByKey, job);
+}
+
+/**
+ * Open roles with duplicate requisitions folded into their canonical posting,
+ * newest first — the board as a reader sees it.
+ *
+ * Every listing, count and stat is built from this. The sitemap, the feeds,
+ * the JobPosting markup, the MCP index and llms.txt all folded duplicates
+ * already, while the homepage, /stats, the landings and the company pages
+ * listed every requisition: "Browse 3616 roles" on the homepage against 3523
+ * in llms.txt on 2026-10-08, and six identical "Software Engineer · Budapest"
+ * cards on Cisco's page. Two counts of one board is one too many, and the
+ * reader's is the deduplicated one — the six cards are one job.
+ */
+export const uniqueOpenJobs: Job[] = openJobs.filter((j) => duplicateOf(j) === null);
+
+/**
+ * Open roles per employer, in listing order, duplicates folded. Built once for
+ * the company pages, the sitemap and the job pages' "More at" links. Its keys
+ * are every employer with an open role — a duplicate's canonical is open at the
+ * same employer, so folding can't empty an entry.
+ */
 export const openJobsByCompany: ReadonlyMap<string, Job[]> = (() => {
   const m = new Map<string, Job[]>();
-  for (const j of openJobs) {
+  for (const j of uniqueOpenJobs) {
     const list = m.get(j.companySlug);
     if (list) list.push(j);
     else m.set(j.companySlug, [j]);
@@ -156,21 +201,3 @@ export const agedOutJobs: Job[] = data.jobs
   })
   .map(withCanonicalCity)
   .sort((a, b) => postedTs(b) - postedTs(a));
-
-// Employers routinely open several ATS requisitions for one role at one site
-// (6x "Forward Deployed Engineer · Workato · Hyderabad" today). Each is a
-// distinct posting with its own apply URL, but they render byte-identical
-// pages, so we nominate the newest as canonical. The rest stay live and
-// applicable — they just point their canonical at it, skip the JobPosting
-// markup and stay out of the sitemap, so Google consolidates them deliberately
-// instead of picking one arbitrarily and calling the others duplicate content.
-//
-// The keying itself lives in shared/indexable.ts: losing to a duplicate strips
-// a page's JobPosting markup, so the engine has to reach the same verdict
-// before it submits anything to Google's Indexing API.
-const canonicalByKey = canonicalByDupKey(openJobs);
-
-/** The slug of the posting this one duplicates, or null when it's canonical. */
-export function duplicateOf(job: Job): string | null {
-  return duplicateOfIn(canonicalByKey, job);
-}

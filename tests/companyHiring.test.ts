@@ -81,6 +81,15 @@ describe("summarizeCompanyHiring", () => {
     expect(s.openPostings).toBe(10);
   });
 
+  it("measures the share in postings when the listing has folded duplicates", () => {
+    // One role listed, opened as six requisitions: six of the ten postings are
+    // in scope, whatever the listing shows.
+    const s = summarizeCompanyHiring([job()], { hiring: { openPostings: 10, closedRoles: 0 } }, undefined, NOW, {}, 6);
+    expect(s.openRoles).toBe(1);
+    expect(s.inScopePostings).toBe(6);
+    expect(s.scopeShare).toBe(0.6);
+  });
+
   it("refuses a share above 100% rather than publishing it", () => {
     // The engine counted before two roles were listed, or under different rules.
     const s = summarize([job(), job(), job()], { hiring: { openPostings: 2, closedRoles: 0 } });
