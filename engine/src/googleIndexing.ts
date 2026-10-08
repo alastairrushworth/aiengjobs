@@ -121,10 +121,14 @@ type Notification = { url: string; type: "URL_UPDATED" | "URL_DELETED" };
 /**
  * Tell Google which job URLs appeared and which stopped carrying a JobPosting.
  *
- * Deletions go first for the same reason IndexNow's do: a dead listing in
- * someone's search results is worse than a new one arriving a day late. That
- * ordering matters more here, because the daily quota is small enough to run
- * out mid-run and whatever is left unsent is what gets dropped.
+ * Updates go first, unlike IndexNow's deletions-first. The daily quota is 200
+ * and the ordering decides what the overflow drops. Deletions used to lead,
+ * on the reasoning that a dead listing in someone's results is worse than a
+ * new one arriving late — but a page that lost its markup is already noindex
+ * (or 404) and Google drops it on its next ordinary crawl whether or not it is
+ * told; a new page nobody has told Google about may not be fetched for weeks.
+ * On 2026-10-08 the run sent 125 deletes and 90 of 99 updates before the cap,
+ * so the nine URLs it dropped were the only ones the API could have helped.
  *
  * Best-effort, like every other notifier — the caller treats failure as
  * non-fatal, because a missed notification costs freshness while a failed
@@ -137,8 +141,8 @@ export async function submitIndexing(
   const result: IndexingResult = { updated: 0, deleted: 0, skipped: 0, failed: 0 };
 
   const all: Notification[] = [
-    ...deleted.map((url): Notification => ({ url, type: "URL_DELETED" })),
     ...updated.map((url): Notification => ({ url, type: "URL_UPDATED" })),
+    ...deleted.map((url): Notification => ({ url, type: "URL_DELETED" })),
   ];
   if (all.length === 0) return result;
 
