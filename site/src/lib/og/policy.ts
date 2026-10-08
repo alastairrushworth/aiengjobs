@@ -1,5 +1,5 @@
 import type { Job } from "@aiengjobs/shared";
-import { agedOutJobs, closedJobs, generatedAt, openJobs } from "../data.ts";
+import { agedOutJobs, closedTombstones, generatedAt, openJobs } from "../data.ts";
 import { dailyPickSlugs } from "../dailyPicks.ts";
 import { url } from "../url.ts";
 
@@ -33,12 +33,15 @@ function ageDays(job: Job): number {
  * page — that is the entire point of keeping one — and the links being shared
  * when it closes are exactly the ones already circulating. Dropping the card at
  * the moment the role goes stale would leave those shares with a broken image.
+ * Only the tombstones that still get a page, though (closedTombstones, not
+ * every closed row the snapshot retains): a card for a URL that 404s is bytes
+ * nobody fetches.
  */
 export const cardJobs: Job[] = (() => {
   const picked = dailyPickSlugs();
   const seen = new Set<string>();
   const out: Job[] = [];
-  for (const job of [...openJobs, ...closedJobs, ...agedOutJobs]) {
+  for (const job of [...openJobs, ...closedTombstones, ...agedOutJobs]) {
     if (seen.has(job.slug)) continue;
     // Anything the daily feed has announced gets a card whatever its age: those
     // links went out to subscribers with the card as the reason to click.
