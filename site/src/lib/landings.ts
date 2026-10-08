@@ -23,6 +23,10 @@ export interface Landing {
   intro: string;
   /** Fills "…roles in {where}" / "Hiring snapshot for {where}" copy. */
   where: string;
+  /** ISO country code of a city page — the location nav groups by it. */
+  country?: string;
+  /** The bare city name, for a link that already sits under its country. */
+  place?: string;
   jobs: Job[];
 }
 
@@ -119,6 +123,8 @@ function buildCityLandings(reserved: Set<string>): Landing[] {
         `AI engineering roles in ${where} — LLM apps, RAG, agents, evals and inference. ` +
         `Pulled from company career sites, never scraped aggregators.`,
       where,
+      country: country ?? undefined,
+      place: city,
       jobs,
     });
   }
@@ -160,3 +166,53 @@ export const LOCATION_LANDINGS: Landing[] = [...remoteLanding, ...CITY_LANDINGS]
 export const LANDINGS: Landing[] = [...clusterLandings, ...LOCATION_LANDINGS];
 
 export const landingBySlug = new Map(LANDINGS.map((l) => [l.slug, l]));
+
+/**
+ * The location pages grouped for navigation: remote first, then each country
+ * biggest first, its cities biggest first.
+ *
+ * Every location page is in here, and the homepage, every landing and
+ * /locations/ render the whole list (components/LocationNav.astro). Before
+ * this, a landing linked the eight biggest locations and nothing linked the
+ * rest: on 2026-10-08, 47 of the 55 city pages had no inbound link from any
+ * page — Search Console showed /ai-jobs-austin/ with the sitemap as its only
+ * referrer and "Discovered – currently not indexed" since August. A page only
+ * the sitemap vouches for is one Google can decline to fetch indefinitely.
+ */
+export interface LocationGroup {
+  /** ISO code; absent for the remote row and for cities the feed gave no country. */
+  country?: string;
+  label: string;
+  landings: Landing[];
+  total: number;
+}
+
+export const LOCATION_GROUPS: LocationGroup[] = (() => {
+  const groups = new Map<string, LocationGroup>();
+  for (const l of LOCATION_LANDINGS) {
+    const key = l.kind === "remote" ? "remote" : (l.country ?? "");
+    let g = groups.get(key);
+    if (!g) {
+      g = {
+        country: l.country,
+        label:
+          l.kind === "remote"
+            ? "Remote"
+            : l.country
+              ? (countryName(l.country) ?? l.country)
+              : "Elsewhere",
+        landings: [],
+        total: 0,
+      };
+      groups.set(key, g);
+    }
+    g.landings.push(l);
+    g.total += l.jobs.length;
+  }
+  // Remote stays first whatever its size: it is the one row that isn't a place.
+  return [...groups.values()].sort((a, b) => {
+    if (a.label === "Remote") return -1;
+    if (b.label === "Remote") return 1;
+    return b.total - a.total || a.label.localeCompare(b.label);
+  });
+})();

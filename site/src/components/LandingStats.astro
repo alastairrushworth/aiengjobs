@@ -1,7 +1,7 @@
 ---
 import type { LandingStats } from "../lib/landingStats.ts";
 import { formatCount, kUsd } from "../lib/format.ts";
-import { url, FILTER_LINK_REL } from "../lib/url.ts";
+import { url, jobsUrl, FILTER_LINK_REL } from "../lib/url.ts";
 
 interface Props {
   stats: LandingStats;
@@ -17,6 +17,14 @@ const pct = (n: number) => Math.round((n / Math.max(stats.total, 1)) * 100);
 // where nobody publishes ranges is worse than not showing the tile.
 const tiles: { label: string; value: string; note?: string }[] = [
   { label: "Open roles", value: formatCount(stats.total) },
+  // Pace, from the employers' own posting dates. A page's count says how big
+  // it is; this says whether it is moving, which is the question a reader
+  // checking back actually has.
+  {
+    label: "Posted this week",
+    value: formatCount(stats.postedThisWeek),
+    note: `${formatCount(stats.postedLast30)} in the last 30 days`,
+  },
   stats.medianUsd !== null && {
     label: "Median salary",
     value: kUsd(stats.medianUsd),
@@ -24,7 +32,18 @@ const tiles: { label: string; value: string; note?: string }[] = [
     // "Open roles 120" while resting on 19 roles, and a reader has to do the
     // arithmetic to find that out. USD is stated because the figure is
     // FX-normalised: on the London page it sat above a column of £ ranges.
-    note: `median of ${formatCount(stats.pricedCount)} priced role${stats.pricedCount === 1 ? "" : "s"}, USD`,
+    // The board-wide figure beside it is what makes the number legible: a
+    // median on its own doesn't say whether this is a well-paid corner.
+    note:
+      `median of ${formatCount(stats.pricedCount)} priced role${stats.pricedCount === 1 ? "" : "s"}, USD` +
+      (stats.boardMedianUsd !== null && kUsd(stats.boardMedianUsd) !== kUsd(stats.medianUsd)
+        ? ` · board-wide ${kUsd(stats.boardMedianUsd)}`
+        : ""),
+  },
+  stats.countryShare && {
+    label: `Share of ${stats.countryShare.name}`,
+    value: `${stats.countryShare.pct}%`,
+    note: `${formatCount(stats.total)} of ${formatCount(stats.countryShare.total)} roles`,
   },
   stats.remote > 0 && {
     label: "Remote",
@@ -68,6 +87,21 @@ const tiles: { label: string; value: string; note?: string }[] = [
             <span>{c.name}</span>
           )}
           <span class="n">{formatCount(c.count)}</span>
+        </span>
+      ))}
+    </p>
+  )}
+
+  {/* The level mix: "mostly senior and staff" is the first thing a reader
+      wants to know about a list and the one thing the cards can't say in
+      aggregate. Links on the skills row's terms — filter state, nofollow. */}
+  {stats.levels.length > 1 && (
+    <p class="line">
+      <span class="lead">By level:</span>
+      {stats.levels.map((l) => (
+        <span class="item">
+          <a rel={FILTER_LINK_REL} href={jobsUrl({ level: l.slug! })}>{l.name}</a>
+          <span class="n">{formatCount(l.count)}</span>
         </span>
       ))}
     </p>

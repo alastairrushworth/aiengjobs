@@ -188,6 +188,12 @@ const updated = new Date(generatedAt).toLocaleDateString("en-US", {
           <a href={url("/mlops-engineer-jobs/")}>MLOps jobs</a>
           <a href={url("/machine-learning-engineer-jobs/")}>Core ML jobs</a>
           <a href={url("/remote-ai-jobs/")}>Remote AI jobs</a>
+          {/* The two directories: the one site-wide route to every city page
+              and every employer page. Each is two hops from any page via
+              this link, where before a city page's only referrer was the
+              sitemap (see LOCATION_GROUPS in lib/landings). */}
+          <a href={url("/locations/")}>Locations</a>
+          <a href={url("/companies/")}>Companies</a>
           <a href={url("/rss.xml")}>RSS</a>
           <a href={url("/daily/rss.xml")}>Daily five</a>
         </nav>
