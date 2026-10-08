@@ -20,7 +20,9 @@
  *
  * The last line are countries that only reached the board once location.ts
  * learned to place them; "Costa Rica" and "Uruguay" had each been published as
- * a city in their own right.
+ * a city in their own right. "Georgia" is a US state and a country and never a
+ * city, and it had become one twice over: Equifax's "USA - Georgia - Alpharetta"
+ * and Salesforce's "Georgia - Atlanta" both stored the city Georgia.
  *
  * Note which names are *missing*, and keep them missing. "Washington" is not
  * here because Washington DC is a city; "Victoria" and "New Brunswick" are not
@@ -54,7 +56,8 @@ export const NON_CITY: ReadonlySet<string> = new Set(
    tasmania,australian capital territory,northern territory,
    maharashtra,karnataka,haryana,tamil nadu,telangana,gujarat,west bengal,
    uttar pradesh,republic of ireland,
-   kazakhstan,azerbaijan,qatar,oman,algeria,ecuador,peru,uruguay,costa rica`
+   kazakhstan,azerbaijan,qatar,oman,algeria,ecuador,peru,uruguay,costa rica,
+   georgia`
     .split(",")
     .map((s) => s.trim().toLowerCase()),
 );
@@ -252,6 +255,17 @@ export const COUNTRY_ALPHA3: Readonly<Record<string, string>> = Object.fromEntri
     .map((p) => p.trim().split(":") as [string, string]),
 );
 
+/**
+ * A lowercase letter run straight into two or more capitals — "NonGBS". That is
+ * an acronym glued onto a word, which is how in-house tags are spelled and how
+ * no place name is: the mixed-case names that do occur ("McLean", "DeKalb",
+ * "LaGrange") put a single capital after the lowercase. On the 2026-10-08
+ * snapshot exactly one stored city and one location string matched it, both
+ * "NonGBS". Rejecting it outright, not just skipping it, is what lets relocate
+ * repair the stored value: a city the current rules reject is replaced.
+ */
+const INTERNAL_TAG = /\p{Ll}\p{Lu}{2,}/u;
+
 const stripDiacritics = (s: string) => s.normalize("NFD").replace(/\p{M}+/gu, "");
 
 /** Title-case a token run, preserving intentional mixed case (McLean, DeKalb). */
@@ -315,7 +329,15 @@ export function canonicalCity(raw?: string | null): string | undefined {
   // Gated on having actually stripped a code, because that's the only signal
   // that separates a structured feed value from a genuine hyphenated name —
   // "Kitchener-Waterloo" and "Tel Aviv-Yafo" never reach this line.
-  if (strippedCode && s.includes("-")) s = s.split("-")[0]!.trim();
+  //
+  // The city is the first part that isn't an internal business-unit tag:
+  // Smith+Nephew writes "IND - NonGBS-Pune-Kharadi", and taking the first part
+  // published "NonGBS" as the city. A lowercase letter followed by a run of
+  // capitals is the tag's shape (see INTERNAL_TAG) and no city's.
+  if (strippedCode && s.includes("-")) {
+    const parts = s.split("-").map((p) => p.trim());
+    s = parts.find((p) => !INTERNAL_TAG.test(p)) ?? parts[0]!;
+  }
 
   // Trailing building/site detail: "London - The River Building HQ",
   // "Hyderabad - Phoenix Equinox Tower 2". Spaced hyphen only, so
@@ -359,6 +381,7 @@ export function canonicalCity(raw?: string | null): string | undefined {
 
   // Anything still carrying digits, or absurdly long, isn't a city name.
   if (/\d/.test(s) || s.length > 40) return undefined;
+  if (INTERNAL_TAG.test(s)) return undefined;
 
   // Short leftovers that are codes rather than places. The alias table has
   // already had its say by this point, so "SF", "NY" and "TLV" are long gone;

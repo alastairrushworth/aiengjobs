@@ -267,6 +267,20 @@ describe("relocate cities", () => {
     expect(regions(path)).toEqual({ sea: "WA", bel: "WA", atl: "GA" });
   });
 
+  it("repairs the stored Georgia and NonGBS cities the current rules reject", async () => {
+    // Neither is a first-segment reading under today's rules, so it is the
+    // reject-and-replace case that reaches them.
+    const path = makeDb([
+      { id: "atl", locationRaw: "Georgia - Atlanta", country: "US", city: "Georgia" },
+      { id: "pune", locationRaw: "IND - NonGBS-Pune-Kharadi", country: "IN", city: "NonGBS" },
+    ]);
+
+    await run(path);
+
+    expect(cities(path)).toEqual({ atl: "Atlanta", pune: "Pune" });
+    expect(regions(path)).toEqual({ atl: "GA", pune: "Maharashtra" });
+  });
+
   it("leaves Washington, DC — and any city the parser didn't write — alone", async () => {
     const path = makeDb([
       { id: "dc", locationRaw: "Washington, DC", country: "US", city: "Washington" },

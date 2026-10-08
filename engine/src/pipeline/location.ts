@@ -109,6 +109,11 @@ const COUNTRY_HINTS: [RegExp, string][] = [
   // Peru". Lima itself stays out — Ohio has one — the country name carries it.
   [/\b(kazakhstan|almaty|astana)\b/i, "KZ"],
   [/\b(azerbaijan|baku)\b/i, "AZ"],
+  // Georgia the country, by its cities only — the bare word is a US state far
+  // more often on this board, so it stays out of every hint (see
+  // US_STATE_NAMES). With the city placing the country, "Georgia - Tbilisi"
+  // reads broad → narrow like any other.
+  [/\b(tbilisi|batumi|kutaisi)\b/i, "GE"],
   [/\b(qatar|doha)\b/i, "QA"],
   [/\b(oman|muscat)\b/i, "OM"],
   [/\b(algeria|algiers)\b/i, "DZ"],
@@ -254,7 +259,7 @@ function placeSegment(segment: string): string {
  * broader comes after it, which is what rejects the City-Region-Country lists.
  *
  * Names that are both a division and a city on this board ("Washington", "New
- * York", "Georgia", "Delhi", "NY") count as the broader side only before a
+ * York", "Delhi", "NY") count as the broader side only before a
  * spaced dash, the Workday "State - City" separator. Before a comma they are far
  * more often the first city of a list — "New York, London, Chicago",
  * "Washington, DC" — and reading past them there would throw that city away.
