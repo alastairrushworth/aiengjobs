@@ -79,7 +79,10 @@ const { facts, skills, moreSkills, clusterLinks } = Astro.props;
   }
   .pills .badge.more { color: var(--muted); background: transparent; border-color: var(--border-strong); }
   .filed { display: flex; flex-wrap: wrap; gap: 2px 8px; font-weight: 500; }
-  .filed a { color: var(--accent-text); }
+  /* padding-block lifts each link from 23px to the 24px WCAG 2.2 SC 2.5.8
+     floor; a role filed under five clusters wraps these into a block of small
+     targets on a phone. The row's own gap absorbs the extra height. */
+  .filed a { color: var(--accent-text); padding-block: 2px; }
   .filed a:hover { text-decoration: underline; }
   .sep { color: var(--border-strong); }
   /* On a phone the label column would take a third of the width; stack the
