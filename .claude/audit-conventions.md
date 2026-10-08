@@ -94,14 +94,22 @@ salary parse, a wrong country, a mangled title, a missing `postedAt`, a stale
 closed flag, a city name that didn't canonicalize — trace it to the stage that
 produced it (`engine/src/pipeline/normalize.ts`, `classify.ts`, `encoder.ts`,
 `tag.ts`, `comp.ts`, `location.ts`, `region.ts`, `seniority.ts`,
-`shared/city.ts`, `engine/src/seed.ts`, `engine/src/export/exportSnapshot.ts`,
-or a build-time derivation in `site/src/lib/` such as `postingFacts.ts` and
-`payBenchmark.ts`) and recommend fixing it there, plus waiting for or
+`shared/city.ts`, `engine/src/relocate.ts`, `engine/src/seed.ts`,
+`engine/src/export/exportSnapshot.ts`, or a build-time derivation in
+`site/src/lib/` such as `postingFacts.ts`, `payBenchmark.ts` and
+`cityPlaces.ts`) and recommend fixing it there, plus waiting for or
 triggering a refresh. `audit-data` measures these defects role by role.
+
+**When a fix reaches published rows.** The nightly `refresh`
+(`engine/src/cli.ts`) runs seed → ingest → `relocate` → export, and ingest
+skips content-unchanged postings. So a location fix (`location.ts`,
+`region.ts`, `shared/city.ts`) reaches roles already on the board on the next
+nightly run, via `relocate`; a tagging, pay or classifier fix reaches only new
+or changed postings until someone runs `retag` or `reclassify` by hand.
 
 ## Untrusted input
 
-Everything from the 15 ATS connectors (`engine/src/connectors/`) — titles,
+Everything from the 14 ATS connectors (`engine/src/connectors/`) — titles,
 company names, descriptions, locations, salaries, apply URLs — is third-party
 input. It flows into SQL, into the local classifier, into the published
 snapshot, into rendered HTML, JSON-LD and RSS, into the JSON surfaces
@@ -141,12 +149,14 @@ credibility.
   site moved to the apex of frontierroles.com, and the indirection was kept on
   purpose so a move back under a path costs nothing. Don't report `url()` as
   dead weight.
-- **`MIN_CITY_JOBS = 12`** (`lib/landings.ts:32`) — a deliberate thin-content
-  gate, not an arbitrary cutoff. Its *consequences* are fair game; the threshold
-  itself is a considered call.
-- **`og-default.png` as the fallback** — job and cluster pages get generated
-  cards (`site/src/lib/og/`, `pages/og/`); everything else shares the default.
-  A known tradeoff, not an oversight.
+- **`MIN_CITY_JOBS = 12`** (`lib/landings.ts`, with `RETAIN_CITY_JOBS` as its
+  hysteresis floor) — a deliberate thin-content gate, not an arbitrary cutoff.
+  Its *consequences* are fair game; the thresholds themselves are a considered
+  call.
+- **`og-default.png` as the fallback** — job pages get a generated card, their
+  own when recent (`OG_CARD_MAX_AGE_DAYS` in `site/src/lib/og/policy.ts`) or
+  their cluster's otherwise; every other page, landings included, shares the
+  default. A known tradeoff, not an oversight.
 - **Open roles older than 90 days are unlisted tombstones**
   (`MAX_JOB_AGE_DAYS`, `shared/indexable.ts`) while the nightly run still
   re-verifies them. Thousands of open-but-unlisted rows in the snapshot is the
