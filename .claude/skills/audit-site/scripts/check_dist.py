@@ -26,6 +26,7 @@ from xml.etree import ElementTree as ET
 
 SITE = "https://frontierroles.com"
 MAX_JOB_AGE_DAYS = 90  # shared/indexable.ts
+SITEMAP_JOB_MAX_AGE_DAYS = 30  # site/src/lib/sitemap.ts — older roles are indexable but unlisted
 
 
 class Page(HTMLParser):
@@ -142,11 +143,54 @@ def main(dist):
             if len(rs) > 1:
                 hard[f"duplicate {field}"].append(f"{v!r}: {rs[:3]}")
 
+    # sitemap.xml is an index (lib/sitemap.ts); follow it to the files it names.
+    # A flat urlset still works, so an older build checks the same way.
     ns = {"s": "http://www.sitemaps.org/schemas/sitemap/0.9"}
-    locs = {u.find("s:loc", ns).text for u in ET.parse(f"{dist}/sitemap.xml").getroot()}
+    root = ET.parse(f"{dist}/sitemap.xml").getroot()
+    if root.tag.endswith("sitemapindex"):
+        sitemap_files = [f"{dist}/{urlparse(s.find('s:loc', ns).text).path.lstrip('/')}" for s in root]
+    else:
+        sitemap_files = [f"{dist}/sitemap.xml"]
+    locs, lastmods = set(), []
+    for f in sitemap_files:
+        for u in ET.parse(f).getroot():
+            locs.add(u.find("s:loc", ns).text)
+            lm = u.find("s:lastmod", ns)
+            if lm is not None:
+                lastmods.append(lm.text)
+    # The export moment, as near as the sitemap states it: the newest lastmod is
+    # the snapshot's date, and the export happened some hours into it, so the
+    # end of that day is the bound that errs towards excusing rather than
+    # failing a page on the window's edge (see the age test below).
+    today = (
+        dt.datetime.fromisoformat(max(lastmods)).replace(tzinfo=dt.timezone.utc) + dt.timedelta(days=1)
+        if lastmods
+        else None
+    )
     for u in sorted(locs - indexable):
         hard["sitemap URL not indexable"].append(u)
+    unlisted_old = 0
     for u in sorted(indexable - locs):
+        r = u.replace(SITE, "")
+        if r.startswith("/jobs/"):
+            # Job pages past the sitemap window are indexable and linked but
+            # deliberately unlisted. The page's own JobPosting dates it; a
+            # role without one (no resolvable country) can't be dated here, so
+            # it gets the benefit of the doubt rather than a false failure.
+            jp = next((b for b in pages[r]["jsonld"] if b.get("@type") == "JobPosting"), None)
+            if jp is None:
+                unlisted_old += 1
+                continue
+            posted = dt.datetime.fromisoformat(jp["datePosted"].replace("Z", "+00:00"))
+            if posted.tzinfo is None:
+                posted = posted.replace(tzinfo=dt.timezone.utc)
+            # The sitemap measures fractional days against the export's
+            # timestamp; this only knows its date, so the bound is loose by up
+            # to a day on purpose — a role the sitemap dropped at 30.2 days
+            # must not fail here for reading as 29 whole days before midnight.
+            if today and (today - posted).days >= SITEMAP_JOB_MAX_AGE_DAYS:
+                unlisted_old += 1
+                continue
         hard["indexable page missing from sitemap"].append(u)
 
     jp_total, no_locality = 0, 0
@@ -189,7 +233,10 @@ def main(dist):
         kinds["job" if k == "jobs" else "company" if k == "companies" else "landing/other"] += 1
     biggest = sorted(((p["size"], p["nodes"], r) for r, p in pages.items()), reverse=True)[:3]
     print(f"pages {len(pages)} ({dict(kinds)}) · files {len(files)}")
-    print(f"internal links checked {nlinks} · sitemap URLs {len(locs)} · indexable {len(indexable)}")
+    print(
+        f"internal links checked {nlinks} · sitemap URLs {len(locs)} in {len(sitemap_files)} file(s)"
+        f" · indexable {len(indexable)} · indexable job pages past the sitemap window {unlisted_old}"
+    )
     print(f"JobPostings {jp_total} · without addressLocality {no_locality} · feeds {len(feeds)} with {items} items")
     print("largest pages:", ", ".join(f"{r} {s // 1024}KB/{n} nodes" for s, n, r in biggest))
     if hard:

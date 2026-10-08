@@ -27,8 +27,8 @@ import {
   openJobs,
   uniqueOpenJobs,
   openJobsByCompany,
-  closedJobs,
-  delistedJobs,
+  closedTombstones,
+  delistedTombstones,
   agedOutJobs,
   companyBySlug,
   generatedAt,
@@ -42,7 +42,12 @@ import { hasUsableLocation } from "@aiengjobs/shared/indexable";
 export function getStaticPaths() {
   // <title> needs whole-corpus knowledge: it trims over-long feed titles, but
   // only where the trim doesn't merge two distinct roles. See lib/jobTitle.
-  const titles = buildJobTitles([...openJobs, ...closedJobs, ...delistedJobs, ...agedOutJobs]);
+  const titles = buildJobTitles([
+    ...openJobs,
+    ...closedTombstones,
+    ...delistedTombstones,
+    ...agedOutJobs,
+  ]);
 
   // Two indexes over the listings, built once.
   //
@@ -124,8 +129,9 @@ export function getStaticPaths() {
       },
     })),
     // Recently-closed roles keep a noindexed tombstone page instead of 404ing
-    // links from search results, newsletters, and shares.
-    ...closedJobs.map((job) => ({
+    // links from search results, newsletters, and shares — for TOMBSTONE_DAYS
+    // (lib/data), not for as long as the snapshot retains the row.
+    ...closedTombstones.map((job) => ({
       params: { slug: job.slug },
       props: {
         job,
@@ -136,7 +142,7 @@ export function getStaticPaths() {
     })),
     // Roles the classifier has since ruled out of scope. Still live at the
     // ATS, so the apply link stays; the board just no longer lists them.
-    ...delistedJobs.map((job) => ({
+    ...delistedTombstones.map((job) => ({
       params: { slug: job.slug },
       props: {
         job,
@@ -149,7 +155,7 @@ export function getStaticPaths() {
     // tombstone — these URLs were listed and shared right up until the refresh
     // that dropped them — but the role itself is still live at the ATS, so the
     // page keeps its description and its apply link and only the board's
-    // endorsement is withdrawn. See AGED_OUT_TOMBSTONE_DAYS.
+    // endorsement is withdrawn. See TOMBSTONE_DAYS.
     ...agedOutJobs.map((job) => ({
       params: { slug: job.slug },
       props: {

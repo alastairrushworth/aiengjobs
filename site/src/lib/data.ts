@@ -166,21 +166,46 @@ export const companyPageIndexable = (companySlug: string): boolean =>
   (openJobsByCompany.get(companySlug)?.length ?? 0) >= MIN_INDEXED_COMPANY_ROLES;
 
 /**
- * How long a role that aged out of the listings keeps a tombstone before its
- * URL is allowed to 404.
+ * How long a role that left the board keeps a tombstone page before its URL
+ * is allowed to 404 — one window for all three exits (closed, delisted,
+ * aged out).
  *
- * Mirrors the engine's CLOSED_RETENTION_DAYS (exportSnapshot.ts): a closed role
- * gets 30 days of tombstone so links from search results, newsletters and
- * shares land somewhere useful. A role that crossed MAX_JOB_AGE_DAYS is in the
- * same position — it was listed, indexed and shared right up until the refresh
- * that dropped it — but it used to 404 immediately, which is the one exit from
- * the board that got no landing at all. 2,051 URLs were in that state.
+ * A tombstone exists for the reader who follows a stale link: a search
+ * result, a newsletter, a share, an assistant's answer from the MCP server.
+ * It used to last 30 days, matching the engine's CLOSED_RETENTION_DAYS, and
+ * that produced ~3,100 noindexed pages against ~3,600 listed roles — nearly
+ * half the site. Google kept re-crawling them (Search Console's noindex
+ * examples on 2026-10-08 were all tombstones fetched that week) while 3,175
+ * live pages sat "discovered, never crawled", and the Search traffic those
+ * tombstones were built to catch amounted to 43 clicks in three months. A
+ * week covers the stale-link case that actually happens; after that the 404
+ * page, with its browse links, is the honest answer.
  *
- * Bounded rather than open-ended for the same reason the engine bounds closed
- * roles: two thirds of the aged-out set is 180+ days old and long gone from any
- * index, so building pages for it is cost without a reader.
+ * The engine still retains closed rows for 30 days: lib/landings reads them
+ * as the evidence that a city page was recently above MIN_CITY_JOBS. Only the
+ * page-building window shrinks, hence closedAt/delistedAt on the snapshot.
  */
-export const AGED_OUT_TOMBSTONE_DAYS = 30;
+export const TOMBSTONE_DAYS = 7;
+
+/**
+ * Whether a closure or delisting is recent enough to still earn a page. The
+ * date is absent on snapshots older than the field; an exit of unknown age
+ * is treated as recent, so an old snapshot builds what it used to.
+ */
+const withinTombstoneWindow = (iso: string | undefined): boolean => {
+  if (!iso) return true;
+  const t = Date.parse(iso);
+  if (!Number.isFinite(t)) return true;
+  return (Date.parse(data.generatedAt) - t) / 86_400_000 <= TOMBSTONE_DAYS;
+};
+
+/** The closed roles that still get a tombstone page (see TOMBSTONE_DAYS). */
+export const closedTombstones: Job[] = closedJobs.filter((j) => withinTombstoneWindow(j.closedAt));
+
+/** The delisted roles that still get a tombstone page (see TOMBSTONE_DAYS). */
+export const delistedTombstones: Job[] = delistedJobs.filter((j) =>
+  withinTombstoneWindow(j.delistedAt),
+);
 
 /**
  * Roles still open at the ATS that have passed MAX_JOB_AGE_DAYS, within the
@@ -196,7 +221,7 @@ export const agedOutJobs: Job[] = data.jobs
     return (
       age !== null &&
       age > MAX_JOB_AGE_DAYS &&
-      age <= MAX_JOB_AGE_DAYS + AGED_OUT_TOMBSTONE_DAYS
+      age <= MAX_JOB_AGE_DAYS + TOMBSTONE_DAYS
     );
   })
   .map(withCanonicalCity)

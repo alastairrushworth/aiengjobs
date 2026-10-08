@@ -1,0 +1,93 @@
+---
+import { LOCATION_GROUPS } from "../lib/landings.ts";
+import { formatCount } from "../lib/format.ts";
+import { url } from "../lib/url.ts";
+
+/**
+ * Every location page, grouped by country, as one navigation block.
+ *
+ * Rendered at the foot of the homepage and of every landing slice. It is the
+ * in-site path to the city pages: a city page that only the sitemap names is
+ * one Google can leave "discovered" for months (lib/landings, LOCATION_GROUPS
+ * says what that looked like). Each entry carries its live role count, so the
+ * block says something on its own rather than being a bare link list.
+ */
+interface Props {
+  /** The landing being rendered, named rather than linked. */
+  current?: string;
+  heading?: string;
+}
+
+const { current, heading = "Jobs by location" } = Astro.props;
+---
+
+<nav class="location-nav" aria-label="Browse by location">
+  <h2>{heading}</h2>
+  {LOCATION_GROUPS.map((g) => (
+    <p class="line">
+      <span class="lead">{g.label}</span>
+      {g.landings.map((l) => {
+        const text = l.place ?? l.label;
+        const n = formatCount(l.jobs.length);
+        return l.slug === current ? (
+          <span class="item here" aria-current="page">
+            {text}
+            <span class="n">{n}</span>
+          </span>
+        ) : (
+          <span class="item">
+            <a href={url(`/${l.slug}/`)}>{text}</a>
+            <span class="n">{n}</span>
+          </span>
+        );
+      })}
+    </p>
+  ))}
+  <p class="line all">
+    <a href={url("/locations/")}>All locations, with pay by country →</a>
+  </p>
+</nav>
+
+<style>
+  .location-nav { margin: 36px 0 8px; }
+  .location-nav h2 {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin: 0 0 6px;
+  }
+  /* The same row grammar as LandingStats: a muted lead, then name+count items
+     that never split across a line, wrapping on the gap. */
+  .line {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 2px 14px;
+    margin: 0 0 4px;
+    font-size: 0.9rem;
+    line-height: 1.6;
+  }
+  .line .lead { color: var(--muted); min-width: 7.5em; }
+  .line .item { white-space: nowrap; }
+  .line .here { color: var(--text); font-weight: 600; }
+  .line .n { color: var(--muted); font-size: 0.78rem; margin-left: 3px; }
+  .line a {
+    color: var(--accent-text);
+    display: inline-block;
+    padding-block: 4px;
+    min-width: 24px;
+  }
+  .line a:hover { text-decoration: underline; }
+  .all { margin-top: 6px; }
+  /* A country row with thirty cities wraps to six lines on a phone, under a
+     listing the reader has already scrolled past. The first eight carry the
+     places most people mean; the rest stay in the markup for crawlers and
+     wider screens, and the "All locations" link reaches every one of them.
+     .lead is child 1, so n+10 keeps eight entries. */
+  @media (max-width: 700px) {
+    .line .lead { min-width: 0; flex-basis: 100%; }
+    .line .item:nth-child(n + 10) { display: none; }
+  }
+</style>

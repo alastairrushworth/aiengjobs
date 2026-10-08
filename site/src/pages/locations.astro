@@ -1,0 +1,166 @@
+---
+import Base from "../layouts/Base.astro";
+import type { Landing } from "../lib/landings.ts";
+import { LOCATION_GROUPS, landingBySlug } from "../lib/landings.ts";
+import { fxRates, uniqueOpenJobs } from "../lib/data.ts";
+import { countryName, formatCount, kUsd, median, salaryMidpointUsd } from "../lib/format.ts";
+import { url, jobsUrl, FILTER_LINK_REL } from "../lib/url.ts";
+
+/**
+ * Every place the board has roles, as one page: each country with its live
+ * count, its pay where enough employers publish it, its remote share, and the
+ * cities big enough for a page of their own.
+ *
+ * This is the directory the footer links on every page, and so the one route
+ * to a city page that doesn't depend on the sitemap (lib/landings,
+ * LOCATION_GROUPS). It is also the only page that says anything about the
+ * countries below the city threshold — most of the board's countries — which
+ * is why each row carries figures rather than just a link.
+ */
+
+interface CountryRow {
+  code: string;
+  name: string;
+  total: number;
+  pricedCount: number;
+  medianUsd: number | null;
+  remotePct: number;
+  cities: Landing[];
+}
+
+const MIN_PRICED_FOR_MEDIAN = 5; // as lib/landingStats
+
+const byCountry = new Map<string, typeof uniqueOpenJobs>();
+for (const j of uniqueOpenJobs) {
+  if (!j.country) continue;
+  const list = byCountry.get(j.country);
+  if (list) list.push(j);
+  else byCountry.set(j.country, [j]);
+}
+
+const citiesByCountry = new Map<string, Landing[]>();
+for (const g of LOCATION_GROUPS) {
+  if (g.country) citiesByCountry.set(g.country, g.landings);
+}
+
+const rows: CountryRow[] = [...byCountry]
+  .map(([code, jobs]) => {
+    const mids = jobs
+      .map((j) => salaryMidpointUsd(j, fxRates))
+      .filter((m): m is number => m !== null);
+    return {
+      code,
+      name: countryName(code) ?? code,
+      total: jobs.length,
+      pricedCount: mids.length,
+      medianUsd: mids.length >= MIN_PRICED_FOR_MEDIAN ? median(mids) : null,
+      remotePct: Math.round((jobs.filter((j) => j.remoteType === "remote").length / jobs.length) * 100),
+      cities: citiesByCountry.get(code) ?? [],
+    };
+  })
+  .sort((a, b) => b.total - a.total || a.name.localeCompare(b.name));
+
+const remote = landingBySlug.get("remote-ai-jobs");
+const remoteMids = (remote?.jobs ?? [])
+  .map((j) => salaryMidpointUsd(j, fxRates))
+  .filter((m): m is number => m !== null);
+const remoteMedian = remoteMids.length >= MIN_PRICED_FOR_MEDIAN ? median(remoteMids) : null;
+
+const cityPages = rows.reduce((n, r) => n + r.cities.length, 0);
+const located = rows.reduce((n, r) => n + r.total, 0);
+const unlocated = uniqueOpenJobs.length - located;
+
+const title = "AI engineering jobs by location";
+const description =
+  `${formatCount(uniqueOpenJobs.length)} open AI-engineering roles across ${formatCount(rows.length)} countries, ` +
+  `with live counts, median pay and remote share for each, and a page for every city with enough roles.`;
+---
+
+<Base title={title} description={description}>
+  <section class="hero" style="padding-bottom:8px">
+    <h1>{title}</h1>
+    <p>
+      {formatCount(uniqueOpenJobs.length)} open roles in {formatCount(rows.length)} countries.
+      {formatCount(cityPages)} cities have enough roles for a page of their own; every country is
+      listed with its live count and, where enough employers publish pay, the median.
+    </p>
+  </section>
+
+  {remote && (
+    <section class="country">
+      <h2>
+        <a href={url("/remote-ai-jobs/")}>Remote</a>
+        <span class="n">{formatCount(remote.jobs.length)}</span>
+      </h2>
+      <p class="meta">
+        Fully remote, any country.
+        {remoteMedian !== null && ` Median ${kUsd(remoteMedian)} across ${formatCount(remoteMids.length)} priced roles.`}
+      </p>
+    </section>
+  )}
+
+  {rows.map((r) => (
+    <section class="country">
+      <h2>
+        {/* Filter state, not a page — see FILTER_LINK_REL. A country with no
+            city page still deserves somewhere to click. */}
+        <a rel={FILTER_LINK_REL} href={jobsUrl({ country: r.code })}>{r.name}</a>
+        <span class="n">{formatCount(r.total)}</span>
+      </h2>
+      <p class="meta">
+        {r.medianUsd !== null
+          ? `Median ${kUsd(r.medianUsd)} across ${formatCount(r.pricedCount)} priced roles`
+          : r.pricedCount > 0
+            ? `${formatCount(r.pricedCount)} role${r.pricedCount === 1 ? "" : "s"} publish pay`
+            : "No published pay"}
+        {r.remotePct > 0 && ` · ${r.remotePct}% remote`}
+      </p>
+      {r.cities.length > 0 && (
+        <p class="cities">
+          {r.cities.map((l) => (
+            <span class="item">
+              <a href={url(`/${l.slug}/`)}>{l.place ?? l.label}</a>
+              <span class="n">{formatCount(l.jobs.length)}</span>
+            </span>
+          ))}
+        </p>
+      )}
+    </section>
+  ))}
+
+  {unlocated > 0 && (
+    <p class="note">
+      {formatCount(unlocated)} role{unlocated === 1 ? "" : "s"} name no country in the employer's posting
+      and are listed on the board without one.
+    </p>
+  )}
+</Base>
+
+<style>
+  .country { padding: 14px 0; border-top: 1px solid var(--border); }
+  .country h2 {
+    font-size: 1.05rem;
+    margin: 0 0 2px;
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+  }
+  .country h2 a { color: var(--text); }
+  .country h2 a:hover { color: var(--accent-text); }
+  .n { color: var(--muted); font-size: 0.8rem; font-weight: 400; }
+  .meta { margin: 0 0 6px; color: var(--muted); font-size: 0.88rem; }
+  .cities {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 2px 14px;
+    margin: 0;
+    font-size: 0.9rem;
+    line-height: 1.6;
+  }
+  .cities .item { white-space: nowrap; }
+  .cities .n { margin-left: 3px; }
+  .cities a { color: var(--accent-text); display: inline-block; padding-block: 4px; min-width: 24px; }
+  .cities a:hover { text-decoration: underline; }
+  .note { color: var(--muted); font-size: 0.85rem; margin-top: 20px; }
+</style>
