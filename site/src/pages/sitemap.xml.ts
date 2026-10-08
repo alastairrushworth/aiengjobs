@@ -49,6 +49,8 @@ export const GET: APIRoute = ({ site }) => {
   }
   // Company pages with enough roles to be more than one role's page again —
   // the same line the page draws for its own noindex (MIN_INDEXED_COMPANY_ROLES).
+  // Page 1 only, as for the landings: a big employer's later slices are
+  // noindexed, and each of their roles is listed directly below.
   for (const slug of openJobsByCompany.keys()) {
     if (!companyPageIndexable(slug)) continue;
     entries.push({ loc: abs(`/companies/${slug}`), lastmod: day(generatedAt) });
