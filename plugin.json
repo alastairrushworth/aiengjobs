@@ -1,0 +1,9 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.1.0/plugin.schema.json",
+  "name": "frontierroles",
+  "version": "0.1.0",
+  "description": "Search open AI engineering jobs on frontierroles.com, taken from employers' own job boards.",
+  "homepage": "https://frontierroles.com/mcp/",
+  "repository": "https://github.com/alastairrushworth/aiengjobs",
+  "keywords": ["mcp", "jobs", "job-board", "ai-engineering"]
+}
