@@ -1,6 +1,7 @@
 # aiengjobs
 
-A niche job board for **AI engineers** (LLM apps, RAG, agents, evals, inference).
+The code behind [frontierroles.com](https://frontierroles.com), a job board for **AI engineers**
+(LLM apps, RAG, agents, evals, inference).
 See [`spec.md`](./spec.md) for the full product & technical spec.
 
 ## Architecture
