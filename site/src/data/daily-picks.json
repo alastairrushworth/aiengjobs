@@ -1,17 +1,6 @@
 {
   "picks": [
     {
-      "date": "2026-09-09",
-      "pickedAt": "2026-09-09T03:51:40.485Z",
-      "slugs": [
-        "snorkelai-senior-staff-ai-engineer-dd6b35",
-        "mastercard-wd1-corporatecareers-senior-software-engineer-933dfe",
-        "fractal-wd1-careers-sr-data-scientist-agentic-ai-2c1796",
-        "cisco-wd5-cisco-careers-ai-researcher-a5d852",
-        "typeform-senior-ai-engineer-a86fcf"
-      ]
-    },
-    {
       "date": "2026-09-10",
       "pickedAt": "2026-09-10T03:44:17.618Z",
       "slugs": [
@@ -327,6 +316,17 @@
         "toloka-principal-ml-researcher-734524",
         "datadog-staff-research-scientist-post-training-for-agents-a9fb7b",
         "fa-ewmy-saasfaprod1-fa-ocs-oraclecloud-com-cx-1-lead-agentic-ai-architect-5fbc75"
+      ]
+    },
+    {
+      "date": "2026-10-09",
+      "pickedAt": "2026-10-09T04:23:29.706Z",
+      "slugs": [
+        "lumaai-research-scientist-engineer-reinforcement-learning-infrastructure-6b0281",
+        "lumaai-research-scientist-engineer-reinforcement-learning-infrastructure-3fcb2f",
+        "soprasteria1-mid-level-python-developer-genai-4d8421",
+        "doordashusa-software-engineer-machine-learning-platform-gen-ai-aa0633",
+        "soprasteria1-ai-senior-software-engineer-51302f"
       ]
     }
   ]
