@@ -150,6 +150,12 @@ spoofed.
 Tests are at `tests/mcpTools.test.ts` and `tests/mcpRender.test.ts`, run by
 `npm test`.
 
+## MCP Registry
+
+`server.json` lists the remote endpoint in the [MCP Registry](https://registry.modelcontextprotocol.io)
+as `io.github.alastairrushworth/frontierroles`. To update it, bump `version` and run
+`mcp-publisher login github` then `mcp-publisher publish` from this directory.
+
 ## Development
 
 ```sh

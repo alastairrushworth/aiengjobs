@@ -1,0 +1,19 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.alastairrushworth/frontierroles",
+  "title": "Frontier Roles",
+  "description": "Search open AI engineering jobs on frontierroles.com, taken from employers' own job boards.",
+  "websiteUrl": "https://frontierroles.com/mcp/",
+  "repository": {
+    "url": "https://github.com/alastairrushworth/aiengjobs",
+    "source": "github",
+    "subfolder": "mcp"
+  },
+  "version": "0.1.0",
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "https://mcp.frontierroles.com/mcp"
+    }
+  ]
+}
