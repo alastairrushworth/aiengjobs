@@ -1,17 +1,6 @@
 {
   "picks": [
     {
-      "date": "2026-09-11",
-      "pickedAt": "2026-09-11T03:25:59.657Z",
-      "slugs": [
-        "mastercard-wd1-corporatecareers-senior-ai-engineer-efb69f",
-        "togetherai-senior-software-engineer-infra-agent-systems-091744",
-        "fullscript-senior-machine-learning-engineer-d842ce",
-        "perplexity-member-of-technical-staff-applied-ai-engineer-agent-capabilities-9eb4fb",
-        "scaleai-senior-machine-learning-engineer-public-sector-535be0"
-      ]
-    },
-    {
       "date": "2026-09-12",
       "pickedAt": "2026-09-12T03:40:10.934Z",
       "slugs": [
@@ -327,6 +316,16 @@
         "fis-wd5-searchjobs-artificial-intelligence-machine-learning-engineer-lead-4-to-7-years-2b23a7",
         "handshake-member-of-technical-staff-post-training-india-3a79da",
         "capitalone-wd12-capital-one-ai-engineer-5-fm-hosting-llm-inference-6e949a"
+      ]
+    },
+    {
+      "date": "2026-10-11",
+      "pickedAt": "2026-10-11T02:41:03.608Z",
+      "slugs": [
+        "relx-wd3-relx-senior-data-scientist-iii-b86ff8",
+        "deepgram-research-staff-voice-ai-foundations-remote-2e15ab",
+        "deepgram-research-staff-voice-ai-foundations-uk-remote-e91f4a",
+        "deepgram-research-staff-voice-ai-foundations-remote-4af8da"
       ]
     }
   ]
