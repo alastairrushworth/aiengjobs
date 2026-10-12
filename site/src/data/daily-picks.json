@@ -1,17 +1,6 @@
 {
   "picks": [
     {
-      "date": "2026-09-12",
-      "pickedAt": "2026-09-12T03:40:10.934Z",
-      "slugs": [
-        "openai-research-engineer-ai-for-chip-design-ed1a2b",
-        "cisco-wd5-cisco-careers-machine-learning-engineering-technical-leader-193318",
-        "chime-senior-software-engineer-machine-learning-platform-125679",
-        "workday-wd5-workday-machine-learning-engineer-3184d6",
-        "servicenow-director-of-engineering-ai-security-incubation-innovation-9a0e7c"
-      ]
-    },
-    {
       "date": "2026-09-13",
       "pickedAt": "2026-09-13T02:35:51.910Z",
       "slugs": [
@@ -326,6 +315,15 @@
         "deepgram-research-staff-voice-ai-foundations-remote-2e15ab",
         "deepgram-research-staff-voice-ai-foundations-uk-remote-e91f4a",
         "deepgram-research-staff-voice-ai-foundations-remote-4af8da"
+      ]
+    },
+    {
+      "date": "2026-10-12",
+      "pickedAt": "2026-10-12T03:05:55.459Z",
+      "slugs": [
+        "adobe-wd5-external-experienced-sr-manager-data-engineering-294803",
+        "cisco-wd5-cisco-careers-solutions-engineer-splunk-remote-25765e",
+        "cisco-wd5-cisco-careers-solutions-engineer-splunk-remote-ed2571"
       ]
     }
   ]
