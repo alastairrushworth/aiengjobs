@@ -1,17 +1,6 @@
 {
   "picks": [
     {
-      "date": "2026-09-13",
-      "pickedAt": "2026-09-13T02:35:51.910Z",
-      "slugs": [
-        "artisan-staff-ai-engineer-agent-architecture-behavior-20bee2",
-        "openai-researcher-safety-training-national-security-521c03",
-        "afterquery-ai-ml-research-intern-c9b31f",
-        "langchain-senior-backend-software-engineer-ai-observability-evals-platform-langsmith-9486ef",
-        "pathai-senior-software-engineer-ml-ops-8ef3de"
-      ]
-    },
-    {
       "date": "2026-09-14",
       "pickedAt": "2026-09-14T02:37:20.117Z",
       "slugs": [
@@ -324,6 +313,17 @@
         "adobe-wd5-external-experienced-sr-manager-data-engineering-294803",
         "cisco-wd5-cisco-careers-solutions-engineer-splunk-remote-25765e",
         "cisco-wd5-cisco-careers-solutions-engineer-splunk-remote-ed2571"
+      ]
+    },
+    {
+      "date": "2026-10-13",
+      "pickedAt": "2026-10-13T04:50:42.840Z",
+      "slugs": [
+        "fractal-wd1-careers-data-scientist-census-automation-42fd7a",
+        "relx-wd3-relx-senior-software-engineer-senior-ai-engineer-1a23e0",
+        "crowdstrike-wd5-crowdstrikecareers-sr-data-scientist-remote-rou-c78a2b",
+        "soprasteria1-mid-level-python-developer-genai-3f4e5d",
+        "mastercard-wd1-corporatecareers-manager-ai-engineering-7666ec"
       ]
     }
   ]
