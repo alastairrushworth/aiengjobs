@@ -1,17 +1,6 @@
 {
   "picks": [
     {
-      "date": "2026-09-14",
-      "pickedAt": "2026-09-14T02:37:20.117Z",
-      "slugs": [
-        "perplexity-member-of-technical-staff-ai-software-engineer-agents-91f9d5",
-        "perplexity-engineering-manager-tlm-agents-b0c193",
-        "field-ai-senior-ml-engineer-data-flywheel-9917e5",
-        "field-ai-senior-data-platform-engineer-052d0a",
-        "simple-ai-infrastructure-engineer-19bbbf"
-      ]
-    },
-    {
       "date": "2026-09-15",
       "pickedAt": "2026-09-15T04:17:10.057Z",
       "slugs": [
@@ -324,6 +313,17 @@
         "crowdstrike-wd5-crowdstrikecareers-sr-data-scientist-remote-rou-c78a2b",
         "soprasteria1-mid-level-python-developer-genai-3f4e5d",
         "mastercard-wd1-corporatecareers-manager-ai-engineering-7666ec"
+      ]
+    },
+    {
+      "date": "2026-10-14",
+      "pickedAt": "2026-10-14T03:59:42.006Z",
+      "slugs": [
+        "datadog-research-manager-post-training-for-agents-755293",
+        "equifax-wd5-external-lead-software-engineer-de23be",
+        "anaplan-senior-data-engineer-ai-9bd5de",
+        "fis-wd5-searchjobs-artificial-intelligence-machine-learning-engineer-4ac294",
+        "preply-senior-ml-platform-engineer-agentic-platform-3302ca"
       ]
     }
   ]
