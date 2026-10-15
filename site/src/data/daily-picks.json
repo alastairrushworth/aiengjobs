@@ -1,17 +1,6 @@
 {
   "picks": [
     {
-      "date": "2026-09-15",
-      "pickedAt": "2026-09-15T04:17:10.057Z",
-      "slugs": [
-        "workday-wd5-workday-senior-ai-engineer-agent-factory-6406ce",
-        "nagarro1-senior-staff-engineer-generative-ai-nlp-366dc6",
-        "nagarro1-senior-staff-engineer-generative-ai-307a58",
-        "nagarro1-staff-engineer-generative-ai-105f27",
-        "nagarro1-senior-staff-engineer-a80cff"
-      ]
-    },
-    {
       "date": "2026-09-16",
       "pickedAt": "2026-09-16T04:55:42.748Z",
       "slugs": [
@@ -324,6 +313,17 @@
         "anaplan-senior-data-engineer-ai-9bd5de",
         "fis-wd5-searchjobs-artificial-intelligence-machine-learning-engineer-4ac294",
         "preply-senior-ml-platform-engineer-agentic-platform-3302ca"
+      ]
+    },
+    {
+      "date": "2026-10-15",
+      "pickedAt": "2026-10-15T02:52:24.981Z",
+      "slugs": [
+        "hackerrank-deep-learning-research-engineer-878ccc",
+        "verizon-wd12-verizon-careers-agentic-ai-engineer-74b86f",
+        "cohere-member-of-technical-staff-post-training-reinforcement-learning-generalization-b26f5f",
+        "tensordyne-working-student-llm-quantization-inference-performance-76808e",
+        "furtherai-senior-staff-ai-engineer-evals-model-quality-0a8bc5"
       ]
     }
   ]
