@@ -1,17 +1,6 @@
 {
   "picks": [
     {
-      "date": "2026-09-17",
-      "pickedAt": "2026-09-17T04:34:38.757Z",
-      "slugs": [
-        "fa-ewmy-saasfaprod1-fa-ocs-oraclecloud-com-cx-1-ai-engineer-172ba5",
-        "citi-wd5-2-senior-agentic-ai-engineer-37ea4f",
-        "adobe-wd5-external-experienced-senior-machine-learning-engineer-6afde8",
-        "citi-wd5-2-lead-gen-ai-engineer-vice-president-e4f7b0",
-        "citi-wd5-2-senior-agentic-ai-engineer-vice-president-cae6bb"
-      ]
-    },
-    {
       "date": "2026-09-18",
       "pickedAt": "2026-09-18T03:57:45.252Z",
       "slugs": [
@@ -324,6 +313,17 @@
         "fractal-wd1-careers-genai-engineer-50ed3b",
         "fis-wd5-searchjobs-artificial-intelligence-machine-learning-engineer-f94ffd",
         "capitalone-wd12-capital-one-ai-engineer-5-4b112e"
+      ]
+    },
+    {
+      "date": "2026-10-17",
+      "pickedAt": "2026-10-17T03:22:01.665Z",
+      "slugs": [
+        "fa-ewmy-saasfaprod1-fa-ocs-oraclecloud-com-cx-1-software-development-engineer-ii-generative-ai-299473",
+        "crowdstrike-wd5-crowdstrikecareers-ai-research-scientist-agentic-systems-remote-2956ac",
+        "servicenow-staff-machine-learning-engineer-87ad56",
+        "primeintellect-research-engineer-rl-infrastructure-c25eda",
+        "primeintellect-research-engineer-data-and-evaluation-c58ed6"
       ]
     }
   ]
