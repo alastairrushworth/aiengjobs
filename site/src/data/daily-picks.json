@@ -1,17 +1,6 @@
 {
   "picks": [
     {
-      "date": "2026-09-18",
-      "pickedAt": "2026-09-18T03:57:45.252Z",
-      "slugs": [
-        "adobe-wd5-external-experienced-software-development-engineer-4-191f90",
-        "astrazeneca-wd3-careers-astrazeneca-cet-agentic-ai-lead-cutomer-experience-it-d62634",
-        "citi-wd5-2-senior-python-ai-engineer-agentic-systems-384933",
-        "citi-wd5-2-lead-agentic-ai-engineer-caaf92",
-        "citi-wd5-2-lead-python-ai-engineer-agentic-systems-e72a9a"
-      ]
-    },
-    {
       "date": "2026-09-19",
       "pickedAt": "2026-09-19T03:47:11.004Z",
       "slugs": [
@@ -324,6 +313,15 @@
         "servicenow-staff-machine-learning-engineer-87ad56",
         "primeintellect-research-engineer-rl-infrastructure-c25eda",
         "primeintellect-research-engineer-data-and-evaluation-c58ed6"
+      ]
+    },
+    {
+      "date": "2026-10-18",
+      "pickedAt": "2026-10-18T01:38:40.334Z",
+      "slugs": [
+        "higgsfieldai-backend-software-engineer-agentic-91c2ec",
+        "crowdstrike-wd5-crowdstrikecareers-sr-software-engineer-martech-remote-00310d",
+        "servicenow-forward-deployed-solution-engineer-applied-ai-fde-7db46a"
       ]
     }
   ]
