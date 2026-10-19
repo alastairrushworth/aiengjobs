@@ -1,17 +1,6 @@
 {
   "picks": [
     {
-      "date": "2026-09-19",
-      "pickedAt": "2026-09-19T03:47:11.004Z",
-      "slugs": [
-        "capitalone-wd12-capital-one-ai-engineer-5-ai-foundations-llm-core-and-agentic-ai-5dad56",
-        "capitalone-wd12-capital-one-ai-engineer-5-ai-foundations-llm-core-and-agentic-ai-6390ed",
-        "togetherai-research-intern-frontier-agents-winter-2027-912478",
-        "togetherai-research-intern-frontier-agents-summer-2027-fb62a7",
-        "salesforce-wd12-external-career-site-senior-backend-engineer-java-ebedce"
-      ]
-    },
-    {
       "date": "2026-09-20",
       "pickedAt": "2026-09-20T01:57:15.058Z",
       "slugs": [
@@ -322,6 +311,17 @@
         "higgsfieldai-backend-software-engineer-agentic-91c2ec",
         "crowdstrike-wd5-crowdstrikecareers-sr-software-engineer-martech-remote-00310d",
         "servicenow-forward-deployed-solution-engineer-applied-ai-fde-7db46a"
+      ]
+    },
+    {
+      "date": "2026-10-19",
+      "pickedAt": "2026-10-19T01:54:11.372Z",
+      "slugs": [
+        "reddit-machine-learning-engineer-answers-relevance-892e2d",
+        "cisco-wd5-cisco-careers-software-engineer-media-85ebaa",
+        "cisco-wd5-cisco-careers-software-engineering-technical-leader-go-java-python-c-ai-securtiy-domain-8-to-a02695",
+        "shieldai-staff-engineer-autonomy-r5682-03c7ac",
+        "beamery-senior-data-scientist-ae8abc"
       ]
     }
   ]
