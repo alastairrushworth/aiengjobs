@@ -1,17 +1,6 @@
 {
   "picks": [
     {
-      "date": "2026-09-21",
-      "pickedAt": "2026-09-21T01:56:13.831Z",
-      "slugs": [
-        "cisco-wd5-cisco-careers-efficiency-ai-ops-engineer-hybrid-a1d757",
-        "salesforce-wd12-external-career-site-ai-builder-emerging-talent-spanish-market-389683",
-        "salesforce-wd12-external-career-site-ai-builder-emerging-talent-polish-market-7a94e5",
-        "salesforce-wd12-external-career-site-ai-builder-emerging-talent-italian-market-719d99",
-        "reducto-head-of-platform-engineering-7a6c4b"
-      ]
-    },
-    {
       "date": "2026-09-22",
       "pickedAt": "2026-09-22T03:51:35.070Z",
       "slugs": [
@@ -322,6 +311,17 @@
         "soprasteria1-genai-senior-software-engineer-97fc13",
         "mistral-ai-evaluation-engineer-applied-ai-fa652a",
         "reddit-software-engineer-agent-optimization-evaluation-9a8da9"
+      ]
+    },
+    {
+      "date": "2026-10-21",
+      "pickedAt": "2026-10-21T04:04:51.299Z",
+      "slugs": [
+        "cisco-wd5-cisco-careers-principal-machine-learning-engineer-1c2a5a",
+        "zillow-wd5-zillow-group-external-principal-machine-learning-engineer-memory-context-4a889c",
+        "servicenow-principal-software-engineer-b34a5d",
+        "capitalone-wd12-capital-one-ai-engineer-5-mlx-agentic-ai-gen-ai-platform-services-30ba7f",
+        "astrazeneca-wd3-careers-ai-researcher-associate-director-ai-for-clinical-development-e13293"
       ]
     }
   ]
