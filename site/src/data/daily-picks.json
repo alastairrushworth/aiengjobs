@@ -1,17 +1,6 @@
 {
   "picks": [
     {
-      "date": "2026-09-22",
-      "pickedAt": "2026-09-22T03:51:35.070Z",
-      "slugs": [
-        "nagarro1-principal-engineer-agentic-ai-66d661",
-        "federato-staff-software-engineer-ai-systems-fa42a4",
-        "carta-senior-ai-engineer-post-training-7abc19",
-        "capitalone-wd12-capital-one-ai-engineer-5-ai-foundations-llm-core-and-agentic-ai-7b8aa5",
-        "capitalone-wd12-capital-one-ai-engineer-5-ai-foundations-llm-core-and-agentic-ai-5e5cd9"
-      ]
-    },
-    {
       "date": "2026-09-23",
       "pickedAt": "2026-09-23T04:09:45.595Z",
       "slugs": [
@@ -322,6 +311,17 @@
         "servicenow-principal-software-engineer-b34a5d",
         "capitalone-wd12-capital-one-ai-engineer-5-mlx-agentic-ai-gen-ai-platform-services-30ba7f",
         "astrazeneca-wd3-careers-ai-researcher-associate-director-ai-for-clinical-development-e13293"
+      ]
+    },
+    {
+      "date": "2026-10-22",
+      "pickedAt": "2026-10-22T03:22:05.672Z",
+      "slugs": [
+        "workday-wd5-workday-principal-senior-ai-engineer-agent-factory-b760ab",
+        "anthropic-research-engineer-chip-design-rl-98c7bd",
+        "smithnephew-wd5-external-intern-agentic-ai-software-engineering-d5a1ee",
+        "etched-research-engineer-rl-frontiers-494da2",
+        "faculty-lead-machine-learning-engineer-safety-4878bb"
       ]
     }
   ]
