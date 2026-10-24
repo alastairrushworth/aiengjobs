@@ -1,17 +1,6 @@
 {
   "picks": [
     {
-      "date": "2026-09-24",
-      "pickedAt": "2026-09-24T04:13:16.861Z",
-      "slugs": [
-        "adobe-wd5-external-experienced-staff-machine-learning-engineer-ac0043",
-        "capitalone-wd12-capital-one-ai-engineer-5-gen-ai-platform-services-53e1a4",
-        "asos-senior-ai-engineer-ai-platform-2365e0",
-        "airwallex-software-engineer-infrastructure-ai-13f8bc",
-        "astrazeneca-wd3-careers-associate-principal-scientist-generative-ai-7cb330"
-      ]
-    },
-    {
       "date": "2026-09-25",
       "pickedAt": "2026-09-25T04:01:11.975Z",
       "slugs": [
@@ -322,6 +311,17 @@
         "statestreet-wd1-global-data-scientist-senior-manager-6b113c",
         "outset-research-engineer-f65c86",
         "workday-wd5-workday-sr-ai-engineer-e9239a"
+      ]
+    },
+    {
+      "date": "2026-10-24",
+      "pickedAt": "2026-10-24T03:50:21.514Z",
+      "slugs": [
+        "mastercard-wd1-corporatecareers-senior-ai-engineer-f41399",
+        "spacex-ai-software-engineer-vehicle-engineering-8eff1b",
+        "uipath-senior-software-engineer-ai-024a75",
+        "1x-research-engineer-robot-learning-3a3f54",
+        "mastercard-wd1-corporatecareers-ai-principle-architect-233ae5"
       ]
     }
   ]
