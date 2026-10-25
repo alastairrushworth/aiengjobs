@@ -26,3 +26,7 @@ updates:
       # by hand, with the parity test and ml/acceptance/run.ts, never unattended.
       - dependency-name: onnxruntime-node
       - dependency-name: "@huggingface/transformers"
+      # `astro check` refuses to run on TypeScript 7. Lift this once Astro
+      # supports it (or the site moves to @astrojs/ts-content-mapper).
+      - dependency-name: typescript
+        update-types: ["version-update:semver-major"]
