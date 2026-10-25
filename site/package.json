@@ -10,10 +10,10 @@
   },
   "dependencies": {
     "@aiengjobs/shared": "*",
-    "astro": "^7.4.1"
+    "astro": "^7.4.2"
   },
   "devDependencies": {
-    "@astrojs/check": "^0.9.11",
+    "@astrojs/check": "^0.9.12",
     "@fontsource/inter": "^5.3.0",
     "@resvg/resvg-js": "^2.6.2",
     "satori": "^0.63.2",
