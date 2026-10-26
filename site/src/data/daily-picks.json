@@ -1,17 +1,6 @@
 {
   "picks": [
     {
-      "date": "2026-09-25",
-      "pickedAt": "2026-09-25T04:01:11.975Z",
-      "slugs": [
-        "adobe-wd5-external-experienced-senior-machine-learning-engineer-5678e6",
-        "turing-senior-research-engineer-frontier-data-ef26d1",
-        "capitalone-wd12-capital-one-ai-engineer-5-fm-hosting-llm-inference-f2d183",
-        "verizon-wd12-verizon-careers-ai-workflow-engineer-fcd1af",
-        "turing-senior-research-engineer-enterprise-knowledge-495c6f"
-      ]
-    },
-    {
       "date": "2026-09-26",
       "pickedAt": "2026-09-26T03:42:25.211Z",
       "slugs": [
@@ -322,6 +311,17 @@
         "uipath-senior-software-engineer-ai-024a75",
         "1x-research-engineer-robot-learning-3a3f54",
         "mastercard-wd1-corporatecareers-ai-principle-architect-233ae5"
+      ]
+    },
+    {
+      "date": "2026-10-25",
+      "pickedAt": "2026-10-26T00:03:37.498Z",
+      "slugs": [
+        "skydio-phd-autonomy-engineer-intern-deep-learning-computer-vision-2027-13d29b",
+        "cisco-wd5-cisco-careers-software-engineer-33874d",
+        "skydio-phd-autonomy-engineer-intern-2027-73b18d",
+        "skydio-autonomy-engineer-intern-2027-6ce0f8",
+        "anthropic-enforcement-analyst-agentic-alignment-6127a9"
       ]
     }
   ]
