@@ -1,17 +1,6 @@
 {
   "picks": [
     {
-      "date": "2026-09-27",
-      "pickedAt": "2026-09-27T02:05:54.258Z",
-      "slugs": [
-        "shieldai-staff-deep-learning-engineer-state-estimation-r5785-3fc1da",
-        "chaidiscovery-research-engineer-ml-infrastructure-04d3ad",
-        "handshake-senior-software-engineer-coding-2da843",
-        "perplexity-engineering-manager-multimodal-3a3932",
-        "wayve-senior-data-scientist-38df99"
-      ]
-    },
-    {
       "date": "2026-09-28",
       "pickedAt": "2026-09-28T02:22:52.287Z",
       "slugs": [
@@ -322,6 +311,17 @@
         "gartner-wd5-ext-lead-software-engineer-gen-ai-nlp-ml-43ce1c",
         "statestreet-wd1-global-data-scientist-assistant-manager-b9dd4f",
         "gsk-wd5-gskcareers-senior-full-stack-engineer-9bd078"
+      ]
+    },
+    {
+      "date": "2026-10-27",
+      "pickedAt": "2026-10-28T01:42:55.942Z",
+      "slugs": [
+        "workday-wd5-workday-senior-ai-engineer-52c591",
+        "second-front-systems-ai-software-engineer-183f88",
+        "soprasteria1-mid-level-python-developer-genai-978629",
+        "servicenow-staff-ai-engineer-agentic-ai-harness-quality-moveworks-040969",
+        "mercor-research-engineer-intern-environments-data-and-post-training-3b6e6d"
       ]
     }
   ]
