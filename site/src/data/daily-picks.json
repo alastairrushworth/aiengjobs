@@ -1,16 +1,6 @@
 {
   "picks": [
     {
-      "date": "2026-09-28",
-      "pickedAt": "2026-09-28T02:22:52.287Z",
-      "slugs": [
-        "capitalone-wd12-capital-one-senior-staff-ai-engineer-agentic-ai-platform-remote-eligible-c7b743",
-        "field-ai-robotics-research-internship-humanoid-manipulation-spring-2027-phd-internship-7e13e6",
-        "field-ai-robotics-research-internship-humanoid-manipulation-summer-2027-phd-internship-2a62e8",
-        "servicenow-assoc-machine-learning-engineer-690e01"
-      ]
-    },
-    {
       "date": "2026-09-29",
       "pickedAt": "2026-09-29T05:28:39.965Z",
       "slugs": [
@@ -322,6 +312,17 @@
         "soprasteria1-mid-level-python-developer-genai-978629",
         "servicenow-staff-ai-engineer-agentic-ai-harness-quality-moveworks-040969",
         "mercor-research-engineer-intern-environments-data-and-post-training-3b6e6d"
+      ]
+    },
+    {
+      "date": "2026-10-28",
+      "pickedAt": "2026-10-29T02:01:47.847Z",
+      "slugs": [
+        "ciandt-job-32501-ai-engineer-senior-brazil-885956",
+        "hackerrank-ai-researcher-intern-bba653",
+        "gsk-wd5-gskcareers-ai-platform-engineer-ii-a81dee",
+        "openai-research-engineer-research-scientist-human-flourishing-39fb4f",
+        "verisign-principal-ai-enablement-engineer-74b439"
       ]
     }
   ]
