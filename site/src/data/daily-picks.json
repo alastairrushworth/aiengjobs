@@ -1,17 +1,6 @@
 {
   "picks": [
     {
-      "date": "2026-09-29",
-      "pickedAt": "2026-09-29T05:28:39.965Z",
-      "slugs": [
-        "anaplan-principal-engineer-ai-b513a6",
-        "lyft-applied-scientist-intern-summer-2027-bb3707",
-        "anaplan-senior-data-engineer-ai-fbceb0",
-        "netcompany1-senior-ai-engineer-a03d82",
-        "coursera-ai-specialist-ii-2ad560"
-      ]
-    },
-    {
       "date": "2026-09-30",
       "pickedAt": "2026-09-30T04:45:43.999Z",
       "slugs": [
@@ -323,6 +312,17 @@
         "gsk-wd5-gskcareers-ai-platform-engineer-ii-a81dee",
         "openai-research-engineer-research-scientist-human-flourishing-39fb4f",
         "verisign-principal-ai-enablement-engineer-74b439"
+      ]
+    },
+    {
+      "date": "2026-10-29",
+      "pickedAt": "2026-10-30T01:43:29.636Z",
+      "slugs": [
+        "distyl-ai-engineer-uk-94ca69",
+        "cisco-wd5-cisco-careers-software-engineer-563171",
+        "coinbase-staff-machine-learning-engineer-compliance-automation-platform-9a01f4",
+        "tmobile-wd1-external-sr-ai-engineer-7bcd9f",
+        "fiserv-wd5-ext-principal-ai-engineer-8b9cd8"
       ]
     }
   ]
