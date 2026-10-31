@@ -1,17 +1,6 @@
 {
   "picks": [
     {
-      "date": "2026-09-30",
-      "pickedAt": "2026-09-30T04:45:43.999Z",
-      "slugs": [
-        "tennr-senior-backend-engineer-ml-f970cf",
-        "anthropic-research-engineer-research-scientist-rl-frontiers-5b6b31",
-        "careers-ice-engineer-platform-engineering-ai-1be9a4",
-        "capitalone-wd12-capital-one-ai-engineer-3-c6d750",
-        "servicenow-senior-research-scientist-agent-evaluation-f5c2cc"
-      ]
-    },
-    {
       "date": "2026-10-01",
       "pickedAt": "2026-10-01T04:49:08.221Z",
       "slugs": [
@@ -323,6 +312,17 @@
         "coinbase-staff-machine-learning-engineer-compliance-automation-platform-9a01f4",
         "tmobile-wd1-external-sr-ai-engineer-7bcd9f",
         "fiserv-wd5-ext-principal-ai-engineer-8b9cd8"
+      ]
+    },
+    {
+      "date": "2026-10-30",
+      "pickedAt": "2026-10-31T01:40:31.314Z",
+      "slugs": [
+        "salesforce-wd12-external-career-site-software-engineering-smts-1303f1",
+        "verizon-wd12-verizon-careers-engineer-i-systems-engineering-dc5e69",
+        "fis-wd5-searchjobs-engineer-senior-artificial-intelligence-agentic-ai-python-llm-5-to-8-years-pune-bang-afeecf",
+        "fis-wd5-searchjobs-engineer-lead-artificial-intelligence-agentic-ai-python-llm-8-to-10-years-pune-banga-e4d846",
+        "cisco-wd5-cisco-careers-software-engineer-758f18"
       ]
     }
   ]
