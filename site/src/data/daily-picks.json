@@ -1,17 +1,6 @@
 {
   "picks": [
     {
-      "date": "2026-10-01",
-      "pickedAt": "2026-10-01T04:49:08.221Z",
-      "slugs": [
-        "capitalone-wd12-capital-one-ai-engineer-5-a6f377",
-        "servicenow-agentic-ai-harness-architect-moveworks-e7f857",
-        "nscaleoperationsukltd-principal-ai-product-engineer-50ece2",
-        "brainco-machine-learning-engineer-applied-ai-1d912e",
-        "astrazeneca-wd3-careers-agentic-ai-sr-engineer-40f0f3"
-      ]
-    },
-    {
       "date": "2026-10-02",
       "pickedAt": "2026-10-02T04:24:59.657Z",
       "slugs": [
@@ -323,6 +312,17 @@
         "fis-wd5-searchjobs-engineer-senior-artificial-intelligence-agentic-ai-python-llm-5-to-8-years-pune-bang-afeecf",
         "fis-wd5-searchjobs-engineer-lead-artificial-intelligence-agentic-ai-python-llm-8-to-10-years-pune-banga-e4d846",
         "cisco-wd5-cisco-careers-software-engineer-758f18"
+      ]
+    },
+    {
+      "date": "2026-10-31",
+      "pickedAt": "2026-11-01T00:01:09.746Z",
+      "slugs": [
+        "sierra-research-intern-a632a2",
+        "samsara-director-gtm-ai-engineering-8822fb",
+        "supabase-software-engineer-ai-tooling-infrastructure-33fc4c",
+        "statestreet-wd1-global-lead-full-stack-engineer-assistant-vice-president-f26b51",
+        "statestreet-wd1-global-senior-full-stack-engineer-assistant-vice-president-5a7253"
       ]
     }
   ]
