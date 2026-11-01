@@ -1,17 +1,6 @@
 {
   "picks": [
     {
-      "date": "2026-10-02",
-      "pickedAt": "2026-10-02T04:24:59.657Z",
-      "slugs": [
-        "zetaglobal-staff-software-engineer-4c49af",
-        "interview-kickstart-software-engineer-2-machine-learning-17fb65",
-        "workday-wd5-workday-senior-ai-engineer-7dd955",
-        "freshworks-principal-engineer-machine-learning-ee17c1",
-        "freshworks-principal-engineer-machine-learning-d17644"
-      ]
-    },
-    {
       "date": "2026-10-03",
       "pickedAt": "2026-10-03T04:09:26.702Z",
       "slugs": [
@@ -323,6 +312,17 @@
         "supabase-software-engineer-ai-tooling-infrastructure-33fc4c",
         "statestreet-wd1-global-lead-full-stack-engineer-assistant-vice-president-f26b51",
         "statestreet-wd1-global-senior-full-stack-engineer-assistant-vice-president-5a7253"
+      ]
+    },
+    {
+      "date": "2026-11-01",
+      "pickedAt": "2026-11-01T23:56:18.980Z",
+      "slugs": [
+        "tensordyne-senior-software-engineer-ml-inference-numerics-b87af6",
+        "tensordyne-working-student-llm-inference-performance-e64c19",
+        "cisco-wd5-cisco-careers-software-engineer-hybrid-449aa3",
+        "salesforce-wd12-external-career-site-lead-forward-deployed-engineer-italian-speaking-e8ea60",
+        "kastle-technical-lead-swe-24299c"
       ]
     }
   ]
