@@ -1,17 +1,6 @@
 {
   "picks": [
     {
-      "date": "2026-10-03",
-      "pickedAt": "2026-10-03T04:09:26.702Z",
-      "slugs": [
-        "cerebras-senior-research-engineer-inference-ml-80105c",
-        "anthropic-staff-research-engineer-multi-agent-scaling-c52a72",
-        "verizon-wd12-verizon-careers-ai-platform-engineer-b97547",
-        "aviva-wd1-external-mid-or-senior-applied-ai-engineer-39e6b5",
-        "cisco-wd5-cisco-careers-cx-machine-learning-engineer-b2fe4a"
-      ]
-    },
-    {
       "date": "2026-10-04",
       "pickedAt": "2026-10-04T03:23:32.467Z",
       "slugs": [
@@ -323,6 +312,17 @@
         "cisco-wd5-cisco-careers-software-engineer-hybrid-449aa3",
         "salesforce-wd12-external-career-site-lead-forward-deployed-engineer-italian-speaking-e8ea60",
         "kastle-technical-lead-swe-24299c"
+      ]
+    },
+    {
+      "date": "2026-11-02",
+      "pickedAt": "2026-11-03T00:45:43.658Z",
+      "slugs": [
+        "astrazeneca-wd3-careers-principal-ai-engineer-evinova-bfcb32",
+        "workday-wd5-workday-senior-ai-evaluation-engineer-cicd-platform-c3a374",
+        "traba-senior-software-engineer-ai-agents-1025ad",
+        "deepgram-research-staff-llms-emea-remote-d8a294",
+        "anthropic-research-engineer-scientist-pre-training-205720"
       ]
     }
   ]
