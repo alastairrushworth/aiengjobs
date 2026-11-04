@@ -1,17 +1,6 @@
 {
   "picks": [
     {
-      "date": "2026-10-04",
-      "pickedAt": "2026-10-04T03:23:32.467Z",
-      "slugs": [
-        "shifttechnology-staff-ai-engineer-architecture-skills-3f5d81",
-        "capitalone-wd12-capital-one-ai-engineer-5-mlx-agentic-ai-gen-ai-platform-services-429dfa",
-        "openai-software-engineer-openai-presence-eb0795",
-        "shieldai-senior-engineer-research-to-product-perception-r6022-593f81",
-        "dataleap-ex-founder-with-track-record-c40611"
-      ]
-    },
-    {
       "date": "2026-10-05",
       "pickedAt": "2026-10-05T02:41:20.172Z",
       "slugs": [
@@ -323,6 +312,17 @@
         "traba-senior-software-engineer-ai-agents-1025ad",
         "deepgram-research-staff-llms-emea-remote-d8a294",
         "anthropic-research-engineer-scientist-pre-training-205720"
+      ]
+    },
+    {
+      "date": "2026-11-03",
+      "pickedAt": "2026-11-04T02:09:44.529Z",
+      "slugs": [
+        "sambanovasystems-machine-learning-engineer-new-grad-2b19de",
+        "statestreet-wd1-global-data-scientist-assistant-manager-b8c0a1",
+        "citi-wd5-2-senior-ai-and-machine-learning-engineer-assistant-vice-president-1cc91f",
+        "version1-ai-engineer-481c59",
+        "mastercard-wd1-corporatecareers-senior-ai-engineer-044f72"
       ]
     }
   ]
