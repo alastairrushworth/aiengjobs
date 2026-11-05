@@ -1,17 +1,6 @@
 {
   "picks": [
     {
-      "date": "2026-10-05",
-      "pickedAt": "2026-10-05T02:41:20.172Z",
-      "slugs": [
-        "verizon-wd12-verizon-careers-principal-ai-engineer-2d83e2",
-        "citi-wd5-2-lead-software-engineer-enterprise-applications-2b874b",
-        "citi-wd5-2-senior-ai-engineer-banking-technology-5b88da",
-        "gongio-prompt-engineer-deals-forecast-ff19c0",
-        "fa-extu-saasfaprod1-fa-ocs-oraclecloud-com-cx-1-senior-software-engineer-backend-big-data-ai-3e61ee"
-      ]
-    },
-    {
       "date": "2026-10-06",
       "pickedAt": "2026-10-06T05:52:38.545Z",
       "slugs": [
@@ -323,6 +312,17 @@
         "citi-wd5-2-senior-ai-and-machine-learning-engineer-assistant-vice-president-1cc91f",
         "version1-ai-engineer-481c59",
         "mastercard-wd1-corporatecareers-senior-ai-engineer-044f72"
+      ]
+    },
+    {
+      "date": "2026-11-04",
+      "pickedAt": "2026-11-05T01:50:04.882Z",
+      "slugs": [
+        "servicenow-staff-machine-learning-engineer-81b8a7",
+        "servicenow-staff-research-engineer-scientist-dfab70",
+        "tripactions-ai-architect-76b637",
+        "capitalone-wd12-capital-one-ai-engineer-5-d3dd86",
+        "tripactions-ai-architect-a14ec1"
       ]
     }
   ]
