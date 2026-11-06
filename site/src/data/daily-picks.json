@@ -1,17 +1,6 @@
 {
   "picks": [
     {
-      "date": "2026-10-06",
-      "pickedAt": "2026-10-06T05:52:38.545Z",
-      "slugs": [
-        "workday-wd5-workday-senior-ai-engineer-5b4669",
-        "baseten-software-engineer-inference-performance-cdf62a",
-        "tensordyne-forward-deployed-inference-engineer-513a28",
-        "career-schwab-ai-researcher-ai-x-406587",
-        "adobe-wd5-external-experienced-senior-computer-scientist-agentic-ai-174cca"
-      ]
-    },
-    {
       "date": "2026-10-07",
       "pickedAt": "2026-10-07T05:20:53.126Z",
       "slugs": [
@@ -323,6 +312,17 @@
         "tripactions-ai-architect-76b637",
         "capitalone-wd12-capital-one-ai-engineer-5-d3dd86",
         "tripactions-ai-architect-a14ec1"
+      ]
+    },
+    {
+      "date": "2026-11-05",
+      "pickedAt": "2026-11-06T01:48:33.985Z",
+      "slugs": [
+        "servicenow-senior-software-engineer-agentic-platform-moveworks-e33dfa",
+        "anthropic-research-scientist-discovery-engineering-applied-sciences-6c80a6",
+        "capitalone-wd12-capital-one-ai-engineer-4-ai-safety-and-multimodal-5350b2",
+        "salesforce-wd12-external-career-site-principal-member-of-technical-staff-pmts-staff-software-engineer-a-36b2f9",
+        "palantir-software-engineer-internship-sovereign-ai-systems-fec34d"
       ]
     }
   ]
