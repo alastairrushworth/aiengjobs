@@ -1,17 +1,6 @@
 {
   "picks": [
     {
-      "date": "2026-10-07",
-      "pickedAt": "2026-10-07T05:20:53.126Z",
-      "slugs": [
-        "fiserv-wd5-ext-ai-engineer-4838de",
-        "mistral-ai-llm-scientist-ai-for-science-c30bc2",
-        "elastic-agentic-ai-engineer-2f5fe1",
-        "capitalone-wd12-capital-one-ai-engineer-5-gen-ai-platform-services-agentic-systems-411b25",
-        "capitalone-wd12-capital-one-ai-engineer-5-gen-ai-platform-services-agentic-ai-guardrails-evaluation-95ad34"
-      ]
-    },
-    {
       "date": "2026-10-08",
       "pickedAt": "2026-10-08T05:36:55.625Z",
       "slugs": [
@@ -323,6 +312,17 @@
         "capitalone-wd12-capital-one-ai-engineer-4-ai-safety-and-multimodal-5350b2",
         "salesforce-wd12-external-career-site-principal-member-of-technical-staff-pmts-staff-software-engineer-a-36b2f9",
         "palantir-software-engineer-internship-sovereign-ai-systems-fec34d"
+      ]
+    },
+    {
+      "date": "2026-11-06",
+      "pickedAt": "2026-11-07T02:15:32.860Z",
+      "slugs": [
+        "servicenow-staff-machine-learning-engineer-58d6fe",
+        "cisco-wd5-cisco-careers-software-engineer-ai-agentic-systems-a8fa3c",
+        "capitalone-wd12-capital-one-ai-engineer-5-ai-foundations-evaluations-and-agentic-workflows-dcd7c3",
+        "clickup-senior-ai-developer-eafbe3",
+        "fractal-wd1-careers-senior-gen-ai-engineer-2a2687"
       ]
     }
   ]
