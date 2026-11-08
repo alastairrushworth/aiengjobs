@@ -1,17 +1,6 @@
 {
   "picks": [
     {
-      "date": "2026-10-09",
-      "pickedAt": "2026-10-09T04:23:29.706Z",
-      "slugs": [
-        "lumaai-research-scientist-engineer-reinforcement-learning-infrastructure-6b0281",
-        "lumaai-research-scientist-engineer-reinforcement-learning-infrastructure-3fcb2f",
-        "soprasteria1-mid-level-python-developer-genai-4d8421",
-        "doordashusa-software-engineer-machine-learning-platform-gen-ai-aa0633",
-        "soprasteria1-ai-senior-software-engineer-51302f"
-      ]
-    },
-    {
       "date": "2026-10-10",
       "pickedAt": "2026-10-10T04:51:40.146Z",
       "slugs": [
@@ -323,6 +312,17 @@
         "tmobile-wd1-external-sr-manager-machine-learning-674e83",
         "42dot-sr-software-integration-engineer-autonomy-cef713",
         "42dot-software-integration-engineer-autonomy-16b805"
+      ]
+    },
+    {
+      "date": "2026-11-08",
+      "pickedAt": "2026-11-08T23:59:07.329Z",
+      "slugs": [
+        "anthropic-research-engineer-cybersecurity-rl-7b1f86",
+        "withplum-staff-ai-engineer-2b4e9b",
+        "shieldai-engineer-i-software-perception-new-grad-6135-077005",
+        "cisco-wd5-cisco-careers-principal-engineer-software-security-hybrid-29b724",
+        "xai-lead-engineer-ai-infrastructure-c-c-f50dd5"
       ]
     }
   ]
