@@ -1,17 +1,6 @@
 {
   "picks": [
     {
-      "date": "2026-10-08",
-      "pickedAt": "2026-10-08T05:36:55.625Z",
-      "slugs": [
-        "fa-ewmy-saasfaprod1-fa-ocs-oraclecloud-com-cx-1-lead-ai-engineer-eb11de",
-        "thinkingmachines-rl-systems-infra-f71423",
-        "toloka-principal-ml-researcher-734524",
-        "datadog-staff-research-scientist-post-training-for-agents-a9fb7b",
-        "fa-ewmy-saasfaprod1-fa-ocs-oraclecloud-com-cx-1-lead-agentic-ai-architect-5fbc75"
-      ]
-    },
-    {
       "date": "2026-10-09",
       "pickedAt": "2026-10-09T04:23:29.706Z",
       "slugs": [
@@ -323,6 +312,17 @@
         "capitalone-wd12-capital-one-ai-engineer-5-ai-foundations-evaluations-and-agentic-workflows-dcd7c3",
         "clickup-senior-ai-developer-eafbe3",
         "fractal-wd1-careers-senior-gen-ai-engineer-2a2687"
+      ]
+    },
+    {
+      "date": "2026-11-07",
+      "pickedAt": "2026-11-08T00:03:12.171Z",
+      "slugs": [
+        "xai-sr-model-engineer-imagine-36ed84",
+        "servicenow-forward-deployed-solution-engineer-applied-ai-fde-b0fa12",
+        "tmobile-wd1-external-sr-manager-machine-learning-674e83",
+        "42dot-sr-software-integration-engineer-autonomy-cef713",
+        "42dot-software-integration-engineer-autonomy-16b805"
       ]
     }
   ]
