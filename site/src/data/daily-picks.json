@@ -1,17 +1,6 @@
 {
   "picks": [
     {
-      "date": "2026-10-10",
-      "pickedAt": "2026-10-10T04:51:40.146Z",
-      "slugs": [
-        "waymo-2027-summer-intern-phd-research-av-planning-b2371b",
-        "servicenow-senior-staff-software-engineer-agentic-ai-harness-quality-moveworks-2716a6",
-        "fis-wd5-searchjobs-artificial-intelligence-machine-learning-engineer-lead-4-to-7-years-2b23a7",
-        "handshake-member-of-technical-staff-post-training-india-3a79da",
-        "capitalone-wd12-capital-one-ai-engineer-5-fm-hosting-llm-inference-6e949a"
-      ]
-    },
-    {
       "date": "2026-10-11",
       "pickedAt": "2026-10-11T02:41:03.608Z",
       "slugs": [
@@ -323,6 +312,17 @@
         "shieldai-engineer-i-software-perception-new-grad-6135-077005",
         "cisco-wd5-cisco-careers-principal-engineer-software-security-hybrid-29b724",
         "xai-lead-engineer-ai-infrastructure-c-c-f50dd5"
+      ]
+    },
+    {
+      "date": "2026-11-09",
+      "pickedAt": "2026-11-10T01:40:10.027Z",
+      "slugs": [
+        "datadog-senior-ai-research-engineer-llm-training-inference-infrastructure-4d30f6",
+        "gsk-wd5-gskcareers-associate-director-ai-ml-and-cloud-security-ai-agent-engineering-13ca4f",
+        "astrazeneca-wd3-careers-director-ai-ml-641bd2",
+        "datadog-senior-ai-research-engineer-gpu-systems-kernels-1ad174",
+        "anthropic-staff-software-engineer-safeguards-evals-620031"
       ]
     }
   ]
