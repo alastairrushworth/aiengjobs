@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "@aiengjobs/shared": "*",
-    "astro": "^7.4.2"
+    "astro": "^7.4.7"
   },
   "devDependencies": {
     "@astrojs/check": "^0.9.12",
