@@ -1,16 +1,6 @@
 {
   "picks": [
     {
-      "date": "2026-10-11",
-      "pickedAt": "2026-10-11T02:41:03.608Z",
-      "slugs": [
-        "relx-wd3-relx-senior-data-scientist-iii-b86ff8",
-        "deepgram-research-staff-voice-ai-foundations-remote-2e15ab",
-        "deepgram-research-staff-voice-ai-foundations-uk-remote-e91f4a",
-        "deepgram-research-staff-voice-ai-foundations-remote-4af8da"
-      ]
-    },
-    {
       "date": "2026-10-12",
       "pickedAt": "2026-10-12T03:05:55.459Z",
       "slugs": [
@@ -323,6 +313,17 @@
         "astrazeneca-wd3-careers-director-ai-ml-641bd2",
         "datadog-senior-ai-research-engineer-gpu-systems-kernels-1ad174",
         "anthropic-staff-software-engineer-safeguards-evals-620031"
+      ]
+    },
+    {
+      "date": "2026-11-10",
+      "pickedAt": "2026-11-11T01:58:12.698Z",
+      "slugs": [
+        "anthropic-c-research-engineer-discovery-82ea89",
+        "lilasciences-ml-research-engineer-performance-optimization-631ef5",
+        "turing-ml-ai-engineer-3acc9b",
+        "lilasciences-ml-research-scientist-environments-harnesses-f615a7",
+        "lilasciences-ml-research-scientist-scientific-evaluations-d50ec2"
       ]
     }
   ]
