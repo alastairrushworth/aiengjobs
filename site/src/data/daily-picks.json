@@ -1,15 +1,6 @@
 {
   "picks": [
     {
-      "date": "2026-10-12",
-      "pickedAt": "2026-10-12T03:05:55.459Z",
-      "slugs": [
-        "adobe-wd5-external-experienced-sr-manager-data-engineering-294803",
-        "cisco-wd5-cisco-careers-solutions-engineer-splunk-remote-25765e",
-        "cisco-wd5-cisco-careers-solutions-engineer-splunk-remote-ed2571"
-      ]
-    },
-    {
       "date": "2026-10-13",
       "pickedAt": "2026-10-13T04:50:42.840Z",
       "slugs": [
@@ -324,6 +315,17 @@
         "turing-ml-ai-engineer-3acc9b",
         "lilasciences-ml-research-scientist-environments-harnesses-f615a7",
         "lilasciences-ml-research-scientist-scientific-evaluations-d50ec2"
+      ]
+    },
+    {
+      "date": "2026-11-11",
+      "pickedAt": "2026-11-12T01:18:15.779Z",
+      "slugs": [
+        "motorway-senior-generative-ai-engineer-89a0c4",
+        "adobe-wd5-external-experienced-sr-machine-learning-engineer-6d4d30",
+        "snorkelai-senior-software-engineer-59fc1d",
+        "verizon-wd12-verizon-careers-sr-engr-cslt-ai-science-59c95f",
+        "nagarro1-principal-engineer-data-science-0b7494"
       ]
     }
   ]
