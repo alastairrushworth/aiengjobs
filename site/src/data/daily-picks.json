@@ -1,17 +1,6 @@
 {
   "picks": [
     {
-      "date": "2026-10-14",
-      "pickedAt": "2026-10-14T03:59:42.006Z",
-      "slugs": [
-        "datadog-research-manager-post-training-for-agents-755293",
-        "equifax-wd5-external-lead-software-engineer-de23be",
-        "anaplan-senior-data-engineer-ai-9bd5de",
-        "fis-wd5-searchjobs-artificial-intelligence-machine-learning-engineer-4ac294",
-        "preply-senior-ml-platform-engineer-agentic-platform-3302ca"
-      ]
-    },
-    {
       "date": "2026-10-15",
       "pickedAt": "2026-10-15T02:52:24.981Z",
       "slugs": [
@@ -326,6 +315,17 @@
         "databricks-sr-research-scientist-agent-flywheel-b99dc2",
         "tensordyne-senior-software-engineer-inference-performance-9e7589",
         "writer-staff-sr-staff-principal-ai-research-scientist-c303cd"
+      ]
+    },
+    {
+      "date": "2026-11-13",
+      "pickedAt": "2026-11-14T01:28:11.469Z",
+      "slugs": [
+        "servicenow-staff-ai-engineer-agentic-ai-harness-quality-moveworks-ac044e",
+        "servicenow-senior-software-engineer-agentic-platform-moveworks-bd4cac",
+        "snorkelai-research-scientist-open-benchmarks-red-team-8780f2",
+        "expedia-wd108-search-machine-learning-scientist-iii-agentic-experiences-085436",
+        "capitalone-wd12-capital-one-ai-engineer-3-ai-foundations-ca34d6"
       ]
     }
   ]
