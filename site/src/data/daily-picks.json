@@ -1,17 +1,6 @@
 {
   "picks": [
     {
-      "date": "2026-10-16",
-      "pickedAt": "2026-10-16T03:29:31.875Z",
-      "slugs": [
-        "ciandt-job-32285-senior-ai-engineer-brazil-2ac40a",
-        "cisco-wd5-cisco-careers-principal-machine-learning-engineer-eaa4e3",
-        "fractal-wd1-careers-genai-engineer-50ed3b",
-        "fis-wd5-searchjobs-artificial-intelligence-machine-learning-engineer-f94ffd",
-        "capitalone-wd12-capital-one-ai-engineer-5-4b112e"
-      ]
-    },
-    {
       "date": "2026-10-17",
       "pickedAt": "2026-10-17T03:22:01.665Z",
       "slugs": [
@@ -326,6 +315,17 @@
         "toast-principal-machine-learning-engineer-vision-ai-32c8cf",
         "toast-staff-machine-learning-engineer-vision-ai-aaa46d",
         "cisco-wd5-cisco-careers-ai-safety-reasoning-engineer-reasoning-transparency-bd668f"
+      ]
+    },
+    {
+      "date": "2026-11-15",
+      "pickedAt": "2026-11-15T23:48:47.960Z",
+      "slugs": [
+        "perplexity-member-of-technical-staff-ai-software-engineer-agent-engine-1e9b1f",
+        "netic-software-engineer-product-ad7e7d",
+        "netic-software-engineer-infrastructure-44d712",
+        "photoroom-product-ml-engineer-cd2dbb",
+        "airwallex-senior-software-engineer-data-platform-ai-enablement-a230cb"
       ]
     }
   ]
