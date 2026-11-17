@@ -1,17 +1,6 @@
 {
   "picks": [
     {
-      "date": "2026-10-17",
-      "pickedAt": "2026-10-17T03:22:01.665Z",
-      "slugs": [
-        "fa-ewmy-saasfaprod1-fa-ocs-oraclecloud-com-cx-1-software-development-engineer-ii-generative-ai-299473",
-        "crowdstrike-wd5-crowdstrikecareers-ai-research-scientist-agentic-systems-remote-2956ac",
-        "servicenow-staff-machine-learning-engineer-87ad56",
-        "primeintellect-research-engineer-rl-infrastructure-c25eda",
-        "primeintellect-research-engineer-data-and-evaluation-c58ed6"
-      ]
-    },
-    {
       "date": "2026-10-18",
       "pickedAt": "2026-10-18T01:38:40.334Z",
       "slugs": [
@@ -326,6 +315,17 @@
         "netic-software-engineer-infrastructure-44d712",
         "photoroom-product-ml-engineer-cd2dbb",
         "airwallex-senior-software-engineer-data-platform-ai-enablement-a230cb"
+      ]
+    },
+    {
+      "date": "2026-11-16",
+      "pickedAt": "2026-11-17T01:13:58.979Z",
+      "slugs": [
+        "corti-senior-machine-learning-engineer-9b723f",
+        "servicenow-senior-research-scientist-agent-evaluation-a22bf3",
+        "version1-senior-ai-engineer-73e2b3",
+        "servicenow-ai-platform-engineer-d31822",
+        "coursera-senior-ai-specialist-d8ab77"
       ]
     }
   ]
