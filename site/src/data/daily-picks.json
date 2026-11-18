@@ -1,15 +1,6 @@
 {
   "picks": [
     {
-      "date": "2026-10-18",
-      "pickedAt": "2026-10-18T01:38:40.334Z",
-      "slugs": [
-        "higgsfieldai-backend-software-engineer-agentic-91c2ec",
-        "crowdstrike-wd5-crowdstrikecareers-sr-software-engineer-martech-remote-00310d",
-        "servicenow-forward-deployed-solution-engineer-applied-ai-fde-7db46a"
-      ]
-    },
-    {
       "date": "2026-10-19",
       "pickedAt": "2026-10-19T01:54:11.372Z",
       "slugs": [
@@ -326,6 +317,17 @@
         "version1-senior-ai-engineer-73e2b3",
         "servicenow-ai-platform-engineer-d31822",
         "coursera-senior-ai-specialist-d8ab77"
+      ]
+    },
+    {
+      "date": "2026-11-17",
+      "pickedAt": "2026-11-18T01:11:47.762Z",
+      "slugs": [
+        "mistral-ai-research-engineer-reinforcement-learning-systems-788aad",
+        "handshake-senior-applied-ai-engineer-8ba385",
+        "fa-extu-saasfaprod1-fa-ocs-oraclecloud-com-cx-1-senior-software-engineer-akamai-inference-cloud-remote-f431d8",
+        "snowflake-forward-deployed-engineer-frontier-engineering-9c7b5e",
+        "turing-research-engineering-manager-stem-26e75c"
       ]
     }
   ]
