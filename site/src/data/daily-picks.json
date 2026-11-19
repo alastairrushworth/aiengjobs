@@ -1,17 +1,6 @@
 {
   "picks": [
     {
-      "date": "2026-10-19",
-      "pickedAt": "2026-10-19T01:54:11.372Z",
-      "slugs": [
-        "reddit-machine-learning-engineer-answers-relevance-892e2d",
-        "cisco-wd5-cisco-careers-software-engineer-media-85ebaa",
-        "cisco-wd5-cisco-careers-software-engineering-technical-leader-go-java-python-c-ai-securtiy-domain-8-to-a02695",
-        "shieldai-staff-engineer-autonomy-r5682-03c7ac",
-        "beamery-senior-data-scientist-ae8abc"
-      ]
-    },
-    {
       "date": "2026-10-20",
       "pickedAt": "2026-10-20T03:45:21.726Z",
       "slugs": [
@@ -328,6 +317,17 @@
         "fa-extu-saasfaprod1-fa-ocs-oraclecloud-com-cx-1-senior-software-engineer-akamai-inference-cloud-remote-f431d8",
         "snowflake-forward-deployed-engineer-frontier-engineering-9c7b5e",
         "turing-research-engineering-manager-stem-26e75c"
+      ]
+    },
+    {
+      "date": "2026-11-18",
+      "pickedAt": "2026-11-19T01:34:20.740Z",
+      "slugs": [
+        "crusoe-ai-applied-research-phd-intern-summer-2027-18c873",
+        "causaly-senior-agent-harness-engineer-c6a806",
+        "causaly-senior-agent-harness-engineer-d7853f",
+        "beaconai-staff-applied-ai-engineer-agentic-systems-4589c9",
+        "freshworks-staff-engineer-machine-learning-2d2dce"
       ]
     }
   ]
