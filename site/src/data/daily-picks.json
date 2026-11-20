@@ -1,17 +1,6 @@
 {
   "picks": [
     {
-      "date": "2026-10-20",
-      "pickedAt": "2026-10-20T03:45:21.726Z",
-      "slugs": [
-        "grab-senior-ai-engineer-c30f40",
-        "primeintellect-research-engineer-rl-infrastructure-acc7ae",
-        "soprasteria1-genai-senior-software-engineer-97fc13",
-        "mistral-ai-evaluation-engineer-applied-ai-fa652a",
-        "reddit-software-engineer-agent-optimization-evaluation-9a8da9"
-      ]
-    },
-    {
       "date": "2026-10-21",
       "pickedAt": "2026-10-21T04:04:51.299Z",
       "slugs": [
@@ -328,6 +317,17 @@
         "causaly-senior-agent-harness-engineer-d7853f",
         "beaconai-staff-applied-ai-engineer-agentic-systems-4589c9",
         "freshworks-staff-engineer-machine-learning-2d2dce"
+      ]
+    },
+    {
+      "date": "2026-11-19",
+      "pickedAt": "2026-11-20T00:38:50.653Z",
+      "slugs": [
+        "waymo-2027-summer-intern-phd-agentic-ai-cac6ef",
+        "upstart-principal-engineer-llm-23f8ad",
+        "snowflake-software-engineer-intern-ai-ml-summer-2027-216827",
+        "wise-senior-engineering-lead-generative-ai-platform-6328f7",
+        "lilasciences-machine-learning-research-scientist-open-endedness-00a164"
       ]
     }
   ]
