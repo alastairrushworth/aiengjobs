@@ -11,6 +11,7 @@ import {
   remoteLabel,
   safeUrl,
   seniorityLabel,
+  workTypeBeside,
 } from "../../lib/format.ts";
 import { url } from "../../lib/url.ts";
 import { jsonLdScript } from "../../lib/jsonld.ts";
@@ -515,7 +516,7 @@ const breadcrumbJsonLd =
 
 const descBits = [
   `${job.title} at ${job.companyName}`,
-  [location, remoteLabel(job.remoteType)].filter(Boolean).join(", "),
+  [location, workTypeBeside(location, job.remoteType)].filter(Boolean).join(", "),
   salary,
   job.skills.length ? `Skills: ${job.skills.slice(0, 3).join(", ")}` : null,
 ].filter(Boolean);

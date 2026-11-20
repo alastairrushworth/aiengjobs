@@ -1,5 +1,5 @@
 import type { Job } from "@aiengjobs/shared";
-import { formatSalary, remoteLabel } from "./format.ts";
+import { formatSalary, workTypeBeside } from "./format.ts";
 import { fxRates } from "./data.ts";
 import { ogImagePath } from "./og/policy.ts";
 import { url } from "./url.ts";
@@ -48,7 +48,7 @@ function summary(job: Job): string {
   const bits = [
     job.companyName,
     job.locationRaw,
-    remoteLabel(job.remoteType),
+    workTypeBeside(job.locationRaw, job.remoteType),
     formatSalary(job, fxRates),
     job.skills.length ? `Skills: ${job.skills.slice(0, 6).join(", ")}` : null,
   ].filter(Boolean);

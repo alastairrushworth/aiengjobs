@@ -209,6 +209,33 @@ export function remoteLabel(t?: RemoteType): string | null {
   return t ? REMOTE_LABELS[t] : null;
 }
 
+// How a location string says each work type itself. "Remotely in Germany"
+// counts; "on site", "onsite" and "on-site" are one answer.
+const SAYS_WORK_TYPE: Record<RemoteType, RegExp> = {
+  remote: /\bremote(ly)?\b/i,
+  hybrid: /\bhybrid\b/i,
+  onsite: /\bon[\s-]?site\b/i,
+};
+
+/**
+ * The work-type label to print *beside* a location, or null when the location
+ * has already said it.
+ *
+ * Feeds routinely put the work type in the location field — "Remote", "Remote
+ * job", "Remote - Dallas", "San Carlos - Hybrid" — and joining that to the
+ * label gave 511 of the 3,568 job pages a meta description reading "… at
+ * Runway ML — Remote, Remote — $250k–310k/yr" (2026-11-20), and the feeds
+ * "Remote · Remote". Where the two are shown as separate things (a card's
+ * location line and its badge) remoteLabel is still the one to use.
+ */
+export function workTypeBeside(
+  location: string | null | undefined,
+  t?: RemoteType,
+): string | null {
+  if (!t) return null;
+  return location && SAYS_WORK_TYPE[t].test(location) ? null : REMOTE_LABELS[t];
+}
+
 const SENIORITY_LABELS: Record<Seniority, string> = {
   intern: "Intern",
   junior: "Junior",
