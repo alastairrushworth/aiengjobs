@@ -13,6 +13,12 @@ interface Props extends FilterOptions {
   total: number;
   /** How many the server already rendered into the slot. */
   initial: number;
+  /**
+   * Roles that come before the rendered ones in the unfiltered order — a paged
+   * landing's `page.start`, 0 everywhere else. Lets the results line describe a
+   * later slice truthfully once a filter has been applied and cleared again.
+   */
+  offset?: number;
   /** Plural noun for the results line ("open roles", "roles"). */
   noun?: string;
   /** The page renders a pager the client has to stand down while filtering. */
@@ -34,6 +40,7 @@ const {
   logoBase,
   total,
   initial,
+  offset = 0,
   noun = "open roles",
   hasPager = false,
   quiet = false,
@@ -54,6 +61,7 @@ const showAllHidden = hasPager || total <= initial;
   data-logo-base={logoBase}
   data-home={jobsUrl()}
   data-initial={String(initial)}
+  data-offset={String(offset)}
   data-total={String(total)}
   data-noun={noun}
   data-has-pager={hasPager ? "1" : ""}
@@ -167,6 +175,7 @@ const showAllHidden = hasPager || total <= initial;
 
   const scope = document.querySelector<HTMLElement>(".filter-scope")!;
   const INITIAL = Number(scope.dataset.initial);
+  const OFFSET = Number(scope.dataset.offset) || 0;
   const NOUN = scope.dataset.noun!;
   const hasPager = Boolean(scope.dataset.hasPager);
   const jobBase = scope.dataset.jobBase!;
@@ -188,6 +197,13 @@ const showAllHidden = hasPager || total <= initial;
   const segs = [...scope.querySelectorAll<HTMLElement>(".seg[data-filter]")];
 
   const jobsEl = document.getElementById("jobs")!;
+  // The cards the server rendered, kept so the unfiltered view can be put back
+  // exactly. Rebuilding it from the payload is only right on the first page:
+  // the payload starts at the landing's newest role, so on /ai-agent-jobs/2/
+  // clearing a filter used to leave roles 1–50 under a pager that said page 2
+  // and a hero that said "showing 51–100", and "Older →" then skipped the
+  // fifty roles the page was supposed to be showing.
+  const serverCards = [...jobsEl.children];
   const statusText = document.getElementById("status-text")!;
   const empty = document.getElementById("empty")!;
   const suggestEl = document.getElementById("suggestions")!;
@@ -582,9 +598,15 @@ const showAllHidden = hasPager || total <= initial;
     // Filtered views are capped like the unfiltered one. Rendering every match
     // put 2,382 cards and ~32k nodes into a 300,000px document for a query as
     // ordinary as "engineer" — unusable to scroll and a long jank on a phone.
+    //
+    // With nothing filtered and nothing expanded, the view is the one the
+    // server rendered — put those nodes back rather than rebuild them, which is
+    // what keeps a later slice showing its own roles (see serverCards).
+    const pristine = !filtering && !showAll;
     const limit = showAll ? matches.length : INITIAL;
     const visible = matches.slice(0, limit);
-    jobsEl.replaceChildren(...visible.map((j) => makeCard(j, terms)));
+    if (pristine) jobsEl.replaceChildren(...serverCards);
+    else jobsEl.replaceChildren(...visible.map((j) => makeCard(j, terms)));
 
     const total = data.length;
     const capped = visible.length < matches.length;
@@ -594,7 +616,9 @@ const showAllHidden = hasPager || total <= initial;
         : `${formatCount(matches.length)} matching roles`
       : showAll
         ? `Showing all ${formatCount(total)} ${NOUN}`
-        : `Showing the ${formatCount(Math.min(INITIAL, total))} newest of ${formatCount(total)} ${NOUN}`;
+        : OFFSET > 0
+          ? `Showing ${formatCount(OFFSET + 1)}–${formatCount(OFFSET + serverCards.length)} of ${formatCount(total)} ${NOUN}`
+          : `Showing the ${formatCount(Math.min(INITIAL, total))} newest of ${formatCount(total)} ${NOUN}`;
 
     empty.hidden = matches.length !== 0;
     if (!matches.length) renderSuggestions(data);
