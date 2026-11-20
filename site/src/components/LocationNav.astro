@@ -25,19 +25,19 @@ const { current, heading = "Jobs by location" } = Astro.props;
   <h2>{heading}</h2>
   {LOCATION_GROUPS.map((g) => (
     <p class="line">
-      <span class="lead">{g.label}</span>
+      <span class="lead">{g.label}</span>{" "}
       {g.landings.map((l) => {
         const text = l.place ?? l.label;
         const n = formatCount(l.jobs.length);
         return l.slug === current ? (
           <span class="item here" aria-current="page">
-            {text}
-            <span class="n">{n}</span>
+            {text}{" "}
+            <span class="n">{n}</span>{" "}
           </span>
         ) : (
           <span class="item">
-            <a href={url(`/${l.slug}/`)}>{text}</a>
-            <span class="n">{n}</span>
+            <a href={url(`/${l.slug}/`)}>{text}</a>{" "}
+            <span class="n">{n}</span>{" "}
           </span>
         );
       })}
@@ -72,7 +72,10 @@ const { current, heading = "Jobs by location" } = Astro.props;
   .line .lead { color: var(--muted); min-width: 7.5em; }
   .line .item { white-space: nowrap; }
   .line .here { color: var(--text); font-weight: 600; }
-  .line .n { color: var(--muted); font-size: 0.78rem; margin-left: 3px; }
+  /* The gap before a count is a real space in the markup, not a margin: with
+     no character between them "London" and "201" are one word — "London201" —
+     to anything that reads the text rather than the boxes. */
+  .line .n { color: var(--muted); font-size: 0.78rem; }
   .line a {
     color: var(--accent-text);
     display: inline-block;
