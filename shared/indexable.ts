@@ -74,17 +74,95 @@ export function listedJobs(snapshot: SiteSnapshot): Job[] {
 const dupKey = (j: Job): string => [j.title, j.companySlug, j.locationRaw ?? ""].join(" ");
 
 /**
+ * A second way to be the same job: one advert posted once per city, with the
+ * city written into the title and nothing else changed.
+ *
+ * Speechify had 245 of these on 2026-11-20 — "Software Engineer, AI Data - Las
+ * Vegas, NV, USA" and 143 siblings sharing one location ("Remote") and one
+ * description to the byte — which made a single role 7% of the board, a third
+ * of /remote-ai-jobs and the top row of "Most open positions" on /stats. The
+ * key above can't see it, because the titles differ.
+ *
+ * So: same employer, same raw location, the same title once a trailing
+ * " - suffix" is dropped, and the same description. All four, because each
+ * alone is wrong somewhere on the board:
+ *
+ * - The suffix is usually not a place. "Software Engineer - Inference
+ *   Product" and "Software Engineer - Storage Systems" are two jobs, and 56
+ *   such groups sit beside Speechify's. Their descriptions differ; that is
+ *   what tells a team from a city without a gazetteer.
+ * - An identical description alone isn't a duplicate either: Field AI files
+ *   17 different roles in Irvine under one boilerplate text.
+ * - Speechify's own adverts differ by country in exactly one line — the pay
+ *   band — and those 27 stay separate pages, each with its own figure.
+ *
+ * Null when the title has no suffix or the description is too short to vouch
+ * for anything (closed rows carry none at all).
+ */
+const TITLE_SUFFIX = /^(.*\S)\s+[-–—]\s+\S/;
+const MIN_REPOST_TEXT = 200;
+const repostKey = (j: Job): string | null => {
+  const stem = TITLE_SUFFIX.exec(j.title)?.[1];
+  if (!stem) return null;
+  const text = (j.descriptionText ?? "").replace(/\s+/g, " ").trim();
+  if (text.length < MIN_REPOST_TEXT) return null;
+  // NUL-joined, so no field can run into the next and forge another's key.
+  return ["repost", stem, j.companySlug, j.locationRaw ?? "", text].join("\u0000");
+};
+
+/**
  * Duplicate key → slug of the posting the rest consolidate onto. Expects its
- * input in newest-first order (as `listedJobs` returns), so the first slug seen
- * for a key is the newest one.
+ * input in newest-first order (as `listedJobs` returns), so the newest of each
+ * set is the one the others fold into.
+ *
+ * A posting can match others on either key, and the two relations chain — A
+ * and B share a title, B and C are reposts of one advert — so the sets are
+ * merged rather than looked up: every member of a chain resolves to the one
+ * newest posting, never to a page that itself points somewhere else.
  */
 export function canonicalByDupKey(listed: Job[]): Map<string, string> {
+  const order = new Map<string, number>();
+  listed.forEach((j, i) => {
+    if (!order.has(j.slug)) order.set(j.slug, i);
+  });
+  const parent = new Map<string, string>();
+  const find = (slug: string): string => {
+    let root = slug;
+    for (let up = parent.get(root); up !== undefined; up = parent.get(root)) root = up;
+    return root;
+  };
+
+  // The first posting seen for each key, then every later holder of that key
+  // merged into its set — keeping whichever root came first in the input.
+  const holder = new Map<string, string>();
+  for (const j of listed) {
+    for (const key of [dupKey(j), repostKey(j)]) {
+      if (key === null) continue;
+      const first = holder.get(key);
+      if (first === undefined) {
+        holder.set(key, j.slug);
+        continue;
+      }
+      const a = find(first);
+      const b = find(j.slug);
+      if (a === b) continue;
+      if (order.get(a)! <= order.get(b)!) parent.set(b, a);
+      else parent.set(a, b);
+    }
+  }
+
   const canonical = new Map<string, string>();
-  for (const j of listed) if (!canonical.has(dupKey(j))) canonical.set(dupKey(j), j.slug);
+  for (const [key, slug] of holder) canonical.set(key, find(slug));
   return canonical;
 }
 
-/** The slug of the posting this one duplicates, or null when it's canonical. */
+/**
+ * The slug of the posting this one duplicates, or null when it's canonical.
+ *
+ * Read through the title key alone: every posting has one, and
+ * `canonicalByDupKey` has already resolved it to the head of whatever set the
+ * posting ended up in, by either route.
+ */
 export function duplicateOfIn(canonical: Map<string, string>, job: Job): string | null {
   const winner = canonical.get(dupKey(job));
   return winner && winner !== job.slug ? winner : null;
