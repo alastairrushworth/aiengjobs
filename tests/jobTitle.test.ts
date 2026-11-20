@@ -31,7 +31,8 @@ describe("buildJobTitles", () => {
       companyName: "Acme",
     });
     const t = titleOf([j], "a");
-    expect(t.length).toBeLessThanOrEqual(52);
+    // TITLE_BUDGET: the whole <title>, now that job pages carry no brand suffix.
+    expect(t.length).toBeLessThanOrEqual(70);
     expect(t).toMatch(/…\s·\sAcme$/);
   });
 

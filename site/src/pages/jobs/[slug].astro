@@ -530,8 +530,11 @@ const ogImageAlt = `${job.title} at ${job.companyName}${location ? `, ${location
 }`;
 ---
 
+{/* No brand suffix: the role and the employer need the room, and the site name
+    is printed above the result anyway — see TITLE_BUDGET in lib/jobTitle. */}
 <Base
   title={pageTitle}
+  noBrandSuffix
   description={metaDescription}
   ogImage={ogImage}
   ogImageAlt={ogImageAlt}

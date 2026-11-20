@@ -24,10 +24,21 @@ import { countryName } from "./format.ts";
  * requisition, which data.ts canonicalizes onto one page anyway.
  */
 
-// Base.astro appends " — frontierroles.com" (20 chars), so budget for the whole
-// thing. Keep these two in step: a longer brand eats the role's room, and the
-// pair has to stay under the ~70 chars Google renders before truncating.
-const TITLE_BUDGET = 50;
+// The whole <title>: job pages carry no " — frontierroles.com" suffix
+// (jobs/[slug].astro passes noBrandSuffix), so this is everything Google has to
+// render, and ~70 characters is what it shows before truncating.
+//
+// The suffix used to be there and this used to be 50, to leave it room. Those
+// 20 characters were being taken from the role name to restate what the SERP
+// already prints above every result: 1,670 of 3,568 indexable titles carried a
+// "…" on 2026-11-20 and 218 cut the role to 22 characters or fewer — "Frontier
+// AI Research… · AstraZeneca · Barcelona" for "Frontier AI Research Principal",
+// "Software Engineer… · Invisible Technologies" for "Software Engineer (Forward
+// Deployed)". A title is matched on as well as displayed, and the words cut
+// were the ones that say which job it is. At 70 the same corpus trims 507 and
+// cuts one role that short, with fewer titles past 70 than before (22, down
+// from 360), because fewer collide and need the allowance below.
+const TITLE_BUDGET = 70;
 const MIN_ROLE_CHARS = 24;
 
 /**
