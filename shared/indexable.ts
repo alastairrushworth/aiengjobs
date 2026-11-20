@@ -1,14 +1,15 @@
 import type { Job, SiteSnapshot } from "./types.ts";
 import { canonicalCity } from "./city.ts";
+import { decodeEntities } from "./text.ts";
 
 /**
  * Which /jobs/<slug>/ URLs actually carry JobPosting markup.
  *
- * Three independent rules decide that, and the site applies them in three
+ * Four independent rules decide that, and the site applies them in three
  * different places: the age cutoff and duplicate consolidation in
- * site/src/lib/data.ts, and Google's insistence on a resolvable location in
- * jobs/[slug].astro. A page that fails any of them still exists and is still
- * applicable — it just renders without the structured data.
+ * site/src/lib/data.ts, and Google's insistence on a resolvable location and
+ * a real description in jobs/[slug].astro. A page that fails any of them still
+ * exists and is still applicable — it just renders without the structured data.
  *
  * The engine needs the same answer. Google licenses the Indexing API for
  * exactly two content types, JobPosting and BroadcastEvent, and submitting a
@@ -186,13 +187,34 @@ export function hasUsableLocation(job: Job): boolean {
   return Boolean(job.country);
 }
 
-/** Slugs whose pages carry JobPosting markup: listed, canonical, and locatable. */
+/**
+ * Google requires `description` to be the advert — "the full description of
+ * the job" — and a posting whose feed carried none has nothing to put there.
+ * The page used to fill the gap with a sentence of its own ("<title> at
+ * <company>. Apply on the company's site."), which is markup describing a job
+ * the page itself does not describe: two HSBC roles on 2026-11-20, whose feed
+ * supplies no text. No advert, no JobPosting; the page still renders and still
+ * links to the employer.
+ *
+ * Any letter or digit counts, read after entities are decoded: the page
+ * builds its paragraphs from the decoded text, and every line this accepts is
+ * a line that survives into them — so a posting this function passes always
+ * has a description to emit.
+ */
+export function hasDescription(job: Job): boolean {
+  return /[\p{L}\p{N}]/u.test(decodeEntities(job.descriptionText ?? ""));
+}
+
+/** Slugs whose pages carry JobPosting markup: listed, canonical, locatable and described. */
 export function indexableSlugs(snapshot: SiteSnapshot): Set<string> {
   const listed = listedJobs(snapshot);
   const canonical = canonicalByDupKey(listed);
   return new Set(
     listed
-      .filter((j) => duplicateOfIn(canonical, j) === null && hasUsableLocation(j))
+      .filter(
+        (j) =>
+          duplicateOfIn(canonical, j) === null && hasUsableLocation(j) && hasDescription(j),
+      )
       .map((j) => j.slug),
   );
 }

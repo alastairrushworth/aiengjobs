@@ -28,6 +28,8 @@ function job(slug: string, over: Partial<Job> = {}): Job {
     clusters: [],
     postedAt: daysAgo(1),
     ingestedAt: daysAgo(1),
+    // Every listed role has advert text; one without emits no JobPosting.
+    descriptionText: "Build and ship AI systems.",
     ...over,
   };
 }
@@ -180,7 +182,7 @@ describe("indexableSlugs", () => {
     });
 
     it("needs a description to compare — a missing one vouches for nothing", () => {
-      const idx = indexableSlugs(
+      const listed = listedJobs(
         snapshot([
           repost("x", "Leeds, United Kingdom", { descriptionText: undefined }),
           repost("y", "York, United Kingdom", { descriptionText: undefined }),
@@ -188,8 +190,9 @@ describe("indexableSlugs", () => {
           repost("w", "Hull, United Kingdom", { descriptionText: "Apply now." }),
         ]),
       );
+      const canonical = canonicalByDupKey(listed);
 
-      expect(idx.size).toBe(4);
+      expect(listed.map((j) => duplicateOfIn(canonical, j))).toEqual([null, null, null, null]);
     });
 
     it("resolves a chain through both rules to the one newest posting", () => {
@@ -281,6 +284,22 @@ describe("indexableSlugs", () => {
     );
 
     expect([...idx].sort()).toEqual(["city-and-country", "country-only"]);
+  });
+
+  it("excludes roles whose feed carried no advert text", () => {
+    // `description` is required and has to be the employer's own; the page
+    // used to substitute a sentence of its own for these.
+    const idx = indexableSlugs(
+      snapshot([
+        job("described", { locationRaw: "A", descriptionText: "Build agents." }),
+        job("absent", { locationRaw: "B", descriptionText: undefined }),
+        job("blank", { locationRaw: "C", descriptionText: " \n  " }),
+        job("entities-only", { locationRaw: "D", descriptionText: "&nbsp;&mdash;&#8226;" }),
+        job("punctuation", { locationRaw: "E", descriptionText: "•\n—" }),
+      ]),
+    );
+
+    expect([...idx]).toEqual(["described"]);
   });
 
   it("excludes tombstones — closed, delisted and aged-out roles alike", () => {
