@@ -3,6 +3,7 @@ import Base from "../layouts/Base.astro";
 import BrowseNav from "../components/BrowseNav.astro";
 import { url } from "../lib/url.ts";
 import { CLUSTER_PAGES } from "../lib/clusters.ts";
+import { MAX_JOB_AGE_DAYS } from "@aiengjobs/shared/indexable";
 ---
 
 {/* GitHub Pages serves this file's body at whatever URL 404'd, so the default
@@ -16,9 +17,14 @@ import { CLUSTER_PAGES } from "../lib/clusters.ts";
         MIN_CITY_JOBS, so one closed requisition can retire /ai-jobs-seoul/
         after Google has indexed it. Telling that visitor "the role has closed"
         is simply wrong. */}
+    {/* …and a job URL goes two ways, not one. A third of the dead job URLs
+        Googlebot fetched in November 2026 were roles still open at the
+        employer that had passed MAX_JOB_AGE_DAYS, and "has closed"
+        was untrue of every one of them. */}
     <p>
-      If you followed a link to a job, the role has probably closed and been
-      removed from the board — listings are re-verified nightly.
+      If you followed a link to a job, the role has probably closed, or has
+      been open for more than {MAX_JOB_AGE_DAYS} days and is no longer listed here — listings
+      are re-verified nightly.
     </p>
     <p>
       If you were after a city or topic page, it may no longer have enough open
@@ -32,6 +38,8 @@ import { CLUSTER_PAGES } from "../lib/clusters.ts";
     links={[
       { href: url("/"), text: "Browse all jobs" },
       ...CLUSTER_PAGES.map((p) => ({ href: url(`/${p.slug}/`), text: p.label })),
+      { href: url("/locations/"), text: "Locations" },
+      { href: url("/companies/"), text: "Companies" },
       { href: url("/stats/"), text: "Stats" },
     ]}
   />
