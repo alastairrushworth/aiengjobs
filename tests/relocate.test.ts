@@ -119,6 +119,73 @@ describe("relocate", () => {
   });
 });
 
+describe("relocate misread countries", () => {
+  it("corrects a country the engine read off another site of a multi-site location", async () => {
+    // Stored by the whole-string reading: the first hint-table row to match.
+    const path = makeDb([
+      { id: "apollo", locationRaw: "London & San Francisco", country: "US", city: "London" },
+      { id: "helsing", locationRaw: "Munich - Berlin - London - Paris", country: "GB", city: "Munich" },
+      {
+        id: "nebius",
+        locationRaw: "Amsterdam, Netherlands; London, United Kingdom",
+        country: "GB",
+        city: "Amsterdam",
+      },
+    ]);
+
+    await run(path);
+
+    expect(countries(path)).toEqual({ apollo: "GB", helsing: "DE", nebius: "NL" });
+  });
+
+  it("re-derives a region that was stored beside the misread country", async () => {
+    const path = makeDb([
+      {
+        id: "hyd",
+        locationRaw: "Hyderabad - Phoenix Equinox Tower 2",
+        country: "US",
+        region: "Arizona",
+        city: "Hyderabad",
+      },
+    ]);
+
+    await run(path);
+
+    expect(countries(path)).toEqual({ hyd: "IN" });
+    expect(regions(path)).toEqual({ hyd: "Telangana" });
+  });
+
+  it("leaves a stored country the whole-string reading would not have produced", async () => {
+    // Not the engine's mechanical answer, so it came from the extractor or a
+    // connector — and those are not reproducible from location_raw.
+    const path = makeDb([
+      { id: "supplied", locationRaw: "London & San Francisco", country: "IE", city: "London" },
+      // A list of countries has no city to agree with; its reading stands.
+      { id: "countries", locationRaw: "Canada; United Kingdom; United States", country: "US" },
+      // One site, one reading: nothing to correct.
+      { id: "single", locationRaw: "Dublin, California, United States", country: "US", city: "Dublin" },
+    ]);
+
+    await run(path);
+
+    expect(countries(path)).toEqual({ supplied: "IE", countries: "US", single: "US" });
+  });
+
+  it("is idempotent, and writes nothing on a dry run", async () => {
+    const rows = [
+      { id: "apollo", locationRaw: "London & San Francisco", country: "US", city: "London" },
+    ];
+    const dry = makeDb(rows);
+    await run(dry, { dryRun: true });
+    expect(countries(dry)).toEqual({ apollo: "US" });
+
+    const path = makeDb(rows);
+    await run(path);
+    await run(path);
+    expect(countries(path)).toEqual({ apollo: "GB" });
+  });
+});
+
 describe("relocate regions", () => {
   it("fills a blank region from the location and the stored city", async () => {
     const path = makeDb([

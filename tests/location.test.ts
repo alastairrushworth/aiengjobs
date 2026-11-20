@@ -297,3 +297,85 @@ describe("parseLocation broad → narrow", () => {
     });
   });
 });
+
+describe("parseLocation multi-site", () => {
+  // The country used to be whichever row of the hint table matched the whole
+  // string first, which is the first site's country only by luck of the table's
+  // order. Fifteen JobPostings on 2026-11-20 paired a city with another site's
+  // country this way.
+
+  it("takes the country from the site the city was read from", () => {
+    expect(parseLocation("London & San Francisco")).toMatchObject({ city: "London", country: "GB" });
+    expect(
+      parseLocation("Amsterdam, Netherlands; Berlin, Germany; London, United Kingdom"),
+    ).toMatchObject({ city: "Amsterdam", country: "NL" });
+    expect(parseLocation("Barcelona; London")).toMatchObject({ city: "Barcelona", country: "ES" });
+    expect(parseLocation("Hong Kong; Shanghai; Singapore")).toMatchObject({
+      city: "Hong Kong",
+      country: "HK",
+    });
+    expect(
+      parseLocation("Berlin, Germany or Palo Alto, CA or Zurich, Switzerland"),
+    ).toMatchObject({ city: "Berlin", country: "DE" });
+    expect(
+      parseLocation("Berlin Office; London Office; Munich Office; Remotely in Germany"),
+    ).toMatchObject({ city: "Berlin", country: "DE" });
+  });
+
+  it("reads a dash-separated list of cities like any other list", () => {
+    expect(parseLocation("Munich - Berlin - London - Paris")).toMatchObject({
+      city: "Munich",
+      country: "DE",
+    });
+    // "Phoenix" is a building here, not Arizona.
+    expect(parseLocation("Hyderabad - Phoenix Equinox Tower 2")).toMatchObject({
+      city: "Hyderabad",
+      region: "Telangana",
+      country: "IN",
+    });
+  });
+
+  it("still reads a dash-separated nest broad to narrow", () => {
+    expect(parseLocation("USA - Georgia - Alpharetta - 30005")).toMatchObject({
+      city: "Alpharetta",
+      country: "US",
+    });
+    expect(parseLocation("Washington - Seattle Campus")).toMatchObject({
+      city: "Seattle",
+      country: "US",
+    });
+    // A bare code is never taken for a state ahead of the city beside it.
+    expect(parseLocation("CA - Toronto").country).toBe("CA");
+    expect(parseLocation("CN - Shanghai").country).toBe("CN");
+  });
+
+  it("falls back to the whole string when the first site names no country", () => {
+    expect(parseLocation("Remote; London").country).toBe("GB");
+    expect(parseLocation("Hybrid - Lisbon").country).toBe("PT");
+    expect(parseLocation("Research and Development, London").country).toBe("GB");
+  });
+
+  it("leaves a list of countries with no city on its old reading", () => {
+    // No one place to agree with, so nothing to correct — and a multi-country
+    // role keeps the country every count has always filed it under.
+    expect(parseLocation("Canada; United Kingdom; United States")).toMatchObject({
+      city: undefined,
+      country: "US",
+    });
+    expect(parseLocation("Remote, Canada; Remote, United States").country).toBe("US");
+  });
+
+  it("does not treat the comma of City, State, Country as a list", () => {
+    expect(parseLocation("Paris, Texas, United States").country).toBe("US");
+    expect(parseLocation("Dublin, California, United States").country).toBe("US");
+    expect(parseLocation("US-CA-Dublin").country).toBe("US");
+  });
+
+  it("places Heidelberg, Tampere and Kuwait", () => {
+    // Aleph Alpha, Scandit and Scale AI roles with no country, and so no
+    // JobPosting, on 2026-11-20.
+    expect(parseLocation("Heidelberg").country).toBe("DE");
+    expect(parseLocation("Tampere").country).toBe("FI");
+    expect(parseLocation("Kuwait City, Kuwait")).toMatchObject({ city: "Kuwait City", country: "KW" });
+  });
+});

@@ -42,7 +42,7 @@ const COUNTRY_HINTS: [RegExp, string][] = [
     "GB",
   ],
   [/\b(canada|toronto|vancouver|montr[eé]al|ottawa|calgary|waterloo|quebec)\b/i, "CA"],
-  [/\b(germany|berlin|munich|münchen|frankfurt|hamburg|cologne|köln|stuttgart|bochum|karlsruhe)\b/i, "DE"],
+  [/\b(germany|berlin|munich|münchen|frankfurt|hamburg|cologne|köln|stuttgart|bochum|karlsruhe|heidelberg)\b/i, "DE"],
   [/\b(france|paris|lyon|toulouse|grenoble|nantes)\b/i, "FR"],
   [/\b(netherlands|amsterdam|rotterdam|utrecht|eindhoven|the hague)\b/i, "NL"],
   [/\b(ireland|dublin|cork)\b/i, "IE"],
@@ -71,7 +71,7 @@ const COUNTRY_HINTS: [RegExp, string][] = [
   [/\b(belgium|brussels|antwerp|ghent)\b/i, "BE"],
   [/\b(denmark|copenhagen)\b/i, "DK"],
   [/\b(norway|oslo)\b/i, "NO"],
-  [/\b(finland|helsinki)\b/i, "FI"],
+  [/\b(finland|helsinki|tampere)\b/i, "FI"],
   [/\b(czech republic|czechia|prague|brno)\b/i, "CZ"],
   [/\b(greece|athens|thessaloniki|kato scholari)\b/i, "GR"],
   [/\b(romania|bucharest|cluj)\b/i, "RO"],
@@ -115,6 +115,7 @@ const COUNTRY_HINTS: [RegExp, string][] = [
   // reads broad → narrow like any other.
   [/\b(tbilisi|batumi|kutaisi)\b/i, "GE"],
   [/\b(qatar|doha)\b/i, "QA"],
+  [/\b(kuwait)\b/i, "KW"],
   [/\b(oman|muscat)\b/i, "OM"],
   [/\b(algeria|algiers)\b/i, "DZ"],
   [/\b(ecuador|quito)\b/i, "EC"],
@@ -140,14 +141,68 @@ function alpha3Country(loc: string): string | undefined {
   return undefined;
 }
 
-function inferCountry(loc: string): string | undefined {
+/** The country a name or a city in the hint table spells — no codes, no states. */
+function hintedCountry(loc: string): string | undefined {
   for (const [re, code] of COUNTRY_HINTS) if (re.test(loc)) return code;
+  return undefined;
+}
+
+function inferCountry(loc: string): string | undefined {
+  const hinted = hintedCountry(loc);
+  if (hinted) return hinted;
   // Before the state check: an explicit country code outranks a two-letter
   // token that might be a state.
   const alpha3 = alpha3Country(loc);
   if (alpha3) return alpha3;
   if (US_STATE.test(loc) || US_STATE_NAMES.test(loc)) return "US";
   return undefined;
+}
+
+/** What separates one site from the next in a multi-site location. Not the
+ *  comma, which far more often separates a city from its state and country. */
+const SITE_SEPARATOR = /\s*[;|/\n]\s*|\s+&\s+|\s+(?:and|or)\s+/i;
+
+/**
+ * The first site a multi-site location names — the one the city is read from.
+ *
+ * `inferCountry` scans the whole string and answers with the first *row of the
+ * hint table* that matches, not the first place the string mentions. For one
+ * site that is the same thing. For several it paired the first site's city
+ * with whichever country happens to sit higher in the table: "London & San
+ * Francisco" came out as London, US; "Munich - Berlin - London - Paris" as
+ * Munich, GB; "Amsterdam, Netherlands; Berlin, Germany; London, United Kingdom"
+ * as Amsterdam, GB. Fifteen JobPostings carried such an address on 2026-11-20,
+ * and the roles sat under the wrong country in every count and filter.
+ *
+ * So where a city was read, the country is asked of the first site alone, and
+ * of the whole string only when that site doesn't say (see parseLocation).
+ *
+ * A spaced dash is the one separator that goes both ways — it lists sites
+ * ("Munich - Berlin - London") and it nests them ("USA - Georgia -
+ * Alpharetta", "Washington - Seattle Campus") — so it only counts as a list
+ * when its segments spell more than one country between them, and then the
+ * first segment that spells one is the answer either way: a list's first city,
+ * or a nest's country. Read through `hintedCountry`, not `inferCountry`, so a
+ * bare "CA" is never taken for California ahead of the Toronto beside it.
+ */
+function firstSite(loc: string): string {
+  const entry = loc.split(SITE_SEPARATOR)[0]!.trim();
+  const segments = entry.split(/\s+[-–—]\s+/);
+  if (segments.length > 1) {
+    const hinted = segments.map(hintedCountry);
+    if (new Set(hinted.filter(Boolean)).size > 1) return segments[hinted.findIndex(Boolean)]!;
+  }
+  return entry;
+}
+
+/**
+ * The country the whole string spells, wherever in it — every engine's reading
+ * before `firstSite` existed. Exported for relocate, which uses it to recognise
+ * a stored country that was derived this way and is now read differently.
+ */
+export function wholeStringCountry(locationRaw?: string): string | undefined {
+  const loc = (locationRaw ?? "").trim();
+  return loc ? inferCountry(loc) : undefined;
 }
 
 // The "never a city" vocabulary now lives in @aiengjobs/shared/city, so the
@@ -364,14 +419,22 @@ export function parseLocation(
     else if (loc) remoteType = "onsite";
   }
 
-  const statedCountry = loc ? inferCountry(loc) : undefined;
+  // The first site's own country where it states one, else whatever the string
+  // says anywhere — "Remote; London" still reads as GB. See firstSite.
+  const anywhere = loc ? inferCountry(loc) : undefined;
+  const ownSite = loc ? (inferCountry(firstSite(loc)) ?? anywhere) : undefined;
   // Broad → narrow first, because where it fires the first segment is the
   // state or the country, and reading that as the city is the bug it exists
   // to prevent. A place it finds but canonicalCity rejects — a building name
   // after "USA - Texas -" — yields no city rather than falling back to the
   // state in front of it.
-  const narrow = loc ? narrowestPlace(loc, statedCountry) : undefined;
+  const narrow = loc ? narrowestPlace(loc, ownSite) : undefined;
   const city = narrow ? canonicalCity(narrow.place) : firstSegmentCity(loc);
+  // The first site's country is only the better answer when there is a city to
+  // go with it — the city is what it has to agree with. A list of countries
+  // and nothing else ("Canada; United Kingdom; United States") names no one
+  // place, and keeps the reading it has always had.
+  const statedCountry = city ? ownSite : anywhere;
   // The raw string first, then the canonicalized city as a fallback. Feeds
   // routinely write the location as an office name or an in-house abbreviation
   // ("sf", "SF Office", "NYC Office") that the hint table cannot match, but
