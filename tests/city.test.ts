@@ -275,6 +275,18 @@ describe("placeholder locations never become a city", () => {
     }
   });
 
+  it("rejects a Workday tenant's literal BLANK", () => {
+    // Epic Games: "BLANK,BLANK,Multiple Locations" — a city called Blank on
+    // three job pages and in the city filter.
+    expect(canonicalCity("BLANK")).toBeUndefined();
+    expect(canonicalCity("Blank")).toBeUndefined();
+    expect(canonicalCity("Blankenburg")).toBe("Blankenburg");
+  });
+
+  it("reads the common misspelling of Bangalore", () => {
+    expect(canonicalCity("Banglore")).toBe("Bangalore");
+  });
+
   it("is case- and whitespace-insensitive about them", () => {
     expect(canonicalCity("  any LOCATION  ")).toBeUndefined();
     expect(canonicalCity("IN-OFFICE")).toBeUndefined();

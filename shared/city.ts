@@ -155,6 +155,9 @@ const PLACEHOLDER = new Set([
   "home",
   "flexible",
   "anywhere",
+  // Epic Games' Workday tenant: "BLANK,BLANK,Multiple Locations", which reached
+  // the city filter and three job pages as a place called Blank.
+  "blank",
 ]);
 
 // Deliberate merges. Values are the display form; keys are lowercased.
@@ -173,6 +176,7 @@ const ALIASES: Record<string, string> = {
   sf: "San Francisco",
   "south san francisco": "San Francisco",
   bengaluru: "Bangalore",
+  banglore: "Bangalore",
   gurugram: "Gurgaon",
   "washington dc": "Washington",
   "washington d.c.": "Washington",
