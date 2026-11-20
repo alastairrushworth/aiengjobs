@@ -75,24 +75,18 @@ const itemList = {
 // bare landing URL, never /1/.
 const firstPage = url(`/${landing.slug}/`);
 
-// Refining a landing is a page-1 affordance. Pages 2+ are slices of one
-// ordering, and a filter there would have to either silently jump you back to
-// the first page of a different list or paginate two ways at once; page 1 is
-// also where search traffic lands and where the stats block already sits.
+// The filter bar sits on every slice, not just the first. It is built from the
+// WHOLE landing's roles and fetches the whole landing's jobs-data.json, so it
+// works identically wherever you are — arriving on page 8 from Google or the
+// pager used to leave you with 798 roles and no way to narrow them without
+// first going back to page 1. JobFilters stands the pager down while a filter
+// is up (hasPager) and puts this slice's own cards back once it is cleared
+// (offset). The stats block stays page-1-only: it describes the whole landing,
+// and repeating it down 16 pages is noise.
 //
-// Filter options and the payload are scoped to this landing, so "Senior (240)"
-// counts senior roles in *this* list — a filter bar carrying whole-board counts
-// would be a worse answer than no filter bar.
-// On every slice, not just the first.
-//
-// The stats block is page-1-only by design (it describes the whole landing, and
-// repeating it down 16 pages is noise). The filter bar was tied to the same
-// condition, but it isn't the same kind of thing: it's built from the WHOLE
-// landing's jobs and fetches the whole landing's jobs-data.json, so it works
-// identically on any slice — and arriving on page 8 from Google or the pager
-// used to leave you with 798 roles and no way to narrow them without first
-// going back to page 1. JobFilters already knows to stand the pager down once a
-// filter is up (hasPager).
+// Options and payload are scoped to this landing, so "Senior (240)" counts
+// senior roles in *this* list — a filter bar carrying whole-board counts would
+// be a worse answer than no filter bar.
 const filterOptions = buildFilterOptions(landing.jobs);
 
 // Don't offer to narrow what the page has already narrowed. /ai-jobs-london
@@ -140,38 +134,27 @@ const noindex = page.currentPage > 1;
 
   {stats && <LandingStats stats={stats} where={landing.where} />}
 
-  {filterOptions ? (
-    <JobFilters
-      src={url(`/${landing.slug}/jobs-data.json`)}
-      jobBase={url("/jobs/")}
-      logoBase={url("/logos/")}
-      total={landing.jobs.length}
-      initial={page.data.length}
-      noun="roles"
-      quiet
-      hasPager={paged}
-      hide={hide}
-      {...filterOptions}
-    >
-      <p class="crumbs" slot="crumbs">
-        <a class="back" href={url("/")}><span class="arrow" aria-hidden="true">←</span>All jobs</a>
-        <a class="feed" href={feedHref}>RSS feed</a>
-      </p>
-      <ul class="jobs" id="jobs">
-        {page.data.map((job, i) => <JobCard job={job} href={url(`/jobs/${job.slug}/`)} eager={i < 6} />)}
-      </ul>
-    </JobFilters>
-  ) : (
-    <>
-      <p class="crumbs">
-        <a class="back" href={url("/")}><span class="arrow" aria-hidden="true">←</span>All jobs</a>
-        <a class="feed" href={feedHref}>RSS feed</a>
-      </p>
-      <ul class="jobs">
-        {page.data.map((job, i) => <JobCard job={job} href={url(`/jobs/${job.slug}/`)} eager={i < 6} />)}
-      </ul>
-    </>
-  )}
+  <JobFilters
+    src={url(`/${landing.slug}/jobs-data.json`)}
+    jobBase={url("/jobs/")}
+    logoBase={url("/logos/")}
+    total={landing.jobs.length}
+    initial={page.data.length}
+    offset={page.start}
+    noun="roles"
+    quiet
+    hasPager={paged}
+    hide={hide}
+    {...filterOptions}
+  >
+    <p class="crumbs" slot="crumbs">
+      <a class="back" href={url("/")}><span class="arrow" aria-hidden="true">←</span>All jobs</a>
+      <a class="feed" href={feedHref}>RSS feed</a>
+    </p>
+    <ul class="jobs" id="jobs">
+      {page.data.map((job, i) => <JobCard job={job} href={url(`/jobs/${job.slug}/`)} eager={i < 6} />)}
+    </ul>
+  </JobFilters>
   {page.data.length === 0 && (
     <p class="empty">No open roles here right now.</p>
   )}

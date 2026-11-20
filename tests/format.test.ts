@@ -7,6 +7,7 @@ import {
   safeUrl,
   salaryMidpointUsd,
   type SalaryFields,
+  workTypeBeside,
 } from "../site/src/lib/format.ts";
 import { jsonLdScript } from "../site/src/lib/jsonld.ts";
 
@@ -167,5 +168,33 @@ describe("postedAgo", () => {
 
   it("returns null rather than a stamp for unparseable dates", () => {
     expect(postedAgo("not-a-date", gen)).toBeNull();
+  });
+});
+
+describe("workTypeBeside", () => {
+  it("adds the label when the location doesn't already say it", () => {
+    expect(workTypeBeside("London, UK", "hybrid")).toBe("Hybrid");
+    expect(workTypeBeside("Schaumburg, IL, United States", "onsite")).toBe("On-site");
+    expect(workTypeBeside(null, "remote")).toBe("Remote");
+  });
+
+  it("stays quiet when the feed put the work type in the location", () => {
+    // "… at Runway ML — Remote, Remote — $250k–310k/yr" on 511 job pages.
+    for (const loc of ["Remote", "Remote job", "Remote - Dallas", "Fully Remote", "Virtual (Remote)", "Remotely in Germany"]) {
+      expect(workTypeBeside(loc, "remote")).toBeNull();
+    }
+    expect(workTypeBeside("San Carlos - Hybrid", "hybrid")).toBeNull();
+    for (const loc of ["Onsite - Austin", "On-site, Austin", "Austin (on site)"]) {
+      expect(workTypeBeside(loc, "onsite")).toBeNull();
+    }
+  });
+
+  it("only suppresses the type the location actually names", () => {
+    expect(workTypeBeside("Remote - Dallas", "hybrid")).toBe("Hybrid");
+    expect(workTypeBeside("Remoteville, TX", "remote")).toBe("Remote");
+  });
+
+  it("has nothing to add without a work type", () => {
+    expect(workTypeBeside("London", undefined)).toBeNull();
   });
 });

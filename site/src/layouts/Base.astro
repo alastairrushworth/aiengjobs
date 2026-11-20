@@ -6,7 +6,11 @@ import { generatedAt } from "../lib/data.ts";
 interface Props {
   title: string;
   description?: string;
-  /** Set on the homepage, which carries its own branded title. */
+  /**
+   * Leave " — frontierroles.com" off the title. Set on the homepage, which
+   * carries its own branded title, and on job pages, whose titles are budgeted
+   * to the character (lib/jobTitle) and spend it on the role instead.
+   */
   noBrandSuffix?: boolean;
   /** Tombstone/error pages that search engines shouldn't index. */
   noindex?: boolean;

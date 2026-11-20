@@ -1,12 +1,6 @@
 ---
 import Base from "../../layouts/Base.astro";
-import {
-  companyBySlug,
-  companyPageIndexable,
-  fxRates,
-  openJobsByCompany,
-  MIN_INDEXED_COMPANY_ROLES,
-} from "../../lib/data.ts";
+import { companyBySlug, companyPageIndexable, fxRates, openJobsByCompany } from "../../lib/data.ts";
 import { formatCount, kUsd, median, salaryMidpointUsd } from "../../lib/format.ts";
 import { url } from "../../lib/url.ts";
 
@@ -18,10 +12,15 @@ import { url } from "../../lib/url.ts";
  * never reached them. This directory is linked from the footer of every
  * page, which puts every employer two hops from anywhere.
  *
- * Only employers whose page is offered for indexing are listed
- * (MIN_INDEXED_COMPANY_ROLES): a link to a one-role page sends the crawl to a
- * noindexed copy of a job page, and the reader to a page that says less than
- * the card they could have clicked.
+ * Every employer is listed, but an employer with a single open role links
+ * straight to that role. Its own page is noindexed (MIN_INDEXED_COMPANY_ROLES)
+ * — a link there sends the crawl to a noindexed copy of a job page, and the
+ * reader to a page that says less than the card they could have clicked —
+ * which is why those employers used to be left out altogether. Leaving them
+ * out had its own cost: a role at a one-role employer, in no cluster and no
+ * city big enough for a page, was linked from nothing but that noindexed page
+ * (five roles on 2026-11-20, reachable only through the sitemap). The role's
+ * page is the one worth a link, so it gets it.
  */
 
 interface Row {
@@ -29,12 +28,13 @@ interface Row {
   name: string;
   count: number;
   medianUsd: number | null;
+  /** The employer's page, or its one role's. */
+  href: string;
 }
 
 const MIN_PRICED_FOR_MEDIAN = 3; // as lib/companyHiring
 
 const rows: Row[] = [...openJobsByCompany]
-  .filter(([slug]) => companyPageIndexable(slug))
   .map(([slug, jobs]) => {
     const mids = jobs
       .map((j) => salaryMidpointUsd(j, fxRates))
@@ -44,6 +44,7 @@ const rows: Row[] = [...openJobsByCompany]
       name: companyBySlug.get(slug)?.name ?? slug,
       count: jobs.length,
       medianUsd: mids.length >= MIN_PRICED_FOR_MEDIAN ? median(mids) : null,
+      href: companyPageIndexable(slug) ? url(`/companies/${slug}/`) : url(`/jobs/${jobs[0]!.slug}/`),
     };
   });
 
@@ -61,7 +62,6 @@ for (const r of [...rows].sort((a, b) => a.name.localeCompare(b.name))) {
   else groups.set(key, [r]);
 }
 
-const singles = openJobsByCompany.size - rows.length;
 const totalRoles = rows.reduce((n, r) => n + r.count, 0);
 
 const title = "Companies hiring AI engineers";
@@ -74,10 +74,8 @@ const description =
   <section class="hero" style="padding-bottom:8px">
     <h1>{title}</h1>
     <p>
-      {formatCount(rows.length)} employers with {formatCount(MIN_INDEXED_COMPANY_ROLES)} or more open
-      AI-engineering roles — {formatCount(totalRoles)} roles between them, pulled from their own
-      career sites.
-      {singles > 0 && ` ${formatCount(singles)} more have a single open role, listed on the board.`}
+      {formatCount(rows.length)} employers with {formatCount(totalRoles)} open AI-engineering roles
+      between them, pulled from their own career sites.
     </p>
   </section>
 
@@ -86,8 +84,8 @@ const description =
     <ol class="top">
       {top.map((c) => (
         <li>
-          <a href={url(`/companies/${c.slug}/`)}>{c.name}</a>
-          <span class="n">{formatCount(c.count)} role{c.count === 1 ? "" : "s"}</span>
+          <a href={c.href}>{c.name}</a>{" "}
+          <span class="n">{formatCount(c.count)} role{c.count === 1 ? "" : "s"}</span>{" "}
           {c.medianUsd !== null && <span class="pay">median {kUsd(c.medianUsd)}</span>}
         </li>
       ))}
@@ -100,8 +98,8 @@ const description =
       <p class="line">
         {list.map((c) => (
           <span class="item">
-            <a href={url(`/companies/${c.slug}/`)}>{c.name}</a>
-            <span class="n">{formatCount(c.count)}</span>
+            <a href={c.href}>{c.name}</a>{" "}
+            <span class="n">{formatCount(c.count)}</span>{" "}
           </span>
         ))}
       </p>
@@ -137,7 +135,6 @@ const description =
     line-height: 1.6;
   }
   .line .item { white-space: nowrap; }
-  .line .n { margin-left: 3px; }
   .line a { color: var(--accent-text); display: inline-block; padding-block: 4px; min-width: 24px; }
   .line a:hover { text-decoration: underline; }
 </style>

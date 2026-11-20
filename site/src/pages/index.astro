@@ -112,8 +112,8 @@ const jsonLd = [
       <p class="line">
         {topEmployers.map((c) => (
           <span class="item">
-            <a href={url(`/companies/${c.slug}/`)}>{c.name}</a>
-            <span class="n">{formatCount(c.count)}</span>
+            <a href={url(`/companies/${c.slug}/`)}>{c.name}</a>{" "}
+            <span class="n">{formatCount(c.count)}</span>{" "}
           </span>
         ))}
         <span class="item"><a href={url("/companies/")}>All companies →</a></span>
@@ -150,7 +150,7 @@ const jsonLd = [
     line-height: 1.6;
   }
   .line .item { white-space: nowrap; }
-  .line .n { color: var(--muted); font-size: 0.78rem; margin-left: 3px; }
+  .line .n { color: var(--muted); font-size: 0.78rem; }
   .line a { color: var(--accent-text); display: inline-block; padding-block: 4px; }
   .line a:hover { text-decoration: underline; }
 </style>

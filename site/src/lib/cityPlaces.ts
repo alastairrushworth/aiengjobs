@@ -104,6 +104,10 @@ export interface CityPlace {
   jobs: Job[];
   /** Roles closed within the retention window that belong to this page. */
   recentlyClosed: number;
+  /** Distinct employers among the open roles. */
+  employers: number;
+  /** Distinct employers across the open roles and the recently closed ones. */
+  recentEmployers: number;
 }
 
 /**
@@ -161,13 +165,17 @@ export function cityPlaces(open: Job[], closed: Job[]): CityPlace[] {
     };
     const closedByPage = groupBy(cityClosed, pageOf);
     for (const [page, jobs] of groupBy(cityOpen, pageOf)) {
+      const closed = closedByPage.get(page) ?? [];
+      const employers = new Set(jobs.map((j) => j.companySlug));
       places.push({
         city,
         country: page === OWNER ? owner : page,
         twin: page !== OWNER,
         shared: twins.size > 0,
         jobs,
-        recentlyClosed: closedByPage.get(page)?.length ?? 0,
+        recentlyClosed: closed.length,
+        employers: employers.size,
+        recentEmployers: new Set([...employers, ...closed.map((j) => j.companySlug)]).size,
       });
     }
   }

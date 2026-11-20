@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 import type { Job, SiteSnapshot } from "@aiengjobs/shared";
-import { MAX_JOB_AGE_DAYS, indexableSlugs, listedJobs } from "@aiengjobs/shared/indexable";
+import {
+  MAX_JOB_AGE_DAYS,
+  canonicalByDupKey,
+  duplicateOfIn,
+  indexableSlugs,
+  listedJobs,
+} from "@aiengjobs/shared/indexable";
 
 const GENERATED_AT = "2026-08-12T00:00:00Z";
 
@@ -22,6 +28,8 @@ function job(slug: string, over: Partial<Job> = {}): Job {
     clusters: [],
     postedAt: daysAgo(1),
     ingestedAt: daysAgo(1),
+    // Every listed role has advert text; one without emits no JobPosting.
+    descriptionText: "Build and ship AI systems.",
     ...over,
   };
 }
@@ -96,6 +104,134 @@ describe("indexableSlugs", () => {
     expect([...idx].sort()).toEqual(["berlin", "london"]);
   });
 
+  describe("one advert reposted per city", () => {
+    const ADVERT = "Build the data pipelines behind our speech models. ".repeat(8);
+    const repost = (slug: string, city: string, over: Partial<Job> = {}): Job =>
+      job(slug, {
+        title: `Software Engineer, AI Data - ${city}`,
+        locationRaw: "Remote",
+        remoteType: "remote",
+        descriptionText: ADVERT,
+        ...over,
+      });
+
+    it("folds postings that differ only in the place written into the title", () => {
+      // Speechify, 2026-11-20: 144 of these under one location and one text.
+      const idx = indexableSlugs(
+        snapshot([
+          repost("vegas", "Las Vegas, NV, USA", { postedAt: daysAgo(3) }),
+          repost("dallas", "Dallas, TX, USA", { postedAt: daysAgo(1) }),
+          repost("knoxville", "Knoxville, TN, USA", { postedAt: daysAgo(2) }),
+        ]),
+      );
+
+      expect([...idx]).toEqual(["dallas"]);
+    });
+
+    it("ignores whitespace differences in the description", () => {
+      const idx = indexableSlugs(
+        snapshot([
+          repost("a", "Austin, TX, USA", { postedAt: daysAgo(1) }),
+          repost("b", "Boise, ID, USA", {
+            postedAt: daysAgo(2),
+            descriptionText: `  ${ADVERT.replace(/ /g, "\n")}`,
+          }),
+        ]),
+      );
+
+      expect([...idx]).toEqual(["a"]);
+    });
+
+    it("keeps postings whose description differs — the suffix is a team, or the pay band changed", () => {
+      // "Software Engineer - Inference Product" and "- Storage Systems" are two
+      // jobs; so are Speechify's per-country adverts, which differ only in pay.
+      const idx = indexableSlugs(
+        snapshot([
+          repost("us", "Austin, TX, USA"),
+          repost("pl", "Warsaw, Poland", { descriptionText: `${ADVERT} Pay: $30,000-$110,000.` }),
+        ]),
+      );
+
+      expect([...idx].sort()).toEqual(["pl", "us"]);
+    });
+
+    it("keeps different roles that merely share a boilerplate description", () => {
+      // Field AI: 17 distinct titles in Irvine under one text.
+      const idx = indexableSlugs(
+        snapshot([
+          job("manip", { title: "Robotics Autonomy Engineer, Manipulation", descriptionText: ADVERT }),
+          job("vlm", { title: "Robotics Software Engineer, Vision-Language", descriptionText: ADVERT }),
+          job("ml", { title: "Staff Engineer - ML Platform", descriptionText: ADVERT }),
+          job("infra", { title: "Senior Engineer - ML Platform", descriptionText: ADVERT }),
+        ]),
+      );
+
+      expect([...idx].sort()).toEqual(["infra", "manip", "ml", "vlm"]);
+    });
+
+    it("keeps a repost filed under a different location or employer", () => {
+      const idx = indexableSlugs(
+        snapshot([
+          repost("remote", "Leeds, United Kingdom"),
+          repost("onsite", "York, United Kingdom", { locationRaw: "York, UK" }),
+          repost("rival", "Bath, United Kingdom", { companySlug: "other", companyName: "Other" }),
+        ]),
+      );
+
+      expect([...idx].sort()).toEqual(["onsite", "remote", "rival"]);
+    });
+
+    it("needs a description to compare — a missing one vouches for nothing", () => {
+      const listed = listedJobs(
+        snapshot([
+          repost("x", "Leeds, United Kingdom", { descriptionText: undefined }),
+          repost("y", "York, United Kingdom", { descriptionText: undefined }),
+          repost("z", "Bath, United Kingdom", { descriptionText: "Apply now." }),
+          repost("w", "Hull, United Kingdom", { descriptionText: "Apply now." }),
+        ]),
+      );
+      const canonical = canonicalByDupKey(listed);
+
+      expect(listed.map((j) => duplicateOfIn(canonical, j))).toEqual([null, null, null, null]);
+    });
+
+    it("resolves a chain through both rules to the one newest posting", () => {
+      // "old" duplicates "mid" by title; "mid" is a repost of "new". Every
+      // member has to land on "new" — a canonical that itself points elsewhere
+      // is a chain, which Google is free to ignore.
+      const listed = listedJobs(
+        snapshot([
+          repost("old", "Austin, TX, USA", { postedAt: daysAgo(9), descriptionText: `${ADVERT} v1` }),
+          repost("mid", "Austin, TX, USA", { postedAt: daysAgo(5) }),
+          repost("new", "Boise, ID, USA", { postedAt: daysAgo(1) }),
+        ]),
+      );
+      const canonical = canonicalByDupKey(listed);
+
+      expect(listed.map((j) => duplicateOfIn(canonical, j))).toEqual([null, "new", "new"]);
+    });
+
+    it("merges two sets when a later posting belongs to both", () => {
+      // "a" and "b" start as separate sets (different title, different text).
+      // "c" shares a title with "a" and a text with "b", which makes all three
+      // one job — and the newest of the three its canonical.
+      const listed = listedJobs(
+        snapshot([
+          repost("a", "Austin, TX, USA", { postedAt: daysAgo(2), descriptionText: `${ADVERT} v1` }),
+          repost("b", "Boise, ID, USA", { postedAt: daysAgo(1) }),
+          repost("c", "Austin, TX, USA", { postedAt: daysAgo(3) }),
+        ]),
+      );
+      const canonical = canonicalByDupKey(listed);
+
+      expect(listed.map((j) => [j.slug, duplicateOfIn(canonical, j)])).toEqual([
+        ["b", null],
+        ["a", "b"],
+        ["c", "b"],
+      ]);
+    });
+  });
+
   it("excludes roles Google could not resolve a location for", () => {
     // Distinct locationRaw throughout, so the duplicate rule stays out of the
     // way and each role is judged on its location alone.
@@ -148,6 +284,22 @@ describe("indexableSlugs", () => {
     );
 
     expect([...idx].sort()).toEqual(["city-and-country", "country-only"]);
+  });
+
+  it("excludes roles whose feed carried no advert text", () => {
+    // `description` is required and has to be the employer's own; the page
+    // used to substitute a sentence of its own for these.
+    const idx = indexableSlugs(
+      snapshot([
+        job("described", { locationRaw: "A", descriptionText: "Build agents." }),
+        job("absent", { locationRaw: "B", descriptionText: undefined }),
+        job("blank", { locationRaw: "C", descriptionText: " \n  " }),
+        job("entities-only", { locationRaw: "D", descriptionText: "&nbsp;&mdash;&#8226;" }),
+        job("punctuation", { locationRaw: "E", descriptionText: "•\n—" }),
+      ]),
+    );
+
+    expect([...idx]).toEqual(["described"]);
   });
 
   it("excludes tombstones — closed, delisted and aged-out roles alike", () => {

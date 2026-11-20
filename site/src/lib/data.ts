@@ -8,6 +8,7 @@ import {
   listedJobs,
   withCanonicalCity,
 } from "@aiengjobs/shared/indexable";
+import { inTombstoneWindow } from "./tombstone.ts";
 
 // The single place the untyped snapshot JSON crosses into typed code, with a
 // cheap shape assertion so a malformed nightly export fails the build loudly
@@ -188,23 +189,22 @@ export const companyPageIndexable = (companySlug: string): boolean =>
 export const TOMBSTONE_DAYS = 7;
 
 /**
- * Whether a closure or delisting is recent enough to still earn a page. The
- * date is absent on snapshots older than the field; an exit of unknown age
- * is treated as recent, so an old snapshot builds what it used to.
+ * Whether a closure or delisting still earns a page: within TOMBSTONE_DAYS of
+ * the day the role left the board — which, for a role that had already aged
+ * out, is the day it aged out and not the day it finally closed. See
+ * lib/tombstone for what counting from the closure alone did.
  */
-const withinTombstoneWindow = (iso: string | undefined): boolean => {
-  if (!iso) return true;
-  const t = Date.parse(iso);
-  if (!Number.isFinite(t)) return true;
-  return (Date.parse(data.generatedAt) - t) / 86_400_000 <= TOMBSTONE_DAYS;
-};
+const withinTombstoneWindow = (job: Job, exitIso: string | undefined): boolean =>
+  inTombstoneWindow(job, exitIso, data.generatedAt, TOMBSTONE_DAYS);
 
 /** The closed roles that still get a tombstone page (see TOMBSTONE_DAYS). */
-export const closedTombstones: Job[] = closedJobs.filter((j) => withinTombstoneWindow(j.closedAt));
+export const closedTombstones: Job[] = closedJobs.filter((j) =>
+  withinTombstoneWindow(j, j.closedAt),
+);
 
 /** The delisted roles that still get a tombstone page (see TOMBSTONE_DAYS). */
 export const delistedTombstones: Job[] = delistedJobs.filter((j) =>
-  withinTombstoneWindow(j.delistedAt),
+  withinTombstoneWindow(j, j.delistedAt),
 );
 
 /**

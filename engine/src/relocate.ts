@@ -1,6 +1,11 @@
 import { openDb } from "./db/index.ts";
 import { canonicalCity } from "@aiengjobs/shared/city";
-import { firstSegmentCity, parseLocation, type LocationInfo } from "./pipeline/location.ts";
+import {
+  firstSegmentCity,
+  parseLocation,
+  wholeStringCountry,
+  type LocationInfo,
+} from "./pipeline/location.ts";
 import { inferRegion } from "./pipeline/region.ts";
 
 /**
@@ -26,7 +31,9 @@ import { inferRegion } from "./pipeline/region.ts";
  * countries — "Chengdu" → CN, "Almaty, Kazakhstan" → KZ, "Quito, Ecuador" → EC
  * — costing more markup than the pass recovers.
  *
- * Country and region are therefore NULL-only. City has two extra cases, both
+ * Country and region are therefore NULL-only, with one narrow exception each
+ * (a country the engine itself misread off a multi-site location, and the
+ * region stored beside it — see relocateRow). City has two extra cases, both
  * narrow. The first is a stored city that `canonicalCity` no longer accepts.
  * That is a value the current rules would never have written, so replacing it
  * cannot discard a good extractor answer — "Chengdu" canonicalizes to itself and is
@@ -60,11 +67,15 @@ export function relocate(opts: { dryRun?: boolean } = {}): void {
     city: string | null;
   }[];
 
-  const setCountry = db.prepare(`UPDATE jobs SET country = ? WHERE id = ? AND country IS NULL`);
-  const setRegion = db.prepare(`UPDATE jobs SET region = ? WHERE id = ? AND region IS NULL`);
+  // Unconditional: relocateRow decides which stored values may be replaced,
+  // and a WHERE clause here restating half of that rule would silently drop
+  // the other half.
+  const setCountry = db.prepare(`UPDATE jobs SET country = ? WHERE id = ?`);
+  const setRegion = db.prepare(`UPDATE jobs SET region = ? WHERE id = ?`);
   const setCity = db.prepare(`UPDATE jobs SET city = ? WHERE id = ?`);
   const byCountry = new Map<string, number>();
   let countries = 0;
+  let countriesCorrected = 0;
   let regions = 0;
   let citiesFilled = 0;
   let citiesRepaired = 0;
@@ -77,8 +88,12 @@ export function relocate(opts: { dryRun?: boolean } = {}): void {
     const next = relocateRow(parseLocation(r.locationRaw), r);
     if (next.country !== r.country) {
       if (!opts.dryRun) setCountry.run(next.country, r.id);
-      byCountry.set(next.country!, (byCountry.get(next.country!) ?? 0) + 1);
-      countries++;
+      if (r.country === null) {
+        byCountry.set(next.country!, (byCountry.get(next.country!) ?? 0) + 1);
+        countries++;
+      } else {
+        countriesCorrected++;
+      }
     }
     if (next.city !== r.city) {
       if (!opts.dryRun) setCity.run(next.city, r.id);
@@ -102,7 +117,8 @@ export function relocate(opts: { dryRun?: boolean } = {}): void {
       `${countries} countries${breakdown ? ` (${breakdown})` : ""}, ` +
       `${regions} regions and ${citiesFilled} cities; ` +
       `repaired ${citiesRepaired} and cleared ${citiesCleared} cities the current ` +
-      `rules reject, across ${rows.length} located postings`,
+      `rules reject, and corrected ${countriesCorrected} countries misread off ` +
+      `multi-site locations, across ${rows.length} located postings`,
   );
 }
 
@@ -122,7 +138,22 @@ export function relocateRow(
   parsed: LocationInfo,
   r: Located,
 ): { country: string | null; region: string | null; city: string | null } {
-  const country = r.country ?? parsed.country ?? null;
+  // The one stored country that may be replaced: the engine's own reading of a
+  // multi-site location, from before the parser asked the first site. "London
+  // & San Francisco" was stored as US — the row of the hint table that matched
+  // first — beside the city London, and the parser now answers GB. Gated on the
+  // stored value being exactly what the whole-string reading yields, so it can
+  // only replace that mechanical answer, never a country the extractor or a
+  // connector supplied; and on the parser having a city, because the first
+  // site's country is only preferred where there is a city for it to agree
+  // with (see firstSite in pipeline/location).
+  const misread =
+    r.country !== null &&
+    parsed.country !== undefined &&
+    parsed.city !== undefined &&
+    parsed.country !== r.country &&
+    r.country === wholeStringCountry(r.locationRaw);
+  const country = misread ? parsed.country! : (r.country ?? parsed.country ?? null);
 
   // Re-derive from location_raw first — it is the source of truth and
   // recovers a real place ("VA - Reston, 11951 Freedom Dr" → Reston) where
@@ -150,8 +181,10 @@ export function relocateRow(
     parsed.country === (country ?? undefined) && parsed.city === (city ?? undefined)
       ? parsed.region
       : undefined;
+  // A region stored beside a misread country was derived against it ("Hyderabad
+  // - Phoenix Equinox Tower 2" filed under the US), so it goes with it.
   const region =
-    r.region ??
+    (misread ? null : r.region) ??
     ownRegion ??
     inferRegion(r.locationRaw, country ?? undefined, city ?? undefined) ??
     null;

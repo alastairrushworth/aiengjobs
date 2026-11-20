@@ -104,8 +104,13 @@ triggering a refresh. `audit-data` measures these defects role by role.
 (`engine/src/cli.ts`) runs seed → ingest → `relocate` → export, and ingest
 skips content-unchanged postings. So a location fix (`location.ts`,
 `region.ts`, `shared/city.ts`) reaches roles already on the board on the next
-nightly run, via `relocate`; a tagging, pay or classifier fix reaches only new
-or changed postings until someone runs `retag` or `reclassify` by hand.
+nightly run, via `relocate` — but only as far as `relocate` is licensed to
+write: it fills blanks, replaces a city the current rules reject, and corrects
+a country the engine itself misread off a multi-site location. It never
+overwrites a stored country or region otherwise, so a rule that *changes* an
+answer rather than supplying one needs its own narrow case in `relocateRow`.
+A tagging, pay or classifier fix reaches only new or changed postings until
+someone runs `retag` or `reclassify` by hand.
 
 ## Untrusted input
 
@@ -149,10 +154,15 @@ credibility.
   site moved to the apex of frontierroles.com, and the indirection was kept on
   purpose so a move back under a path costs nothing. Don't report `url()` as
   dead weight.
-- **`MIN_CITY_JOBS = 12`** (`lib/landings.ts`, with `RETAIN_CITY_JOBS` as its
-  hysteresis floor) — a deliberate thin-content gate, not an arbitrary cutoff.
-  Its *consequences* are fair game; the thresholds themselves are a considered
-  call.
+- **`MIN_CITY_JOBS = 12` and `MIN_CITY_EMPLOYERS = 3`** (`lib/landings.ts`,
+  with `RETAIN_CITY_JOBS` / `RETAIN_CITY_EMPLOYERS` as their hysteresis floors)
+  — deliberate thin-content gates, not arbitrary cutoffs. Their *consequences*
+  are fair game; the thresholds themselves are a considered call.
+- **City names with two plausible homes carry no country** — San Carlos,
+  Cambridge, Birmingham, Markham, Halifax, Lima (`pipeline/location.ts`, and
+  `tests/location.test.ts` pins each one). The roles lose their JobPosting for
+  it, and that is the accepted price of never publishing a wrong country.
+  Report the count; don't add the hint.
 - **`og-default.png` as the fallback** — job pages get a generated card, their
   own when recent (`OG_CARD_MAX_AGE_DAYS` in `site/src/lib/og/policy.ts`) or
   their cluster's otherwise; every other page, landings included, shares the
@@ -197,8 +207,8 @@ npm run dev -w @aiengjobs/site       # → http://localhost:4321/
 npm run preview -w @aiengjobs/site   # serves dist/ — closer to production
 ```
 
-The live site is `https://frontierroles.com/` (GitHub Pages, apex, DNS-only at
-Cloudflare); the MCP server is `https://mcp.frontierroles.com/` (a Cloudflare
+The live site is `https://frontierroles.com/` (GitHub Pages behind Cloudflare's
+proxy since 2026-11-08, so the zone's analytics see every request); the MCP server is `https://mcp.frontierroles.com/` (a Cloudflare
 Worker). The old `alastairrushworth.com/aiengjobs/*` URLs 301 to the apex.
 
 **Check snapshot freshness** whenever you load it: read `generatedAt` and

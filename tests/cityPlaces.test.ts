@@ -42,6 +42,23 @@ describe("cityPlaces", () => {
     expect(places[1]!.recentlyClosed).toBe(0);
   });
 
+  it("counts the employers behind a page, open and recently closed", () => {
+    // lib/landings gates a city page on these: 15 roles from one employer is
+    // that employer's page, not a city's.
+    const [place] = cityPlaces(
+      [
+        ...many(10, { city: "Pleasanton", country: "US", companySlug: "workday" }),
+        job({ city: "Pleasanton", country: "US", companySlug: "veeva" }),
+      ],
+      [
+        job({ city: "Pleasanton", country: "US", companySlug: "workday" }),
+        job({ city: "Pleasanton", country: "US", companySlug: "ellie-mae" }),
+      ],
+    );
+    expect(place!.employers).toBe(2);
+    expect(place!.recentEmployers).toBe(3);
+  });
+
   it("keeps mislabels from multi-site postings on their city's page, however many", () => {
     // Amsterdam's GB roles were all "Amsterdam, Netherlands; …; London, United Kingdom".
     const places = cityPlaces(

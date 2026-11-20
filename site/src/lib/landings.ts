@@ -56,6 +56,27 @@ export const MIN_CITY_JOBS = 12;
  */
 export const RETAIN_CITY_JOBS = 9;
 
+/**
+ * Employers a city's roles have to come from before the page is published.
+ *
+ * Role count alone lets one employer's office through as a "city". On
+ * 2026-11-20 /ai-jobs-pleasanton/ was 15 Workday roles out of 15,
+ * /ai-jobs-basking-ridge/ 10 Verizon out of 10 and /ai-jobs-hawthorne/ 9 SpaceX
+ * out of 9, and nine of the 47 city pages drew on two employers or fewer. Such
+ * a page is the employer's own /companies/ page under a different heading —
+ * the same cards, a median that is one company's pay band, "top employers"
+ * with a single row — and near-duplicate hubs are what the board can least
+ * afford since the August 2026 demotion. Three is where a page starts saying
+ * something about a place rather than about a company.
+ *
+ * Hysteresis as for the role count, and from the same evidence: once published
+ * a page survives on RETAIN_CITY_EMPLOYERS while its open and recently-closed
+ * roles together still show MIN_CITY_EMPLOYERS, so one employer's last
+ * requisition closing doesn't retire a page that the next hire would restore.
+ */
+export const MIN_CITY_EMPLOYERS = 3;
+export const RETAIN_CITY_EMPLOYERS = 2;
+
 const clusterLandings: Landing[] = CLUSTER_PAGES.map((p) => ({
   slug: p.slug,
   kind: "cluster",
@@ -100,8 +121,12 @@ function buildCityLandings(reserved: Set<string>): Landing[] {
   for (const place of cityPlaces(uniqueOpenJobs, recentlyClosed)) {
     const { city, country, jobs } = place;
     const recentFootprint = jobs.length + place.recentlyClosed;
-    const publishes = jobs.length >= MIN_CITY_JOBS;
-    const retains = jobs.length >= RETAIN_CITY_JOBS && recentFootprint >= MIN_CITY_JOBS;
+    const publishes = jobs.length >= MIN_CITY_JOBS && place.employers >= MIN_CITY_EMPLOYERS;
+    const retains =
+      jobs.length >= RETAIN_CITY_JOBS &&
+      recentFootprint >= MIN_CITY_JOBS &&
+      place.employers >= RETAIN_CITY_EMPLOYERS &&
+      place.recentEmployers >= MIN_CITY_EMPLOYERS;
     if (!publishes && !retains) continue;
     const slug = citySlug(city);
     if (!slug) continue;

@@ -11,6 +11,7 @@ import {
   remoteLabel,
   safeUrl,
   seniorityLabel,
+  workTypeBeside,
 } from "../../lib/format.ts";
 import { url } from "../../lib/url.ts";
 import { jsonLdScript } from "../../lib/jsonld.ts";
@@ -37,7 +38,7 @@ import {
   MAX_JOB_AGE_DAYS,
 } from "../../lib/data.ts";
 import type { Job } from "@aiengjobs/shared";
-import { hasUsableLocation } from "@aiengjobs/shared/indexable";
+import { hasDescription, hasUsableLocation } from "@aiengjobs/shared/indexable";
 
 export function getStaticPaths() {
   // <title> needs whole-corpus knowledge: it trims over-long feed titles, but
@@ -368,16 +369,20 @@ const dupCanonicalSlug = isTombstone ? null : duplicateOf(job);
 // Shared with the engine, which must predict this page's verdict exactly before
 // submitting the URL to Google's Indexing API.
 const locatable = hasUsableLocation(job);
+// And an advert to describe: `description` is required and has to be the
+// employer's text, so a posting whose feed carried none emits no JobPosting
+// rather than one wrapped round a sentence of ours. Shared with the engine for
+// the same reason as `locatable`.
+const described = hasDescription(job) && descriptionHtml !== "";
 
-const jsonLd: Record<string, unknown> | null = isTombstone || dupCanonicalSlug || !locatable
+const jsonLd: Record<string, unknown> | null =
+  isTombstone || dupCanonicalSlug || !locatable || !described
   ? null
   : {
       "@context": "https://schema.org/",
       "@type": "JobPosting",
       title: job.title,
-      description:
-        descriptionHtml ||
-        `<p>${escapeHtml(`${job.title} at ${job.companyName}. Apply on the company's site.`)}</p>`,
+      description: descriptionHtml,
       identifier: {
         "@type": "PropertyValue",
         name: job.companyName,
@@ -515,7 +520,7 @@ const breadcrumbJsonLd =
 
 const descBits = [
   `${job.title} at ${job.companyName}`,
-  [location, remoteLabel(job.remoteType)].filter(Boolean).join(", "),
+  [location, workTypeBeside(location, job.remoteType)].filter(Boolean).join(", "),
   salary,
   job.skills.length ? `Skills: ${job.skills.slice(0, 3).join(", ")}` : null,
 ].filter(Boolean);
@@ -529,8 +534,11 @@ const ogImageAlt = `${job.title} at ${job.companyName}${location ? `, ${location
 }`;
 ---
 
+{/* No brand suffix: the role and the employer need the room, and the site name
+    is printed above the result anyway — see TITLE_BUDGET in lib/jobTitle. */}
 <Base
   title={pageTitle}
+  noBrandSuffix
   description={metaDescription}
   ogImage={ogImage}
   ogImageAlt={ogImageAlt}
@@ -546,7 +554,7 @@ const ogImageAlt = `${job.title} at ${job.companyName}${location ? `, ${location
     {closed && (
       <p class="closed-banner" role="status">
         This role has closed — it no longer appears on {job.companyName}'s careers site.
-        {similar.length > 0 && "Similar open roles are listed below."}
+        {similar.length > 0 && " Similar open roles are listed below."}
       </p>
     )}
     {/* Deliberately not the closed wording: this requisition is still up. What

@@ -86,9 +86,10 @@ reviewing a site that no longer exists.
    parameterized.
 2. Derive the landing set from `site/src/lib/landings.ts`: `LANDINGS` =
    stack clusters (`CLUSTER_PAGES`) + `remote-ai-jobs` + the city pages from
-   `buildCityLandings`. A city publishes at `MIN_CITY_JOBS` and, once up, is
-   retained down to `RETAIN_CITY_JOBS` while recent closures show it was over
-   the line; a city name with two evidenced homes (`lib/cityPlaces.ts`,
+   `buildCityLandings`. A city publishes at `MIN_CITY_JOBS` roles from
+   `MIN_CITY_EMPLOYERS` employers and, once up, is retained down to
+   `RETAIN_CITY_JOBS` / `RETAIN_CITY_EMPLOYERS` while recent closures show it
+   was over both lines; a city name with two evidenced homes (`lib/cityPlaces.ts`,
    `MIN_PLACE_EMPLOYERS`) splits into one page per country — the owner keeps
    `ai-jobs-<city>`, the twin gets `ai-jobs-<city>-<country>`. **The city set
    is data-driven and changes every refresh** — count what's actually in
@@ -105,8 +106,10 @@ reviewing a site that no longer exists.
    aged-out, delisted), a **duplicate job** that sets `dupCanonicalSlug` (via
    `duplicateOf()` in `lib/data.ts`), a company page with one slice and a
    **paginated** one (page 1 **and** ≥2), a one-role company page (noindexed
-   under `MIN_INDEXED_COMPANY_ROLES`), `stats/`, `mcp/`, `404.html`,
-   `sitemap.xml`, `robots.txt`, `llms.txt`, `rss.xml`, `daily/rss.xml`, a
+   under `MIN_INDEXED_COMPANY_ROLES`), the two directories (`locations/`,
+   `companies/`), `stats/`, `mcp/`, `404.html`, `sitemap.xml` (an index) and
+   the two files behind it (`sitemap-hubs.xml`, `sitemap-jobs.xml`),
+   `robots.txt`, `llms.txt`, `rss.xml`, `daily/rss.xml`, a
    per-landing `<slug>/rss.xml`, `jobs-data.json` and a per-landing
    `<slug>/jobs-data.json`, `mcp-index.json` plus one `mcp-jobs/<slug>.json`,
    and the OG images (`og/<slug>.png`, `og/cluster/<cluster>.png`,
@@ -135,8 +138,11 @@ landings × paginated slices × every job page), so:
   (~15s) sweeps every page for broken links, sitemap ↔ indexable parity,
   canonical targets and chains, JSON-LD parse errors, misplaced JobPosting
   markup, `validThrough` past the age-out, h1 count, duplicate titles and
-  descriptions, and feed parse/targets — and exits non-zero on any of them, so
-  it doubles as the fix pass's regression gate. Extend it there rather than
+  descriptions, feed parse/targets (a duplicate requisition in a feed
+  included), a work type said twice in a meta description, and a city page
+  with one employer — and exits non-zero on any of them, so it doubles as the
+  fix pass's regression gate. It also prints the largest sets of job pages
+  sharing one description, which is how the next per-city repost shows up. Extend it there rather than
   writing a one-off in the scratchpad: cyclearchive rebuilt its equivalent
   twice after losing it with a session.
 - **Report your coverage** ("checked 8,412 links across 1,203 pages, 3 broken")
@@ -224,12 +230,22 @@ nothing to report gets one line** ("clean — checked X, Y, Z"), not padding.
   (`lib/jobsPayload.ts`) stay in sync with what `JobCard` renders server-side,
   so filtered results don't look different from initial ones?
 - Tombstone behaviour — three kinds, `retired` in `jobs/[slug].astro`:
-  closed (description and apply link gone), aged-out (past `MAX_JOB_AGE_DAYS`,
-  kept for `AGED_OUT_TOMBSTONE_DAYS`; description and apply link kept) and
-  delisted (ruled out of scope; apply link kept, description gone). All
+  closed (description and apply link gone), aged-out (past `MAX_JOB_AGE_DAYS`;
+  description and apply link kept) and delisted (ruled out of scope; apply
+  link kept, description gone). Each lasts `TOMBSTONE_DAYS` from the day the
+  role **left the board**, whichever exit came first (`lib/tombstone.ts`) — so
+  check that no closed or delisted tombstone belongs to a role that had already
+  aged out and 404'd (join `dist/jobs/*` against the snapshot's `postedAt` and
+  `closedAt`: 129 of 369 were exactly that on 2026-11-20). All
   render a noindexed page (not a 404) with no JobPosting, aren't listed
   anywhere, and their "related jobs" links point only at open roles.
-- **Duplicate-job canonicalization**: a duplicate requisition still builds its
+- **Duplicate-job canonicalization**: two rules in `shared/indexable.ts` —
+  same title + employer + location, and one advert reposted per city (same
+  employer, location and description, titles differing by a trailing
+  " - suffix"). Group the open roles by employer + description yourself and
+  read the big sets: a new repost pattern the second rule doesn't cover is one
+  employer filling the board (Speechify was 245 of 3,568 roles). A duplicate
+  requisition still builds its
   own page; `jobs/[slug].astro` points the canonical at `dupCanonicalSlug`
   (from `duplicateOf()`) and suppresses that page's JobPosting JSON-LD. Verify
   the target exists, is open, isn't itself a duplicate (no canonical
@@ -271,8 +287,11 @@ apply to both.
   exactly one slice (no pager, no prev/next); the landing's empty-state branch
   (`page.data.length === 0`) — can it ever render in a built page, and what
   does it say?
-- **Sitemap ↔ built pages parity.** `sitemap.xml.ts` lists page 1 of every
-  landing and of every company clearing `companyPageIndexable()` — no slices.
+- **Sitemap ↔ built pages parity.** `sitemap.xml` is an index;
+  `sitemap-hubs.xml` lists page 1 of every landing and of every company
+  clearing `companyPageIndexable()` — no slices — and `sitemap-jobs.xml` the
+  canonical roles posted within `SITEMAP_JOB_MAX_AGE_DAYS` (deliberately not
+  every indexable role: `lib/sitemap.ts` says why).
   Diff the sitemap's URL set against `dist/`: every sitemap URL must exist and
   carry no `noindex`, every slice ≥2 must be absent, and every indexable page
   must be present.
@@ -340,7 +359,7 @@ covered in §2 — don't duplicate them here.)
   pages do NOT emit JobPosting (a closed job with structured data is a
   guidelines violation), that a `dupCanonicalSlug` duplicate doesn't emit a
   competing JobPosting for the same role, and that a role failing
-  `hasUsableLocation` emits none. Spot-check emitted JSON from `dist/` parses
+  `hasUsableLocation` or `hasDescription` emits none. Spot-check emitted JSON from `dist/` parses
   and is well-typed.
 - **`validThrough`** is min(`generatedAt` + 30 days, `postedAt` +
   `MAX_JOB_AGE_DAYS`) — the board stops listing a role on the second date, so
@@ -358,7 +377,9 @@ covered in §2 — don't duplicate them here.)
   only, `BreadcrumbList` on job pages — valid, non-duplicative, consistent
   URLs, and every block routed through `jsonLdScript()`.
 - **Titles & descriptions:** unique, present, sensibly-lengthed on **every page
-  type in your Step 0.5 sample**. Watch for pages inheriting the generic default
+  type in your Step 0.5 sample**. Job pages carry no " — frontierroles.com"
+  suffix; their whole title is budgeted in `lib/jobTitle.ts`, so count the
+  ones still trimmed with "…" and read what the trim cost. Watch for pages inheriting the generic default
   description in `Base.astro`, and for near-duplicate titles between a cluster
   landing and a city landing that lists mostly the same roles.
 - **Canonicals & the trailing-slash story:** `Base.astro` canonicalizes to the
@@ -590,10 +611,19 @@ belongs to **`audit-security`**: flag it here in one line, don't review it.
 ### 11. Search Console & analytics (via the browser)
 
 Google Search Console (the frontierroles.com property) and GA4
-(`G-F8NGE6G65G`) are the only external evidence of how the site is actually
-crawled and used. The apex is DNS-only at Cloudflare, so there is **no edge
-analytics for the site** — only for the MCP Worker. Read GSC and GA4 in the
-browser on a full audit, or whenever the user asks about traffic or indexing.
+(`G-F8NGE6G65G`) say how the site is indexed and used; read them in the browser
+on a full audit, or whenever the user asks about traffic or indexing.
+
+**Cloudflare sees the crawl itself.** The apex has been proxied since
+2026-11-08, so every request — Googlebot's included — is in the zone's
+analytics, and unlike GSC this needs no browser: `POST /graphql` through the
+Cloudflare MCP, dataset `httpRequestsAdaptiveGroups`, filtered on
+`clientRequestHTTPHost: "frontierroles.com"` and `userAgent_like: "%Googlebot%"`,
+grouped by `clientRequestPath` and `edgeResponseStatus`, one day per query.
+Use it when the extension isn't connected, and alongside GSC when it is — GSC
+reports the last crawl, this reports yesterday's. Bucket the paths (job, dead
+job, landing, slice, company, asset, sitemap) before reading anything into a
+total.
 
 **Start from the baseline, don't re-derive it.**
 - **Impressions collapsed on 2026-08-24**, three days after Google's August
@@ -610,6 +640,15 @@ browser on a full audit, or whenever the user asks about traffic or indexing.
   roles. Indexed ~1.9K, not indexed ~3.9K, "Discovered – currently not indexed"
   ~2.7K. Job Postings report: 3 valid items (peak ~95 around 20 Aug). The
   service account is a delegated Owner, so it isn't permissions.
+- **Edge baseline, 9–19 Nov 2026**: Googlebot ~120–210 requests/day on the
+  apex. Per day roughly 12 live job pages (95 distinct in 11 days, of 3,568
+  open), 29 dead job URLs, 27 landing page-1s, 45 JS/CSS/logo fetches, 10
+  company pages; the sitemap at most once a day; 4 landing slices in 11 days.
+  Of 60 sampled dead URLs, 31 had closed over 30 days earlier and 21 were
+  still open at the employer but aged out. OAI-SearchBot, PerplexityBot and
+  Applebot each fetched more than Googlebot. 38% of all apex requests were
+  404s, mostly unidentified Chrome user agents and SEO crawlers re-walking old
+  job URLs.
 - **So recovery is a content-quality problem, not a technical-SEO bug hunt**:
   fewer thin or duplicative URLs in the sitemap, more unique value per page
   (the rule-based "At a glance" facts, pay benchmark and company hiring panels
