@@ -1,6 +1,6 @@
 import ledger from "../data/daily-picks.json";
 import type { Job } from "@aiengjobs/shared";
-import { openJobs } from "./data.ts";
+import { uniqueOpenJobs } from "./data.ts";
 
 /**
  * One night's five, as the engine recorded them.
@@ -44,16 +44,24 @@ export interface DailyFeedItem {
 }
 
 /**
- * The feed's items: every recorded pick that is still an open role, newest night
- * first and in pick order within a night.
+ * The feed's items: every recorded pick that is still a listed role, newest
+ * night first and in pick order within a night.
  *
  * Closed roles are dropped. A subscriber that already saw an item has it — the
  * guid is the permalink, so nothing re-announces — but one connecting today
  * would otherwise have a dead requisition posted to their timeline as news.
  * The ledger itself keeps the full record either way; this is a view of it.
+ *
+ * So are picks that have since become duplicates. A pick is canonical the
+ * night it is made (engine/src/export/dailyPicks), but the employer can open
+ * a newer requisition for the same role afterwards, and the pick's page then
+ * points its canonical at that one and drops its markup — three of the feed's
+ * hundred items on 2026-11-20. Dropped rather than re-pointed: the guid is the
+ * permalink, and an item whose link changed is a new item to every poster
+ * that has already sent the old one.
  */
 export const dailyFeedItems: DailyFeedItem[] = (() => {
-  const bySlug = new Map(openJobs.map((j) => [j.slug, j]));
+  const bySlug = new Map(uniqueOpenJobs.map((j) => [j.slug, j]));
   const items: DailyFeedItem[] = [];
   for (const pick of dailyPicks) {
     for (const slug of pick.slugs) {
