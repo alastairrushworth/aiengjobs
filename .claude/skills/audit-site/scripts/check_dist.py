@@ -7,15 +7,19 @@ Hard issues (exit 1): broken internal links, sitemap ≠ indexable self-canonica
 pages, a canonical pointing at a missing/noindexed page or a chain, JSON-LD
 that doesn't parse, JobPosting markup on a noindexed or duplicate page, a
 JobPosting whose validThrough outlives the 90-day age-out, a page without
-exactly one <h1>, duplicate titles/descriptions among indexable pages, an RSS
-feed that doesn't parse or lists a noindexed page.
+exactly one <h1>, duplicate titles/descriptions among indexable pages, a meta
+description that states the work type twice, a city page drawing on a single
+employer, an RSS feed that doesn't parse or lists a noindexed or duplicate
+page.
 
 Everything else is printed as context for the report (sizes, node counts,
-title lengths, JobPosting field gaps). Stdlib only, ~15s on ~7.5k pages.
+title lengths, JobPosting field gaps, the largest sets of job pages sharing one
+description). Stdlib only, ~15s on ~7.5k pages.
 """
 import collections
 import datetime as dt
 import glob
+import hashlib
 import json
 import os
 import re
@@ -37,6 +41,9 @@ class Page(HTMLParser):
         self.title, self.nodes = "", 0
         self._in_title = self._in_ld = False
         self._ld = ""
+        # The advert text of a job page: <div class="desc">…</div>, which holds
+        # paragraphs and lists but never another div.
+        self._in_desc, self.desc = False, []
 
     def handle_starttag(self, tag, attrs):
         a = dict(attrs)
@@ -61,8 +68,12 @@ class Page(HTMLParser):
             self.headings.append(int(tag[1]))
         if tag == "script" and a.get("type") == "application/ld+json":
             self._in_ld, self._ld = True, ""
+        if tag == "div" and "desc" in (a.get("class") or "").split():
+            self._in_desc = True
 
     def handle_endtag(self, tag):
+        if tag == "div":
+            self._in_desc = False
         if tag == "title":
             self._in_title = False
         if tag == "script" and self._in_ld:
@@ -74,6 +85,8 @@ class Page(HTMLParser):
             self.title += d
         if self._in_ld:
             self._ld += d
+        if self._in_desc:
+            self.desc.append(d)
 
 
 def main(dist):
@@ -115,6 +128,7 @@ def main(dist):
             noindex=bool(p.meta.get("robots")), canon=p.canon, prevnext=p.prevnext,
             h1=p.headings.count(1), jsonld=lds, nodes=p.nodes,
             size=os.path.getsize(dist + f),
+            advert=hashlib.md5(" ".join("".join(p.desc).split()).encode()).hexdigest() if p.desc else None,
         )
 
     for r, p in pages.items():
@@ -142,6 +156,30 @@ def main(dist):
         for v, rs in seen.items():
             if len(rs) > 1:
                 hard[f"duplicate {field}"].append(f"{v!r}: {rs[:3]}")
+
+    # "… at Runway ML — Remote, Remote — $250k–310k/yr": the location field
+    # already said it (lib/format.ts workTypeBeside). 511 job pages, 2026-11-20.
+    twice = re.compile(r"\b(Remote|Hybrid|On-site)\b[^,—]*, \1\b")
+    for r, p in pages.items():
+        if r.startswith("/jobs/") and twice.search(p["desc"] or ""):
+            hard["description states the work type twice"].append(f"{r}: {p['desc'][:90]}")
+
+    # A city page whose roles all come from one employer is that employer's
+    # /companies/ page again (MIN_CITY_EMPLOYERS in lib/landings.ts; a page
+    # retained on hysteresis may legitimately show two).
+    for f in sorted(glob.glob(f"{dist}/ai-jobs-*/jobs-data.json")):
+        employers = {e.get("c") for e in json.load(open(f, encoding="utf-8"))}
+        if len(employers) < 2:
+            hard["city page with a single employer"].append(f"/{f.split('/')[-2]}/: {sorted(employers)}")
+
+    # Open, canonical job pages sharing one advert text. Not a failure — one
+    # boilerplate description over several real roles is common — but the
+    # biggest sets are where a per-city repost shows up (Speechify: 144 pages
+    # under one text on 2026-11-20, before shared/indexable.ts folded them).
+    adverts = collections.Counter(
+        p["advert"] for r, p in pages.items() if r.startswith("/jobs/") and SITE + r in indexable and p["advert"]
+    )
+    shared = sorted((n for n in adverts.values() if n > 1), reverse=True)
 
     # sitemap.xml is an index (lib/sitemap.ts); follow it to the files it names.
     # A flat urlset still works, so an older build checks the same way.
@@ -224,6 +262,10 @@ def main(dist):
                 r = it.find("link").text.replace(SITE, "")
                 if r not in pages or pages[r]["noindex"]:
                     hard["feed item not an indexable page"].append(f"{f}: {r}")
+                elif pages[r]["canon"] != SITE + r:
+                    # Not noindexed, so the test above passes it — but its
+                    # canonical is another requisition's page.
+                    hard["feed item is a duplicate requisition"].append(f"{f}: {r}")
         except ET.ParseError as e:
             hard["feed does not parse"].append(f"{f}: {e}")
 
@@ -239,6 +281,10 @@ def main(dist):
     )
     print(f"JobPostings {jp_total} · without addressLocality {no_locality} · feeds {len(feeds)} with {items} items")
     print("largest pages:", ", ".join(f"{r} {s // 1024}KB/{n} nodes" for s, n, r in biggest))
+    print(
+        f"job pages sharing an advert text: {sum(shared)} in {len(shared)} sets"
+        + (f" · largest {shared[:5]}" if shared else "")
+    )
     if hard:
         for k, v in hard.items():
             print(f"FAIL {k}: {len(v)}")

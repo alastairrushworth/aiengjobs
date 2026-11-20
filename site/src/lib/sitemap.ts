@@ -41,7 +41,10 @@ export interface SitemapEntry {
  * from Search still has time to apply — and a sitemap that names the whole
  * 90-day inventory with equal weight asks Google to spend its few hundred
  * daily fetches on the oldest third as readily as on last night's arrivals.
- * At 30 days the file carries ~2,300 of ~3,500 roles. Raise it back to
+ * At 30 days the file carried ~2,300 of ~3,500 roles when this was set and
+ * 1,425 of 3,349 on 2026-11-20 — the share moves with how many roles arrived
+ * that month, and Googlebot was fetching about a dozen live job pages a day
+ * either way, so the window is not what limits the crawl. Raise it back to
  * MAX_JOB_AGE_DAYS to list them all again.
  */
 export const SITEMAP_JOB_MAX_AGE_DAYS = 30;
