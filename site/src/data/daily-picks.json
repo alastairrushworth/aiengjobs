@@ -1,17 +1,6 @@
 {
   "picks": [
     {
-      "date": "2026-10-22",
-      "pickedAt": "2026-10-22T03:22:05.672Z",
-      "slugs": [
-        "workday-wd5-workday-principal-senior-ai-engineer-agent-factory-b760ab",
-        "anthropic-research-engineer-chip-design-rl-98c7bd",
-        "smithnephew-wd5-external-intern-agentic-ai-software-engineering-d5a1ee",
-        "etched-research-engineer-rl-frontiers-494da2",
-        "faculty-lead-machine-learning-engineer-safety-4878bb"
-      ]
-    },
-    {
       "date": "2026-10-23",
       "pickedAt": "2026-10-23T04:13:20.521Z",
       "slugs": [
@@ -328,6 +317,17 @@
         "abundant-member-of-technical-staff-applied-research-bda11d",
         "turing-research-engineer-d47e30",
         "anthropic-research-engineer-beneficial-deployments-8a5752"
+      ]
+    },
+    {
+      "date": "2026-11-21",
+      "pickedAt": "2026-11-21T23:55:31.560Z",
+      "slugs": [
+        "anthropic-research-engineer-finetuning-ec5eff",
+        "rubrik-senior-ai-engineer-enterprise-agentic-systems-f3621b",
+        "patronusaiinc-expert-interactive-coding-embedded-firmware-contract-remote-66a647",
+        "patronusaiinc-expert-interactive-coding-video-streaming-contract-remote-b4a802",
+        "patronusaiinc-expert-interactive-coding-dating-apps-contract-remote-4a8de0"
       ]
     }
   ]
