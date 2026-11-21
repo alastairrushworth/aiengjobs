@@ -1,17 +1,6 @@
 {
   "picks": [
     {
-      "date": "2026-10-21",
-      "pickedAt": "2026-10-21T04:04:51.299Z",
-      "slugs": [
-        "cisco-wd5-cisco-careers-principal-machine-learning-engineer-1c2a5a",
-        "zillow-wd5-zillow-group-external-principal-machine-learning-engineer-memory-context-4a889c",
-        "servicenow-principal-software-engineer-b34a5d",
-        "capitalone-wd12-capital-one-ai-engineer-5-mlx-agentic-ai-gen-ai-platform-services-30ba7f",
-        "astrazeneca-wd3-careers-ai-researcher-associate-director-ai-for-clinical-development-e13293"
-      ]
-    },
-    {
       "date": "2026-10-22",
       "pickedAt": "2026-10-22T03:22:05.672Z",
       "slugs": [
@@ -328,6 +317,17 @@
         "snowflake-software-engineer-intern-ai-ml-summer-2027-216827",
         "wise-senior-engineering-lead-generative-ai-platform-6328f7",
         "lilasciences-machine-learning-research-scientist-open-endedness-00a164"
+      ]
+    },
+    {
+      "date": "2026-11-20",
+      "pickedAt": "2026-11-21T01:52:48.375Z",
+      "slugs": [
+        "servicenow-staff-research-engineer-scientist-conversational-ai-951796",
+        "baseten-base-labs-research-scientist-rl-environments-545791",
+        "abundant-member-of-technical-staff-applied-research-bda11d",
+        "turing-research-engineer-d47e30",
+        "anthropic-research-engineer-beneficial-deployments-8a5752"
       ]
     }
   ]
