@@ -39,6 +39,11 @@ jobs:
   refresh:
     runs-on: ubuntu-latest
     timeout-minutes: 300
+    env:
+      # Whether the archive bucket's credentials are configured. A step's `if`
+      # cannot read secrets, and the workflow-level env above cannot either;
+      # a job-level variable is the one place this can be decided once.
+      ARCHIVE_ENABLED: ${{ secrets.R2_ARCHIVE_ACCESS_KEY_ID != '' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -124,6 +129,37 @@ jobs:
       - name: Refresh
         id: refresh
         run: scripts/refresh.sh
+        env:
+          # Turns the archive on (see engine/src/archive/export.ts), and only
+          # when the bucket's credentials exist: with it on, the engine holds
+          # back pruning until an upload is confirmed, so a run that could
+          # never upload must not start writing files.
+          AIENGJOBS_ARCHIVE_DIR: ${{ env.ARCHIVE_ENABLED == 'true' && format('{0}/archive-out', github.workspace) || '' }}
+
+      # The permanent record: tonight's changes, appended to R2 as a file that
+      # is never rewritten. Before "Publish database", because confirming the
+      # upload writes to the database (archive:commit) and that confirmation has
+      # to be in the copy the next run restores — otherwise every night would
+      # write the same rows again.
+      #
+      # continue-on-error: an R2 outage must not cost the board its nightly
+      # update. Nothing is lost when this fails. The rows stay marked pending,
+      # the engine keeps them and their text, and the next run writes them
+      # again.
+      - name: Archive tonight's changes
+        id: archive
+        if: steps.refresh.outcome == 'success' && env.ARCHIVE_ENABLED == 'true'
+        continue-on-error: true
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ARCHIVE_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_ARCHIVE_SECRET_ACCESS_KEY }}
+          R2_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          ARCHIVE_BUCKET: ${{ vars.ARCHIVE_BUCKET || 'frontierroles-archive' }}
+        run: scripts/archive-upload.sh "$GITHUB_WORKSPACE/archive-out"
+
+      - name: Warn if the archive upload failed
+        if: steps.archive.outcome == 'failure'
+        run: echo "::warning::Archive upload failed. Nothing is lost — tonight's changes will be written again on the next run — but pruning is held back until an upload succeeds."
 
       # Gated on the ingest step specifically, not on `success()`.
       #
@@ -151,6 +187,19 @@ jobs:
             gh release create "$DB_TAG" --title "Database snapshot" \
               --notes "Ingest database carried between nightly runs. Replaced on every refresh."
           gh release upload "$DB_TAG" "$DB_ASSET" --clobber
+
+      # Once a month, a whole copy of the database beside the change log. The
+      # log is the record; this is insurance against a mistake in how the log
+      # is written, kept in a form that needs no code to read.
+      - name: Archive a monthly database copy
+        if: steps.refresh.outcome == 'success' && env.ARCHIVE_ENABLED == 'true'
+        continue-on-error: true
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ARCHIVE_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_ARCHIVE_SECRET_ACCESS_KEY }}
+          R2_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          ARCHIVE_BUCKET: ${{ vars.ARCHIVE_BUCKET || 'frontierroles-archive' }}
+        run: scripts/archive-upload.sh --monthly-db "$DB_ASSET"
 
       # Same reasoning, and more urgent: the cache is restored BEFORE the
       # release, so a bad entry here wins over a good release asset.

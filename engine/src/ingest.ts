@@ -23,7 +23,9 @@ import { parseLocation } from "./pipeline/location.ts";
 import { parseSalaryFromDescription } from "./pipeline/comp.ts";
 import { contentHash } from "./pipeline/hash.ts";
 import { encoderAvailable, encoderScore } from "./pipeline/encoder.ts";
-import { ENCODER_DIR, ENCODER_THRESHOLD, ENCODER_VETO_CONFIDENCE } from "./config.ts";
+import { ARCHIVE_DIR, ENCODER_DIR, ENCODER_THRESHOLD, ENCODER_VETO_CONFIDENCE } from "./config.ts";
+import { archiveBacklog, exportArchive, type SourceResult, type SourceStatus } from "./archive/export.ts";
+import { classifierIdentity, listPausedSources } from "./archive/provenance.ts";
 import { jobId, jobSlug } from "./util/id.ts";
 import { mapPool } from "./util/concurrency.ts";
 
@@ -211,12 +213,34 @@ export async function ingest(): Promise<void> {
   const feedFailures: string[] = [];
   let failed = 0;
 
+  // What became of every source tonight, for the archive: a count of postings
+  // means nothing later without knowing whose boards were actually read.
+  const sourceResults: SourceResult[] = [];
+  const outcome = (
+    t: (typeof targets)[number],
+    status: SourceStatus,
+    fetched = 0,
+    error?: string,
+  ): void => {
+    sourceResults.push({
+      sourceId: t.sourceId,
+      companyId: t.companyId,
+      companySlug: t.slug,
+      companyName: t.name,
+      provider: t.atsProvider,
+      status,
+      fetched,
+      ...(error ? { error } : {}),
+    });
+  };
+
   let skippedForBudget = 0;
   for (const t of targets) {
     // Budget check before the fetch, never mid-source: a half-polled source
     // would look complete to closeStaleJobs.
     if (Date.now() - runStartedMs > BUDGET_MS) {
       skippedForBudget++;
+      outcome(t, "skipped");
       continue;
     }
 
@@ -225,6 +249,7 @@ export async function ingest(): Promise<void> {
       // seed.ts warns for the same condition; without this a typo'd provider in
       // companies.csv is dropped from every run with no trace at all.
       console.warn(`  ! ${t.name}: unknown ATS provider "${t.atsProvider}", skipping`);
+      outcome(t, "unsupported");
       continue;
     }
 
@@ -263,6 +288,7 @@ export async function ingest(): Promise<void> {
       const line = `${t.name} (${t.atsProvider}:${t.atsToken}): ${(e as Error).message}`;
       feedFailures.push(line);
       console.warn(`  ! ${line}`);
+      outcome(t, "failed", 0, (e as Error).message);
       await sleep(SLEEP_MS);
       continue;
     }
@@ -281,10 +307,13 @@ export async function ingest(): Promise<void> {
     // boards flap open and closed from one night to the next.
     if (partial) {
       console.warn(`  ! ${t.name} (${t.atsProvider}:${t.atsToken}): truncated listing, not closing its roles`);
+      outcome(t, "partial", postings.length);
     } else if (postings.length > 0 || seen.length > 0) {
       polledSourceIds.push(t.sourceId);
+      outcome(t, "polled", postings.length);
     } else {
       console.warn(`  ! ${t.name} (${t.atsProvider}:${t.atsToken}): returned 0 postings, not closing its roles`);
+      outcome(t, "empty");
     }
     tallies.set(t.sourceId, { name: t.name, tally });
     tally.fetched = postings.length;
@@ -457,11 +486,41 @@ export async function ingest(): Promise<void> {
   // Roles closed long enough ago that no snapshot still carries them. Nothing
   // else deletes rows, and each one holds the full advert twice — see
   // pruneClosedJobs for what that was costing the release asset.
-  const pruned = pruneClosedJobs(db);
+  // Before anything below deletes a row or empties an advert, write what
+  // changed tonight to the archive. Once archiving is on, pruning and emptying
+  // both wait for the archive to confirm it holds what they would destroy.
+  const archiving = ARCHIVE_DIR !== "";
+  let archived = "";
+  if (archiving) {
+    // A failure here must not cost the night's ingest, which is already in the
+    // database. It cannot cost the archive anything either: with nothing
+    // marked as written, the guards below keep every row and advert that
+    // tonight's file would have recorded, and the next run writes them.
+    try {
+      const result = await exportArchive(
+        db,
+        {
+          runAt: runStart,
+          engineSha: process.env.GITHUB_SHA,
+          classifier: classifierIdentity(),
+          sources: [...sourceResults, ...listPausedSources(db)],
+        },
+        ARCHIVE_DIR,
+      );
+      archived = ` archived=${result.postings} archive_file=${result.file}`;
+      console.log(
+        `Archive: wrote ${result.postings} posting version(s) (${result.withText} with text) to ${result.path}; ` +
+          `${archiveBacklog(db)} awaiting upload.`,
+      );
+    } catch (e) {
+      console.log(`::warning::archive export failed, nothing was written: ${(e as Error).message}`);
+    }
+  }
+  const pruned = pruneClosedJobs(db, undefined, { onlyArchived: archiving });
   // The other half of that bill, and the larger one: adverts the classifier
   // ruled out are open at their ATS for months, so pruning never reaches them,
   // and nothing has ever read their description. See dropOutOfScopeText.
-  const emptied = dropOutOfScopeText(db);
+  const emptied = dropOutOfScopeText(db, { onlyArchived: archiving });
   // One VACUUM for both. It rewrites the whole file, so it is much too
   // expensive to run twice, and without it SQLite keeps the freed pages for
   // reuse and the file never shrinks.
@@ -494,6 +553,7 @@ export async function ingest(): Promise<void> {
       (skippedForBudget > 0 ? ` feeds_skipped_for_budget=${skippedForBudget}` : "") +
       (pruned > 0 ? ` pruned=${pruned}` : "") +
       (emptied > 0 ? ` text_dropped=${emptied}` : "") +
+      archived +
       ` elapsed=${dur(Date.now() - runStartedMs)}`,
   );
 

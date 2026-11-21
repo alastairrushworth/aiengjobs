@@ -67,6 +67,35 @@ npm test                                 # vitest
 Node 24+ (the engine uses `node:sqlite`, unflagged only from 23.4). CI installs with
 `npm ci`.
 
+## History
+
+The working database forgets on purpose: closed roles are deleted after 90 days
+and out-of-scope adverts lose their text, because it is downloaded and
+re-uploaded every night. The permanent record is a separate, append-only
+archive in a private Cloudflare R2 bucket (`frontierroles-archive`), written by
+each nightly run before anything is deleted:
+
+- `runs/YYYY/MM/<run timestamp>.jsonl.gz` — one file per run, never rewritten:
+  the run (code version, classifier), every source and whether it was read in
+  full that night, and a line for every posting that is new or changed, with
+  the advert text for all postings, in scope or not.
+- `db/YYYY-MM.db.gz` — a whole copy of the database once a month, as insurance.
+
+To analyse it, download the files and build a history database:
+
+```sh
+aws s3 sync s3://frontierroles-archive/runs ./archive \
+  --endpoint-url https://<account id>.r2.cloudflarestorage.com
+npm run archive:load -w @aiengjobs/engine -- ./archive history.db
+```
+
+`engine/src/archive/load.ts` describes the tables and how to ask what was open
+on any past day; `engine/src/archive/export.ts` explains the format and why a
+failed upload can never leave a gap. The archive starts on 2026-11-20 and its
+first file holds every closure back to 2026-08-23. Nightly snapshots of
+in-scope roles from 2026-06-26 to 2026-07-29 survive only in this repository's
+git history (`git log -- site/src/data/snapshot.json`).
+
 ## Deploy
 
 - **Site:** pushing to `main` runs `.github/workflows/deploy.yml`, which fetches the

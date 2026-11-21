@@ -404,6 +404,7 @@ const PRUNE_AFTER_DAYS = 90;
 export function pruneClosedJobs(
   db: DatabaseSync,
   afterDays = PRUNE_AFTER_DAYS,
+  options: { onlyArchived?: boolean } = {},
 ): number {
   const cutoff = new Date(Date.now() - afterDays * 86_400_000).toISOString();
   const rows = db
@@ -412,11 +413,29 @@ export function pruneClosedJobs(
        WHERE is_closed = 1
          AND last_seen_at IS NOT NULL
          AND last_seen_at < ?
+         ${options.onlyArchived ? ARCHIVED_AS_CLOSED : ""}
        RETURNING id`,
     )
     .all(cutoff) as { id: string }[];
   return rows.length;
 }
+
+/**
+ * The conditions that hold a row back until the archive has it (see
+ * archive/export.ts). With archiving on, deleting a closed role or emptying an
+ * advert is only safe once the file recording it has been confirmed stored —
+ * otherwise a week of failed uploads would quietly become a week-long hole in
+ * the permanent record. Ninety days of slack makes that unlikely for closures
+ * and one night makes it certain for text, so both are checked rather than
+ * assumed. Off (the default) keeps the old behaviour for a database that is
+ * not being archived at all.
+ */
+const ARCHIVED_AS_CLOSED = `AND EXISTS (
+  SELECT 1 FROM archive_state a WHERE a.job_id = jobs.id AND a.closed = 1)`;
+const TEXT_ARCHIVED = `AND (description_text IS NULL OR EXISTS (
+  SELECT 1 FROM archive_state a
+  WHERE a.job_id = jobs.id AND a.text_hash IS NOT NULL
+    AND (jobs.content_hash IS NULL OR a.text_hash = jobs.content_hash)))`;
 
 /**
  * Drop the stored advert text from out-of-scope roles.
@@ -443,12 +462,16 @@ export function pruneClosedJobs(
  * Returns the number of rows emptied. Reclaiming the space is the caller's job,
  * for the reason given on pruneClosedJobs.
  */
-export function dropOutOfScopeText(db: DatabaseSync): number {
+export function dropOutOfScopeText(
+  db: DatabaseSync,
+  options: { onlyArchived?: boolean } = {},
+): number {
   const rows = db
     .prepare(
       `UPDATE jobs SET description_html = NULL, description_text = NULL
        WHERE classification = 'out'
          AND (description_html IS NOT NULL OR description_text IS NOT NULL)
+         ${options.onlyArchived ? TEXT_ARCHIVED : ""}
        RETURNING id`,
     )
     .all() as { id: string }[];
