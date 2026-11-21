@@ -3,6 +3,7 @@ import { readFileSync, mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { CLUSTERS } from "@aiengjobs/shared/taxonomy";
+import { ensureArchiveState } from "../archive/export.ts";
 import { slugify } from "../util/id.ts";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -88,6 +89,9 @@ export function migrate(db: DatabaseSync): void {
     }
   }
   for (const sql of Object.values(JOB_TRIGGERS)) db.exec(sql);
+  // The archive's bookkeeping. Created here rather than in schema.sql for the
+  // reason the columns above are: the nightly database predates it.
+  ensureArchiveState(db);
   for (const table of RETIRED_TABLES) db.exec(`DROP TABLE IF EXISTS ${table}`);
 }
 

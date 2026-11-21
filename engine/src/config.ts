@@ -209,3 +209,11 @@ export const ENCODER_THREADS = Math.max(
 // in-scope role; it exists to kill broad-keyword false-positives ("Support
 // Agent" via /agent/), not to second-guess every title. See ingest.ts.
 export const ENCODER_VETO_CONFIDENCE = 0.7;
+
+/**
+ * Where each run writes its archive file (see archive/export.ts). Unset or
+ * empty turns archiving off, which is what a local run wants: the nightly
+ * workflow sets it only when the bucket's credentials are present, because a
+ * file written and never uploaded would hold back the pruning that waits on it.
+ */
+export const ARCHIVE_DIR = process.env.AIENGJOBS_ARCHIVE_DIR ?? "";

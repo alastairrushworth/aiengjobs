@@ -1,4 +1,6 @@
-import { initDb } from "./db/index.ts";
+import { initDb, openDb } from "./db/index.ts";
+import { commitArchive } from "./archive/export.ts";
+import { loadArchive } from "./archive/load.ts";
 import { seed } from "./seed.ts";
 import { ingest } from "./ingest.ts";
 import { retag, reclassify } from "./retag.ts";
@@ -61,6 +63,26 @@ async function main(): Promise<void> {
       relocate();
       await exportSnapshot();
       break;
+    case "archive:commit": {
+      // After the nightly upload: mark a run's archive file as safely stored,
+      // which is what lets the next run prune and empty the rows it recorded.
+      const file = process.argv[3];
+      if (!file) throw new Error("usage: archive:commit <file.jsonl.gz>");
+      const db = openDb();
+      const n = commitArchive(db, file);
+      db.close();
+      console.log(`archive: committed ${n} posting version(s) from ${file}`);
+      break;
+    }
+    case "archive:load": {
+      // Build a queryable history database from downloaded archive files.
+      const [dir, out = "history.db"] = process.argv.slice(3);
+      if (!dir) throw new Error("usage: archive:load <dir of .jsonl.gz> [history.db]");
+      const r = await loadArchive(dir, out);
+      console.log(`archive: ${r.runs} run(s), ${r.postings} posting(s), ${r.versions} version(s) → ${out}`);
+      for (const f of r.incomplete) console.warn(`  ! ${f} has no closing line — an upload cut short`);
+      break;
+    }
     case "logos":
       // Fetch each company's logo into site/public/logos/. Run occasionally —
       // logos are write-once per company, not part of the nightly refresh.
@@ -79,7 +101,7 @@ async function main(): Promise<void> {
     }
     default:
       console.log(
-        "Usage: tsx src/cli.ts <db:init | seed | ingest | export | retag | relocate | reclassify | refresh | notify>",
+        "Usage: tsx src/cli.ts <db:init | seed | ingest | export | retag | relocate | reclassify | refresh | notify | archive:commit | archive:load>",
       );
       process.exit(1);
   }
