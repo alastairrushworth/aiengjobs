@@ -1,17 +1,6 @@
 {
   "picks": [
     {
-      "date": "2026-10-23",
-      "pickedAt": "2026-10-23T04:13:20.521Z",
-      "slugs": [
-        "verizon-wd12-verizon-careers-engr-iii-spec-ai-science-b337ff",
-        "asos-senior-ai-llm-engineer-d0c8d7",
-        "statestreet-wd1-global-data-scientist-senior-manager-6b113c",
-        "outset-research-engineer-f65c86",
-        "workday-wd5-workday-sr-ai-engineer-e9239a"
-      ]
-    },
-    {
       "date": "2026-10-24",
       "pickedAt": "2026-10-24T03:50:21.514Z",
       "slugs": [
@@ -328,6 +317,17 @@
         "patronusaiinc-expert-interactive-coding-embedded-firmware-contract-remote-66a647",
         "patronusaiinc-expert-interactive-coding-video-streaming-contract-remote-b4a802",
         "patronusaiinc-expert-interactive-coding-dating-apps-contract-remote-4a8de0"
+      ]
+    },
+    {
+      "date": "2026-11-22",
+      "pickedAt": "2026-11-22T23:50:51.825Z",
+      "slugs": [
+        "openai-research-engineer-research-scientist-post-training-collective-alignment-user-signals-5c2313",
+        "openai-research-engineer-research-scientist-human-flourishing-ceac43",
+        "openai-research-engineer-research-scientist-health-1af279",
+        "payoneer-software-developer-payobrain-3e2f0a",
+        "openai-research-engineer-research-scientist-post-training-model-experience-bb9fa5"
       ]
     }
   ]
