@@ -1,17 +1,6 @@
 {
   "picks": [
     {
-      "date": "2026-10-24",
-      "pickedAt": "2026-10-24T03:50:21.514Z",
-      "slugs": [
-        "mastercard-wd1-corporatecareers-senior-ai-engineer-f41399",
-        "spacex-ai-software-engineer-vehicle-engineering-8eff1b",
-        "uipath-senior-software-engineer-ai-024a75",
-        "1x-research-engineer-robot-learning-3a3f54",
-        "mastercard-wd1-corporatecareers-ai-principle-architect-233ae5"
-      ]
-    },
-    {
       "date": "2026-10-25",
       "pickedAt": "2026-10-26T00:03:37.498Z",
       "slugs": [
@@ -328,6 +317,17 @@
         "openai-research-engineer-research-scientist-health-1af279",
         "payoneer-software-developer-payobrain-3e2f0a",
         "openai-research-engineer-research-scientist-post-training-model-experience-bb9fa5"
+      ]
+    },
+    {
+      "date": "2026-11-23",
+      "pickedAt": "2026-11-24T00:25:37.846Z",
+      "slugs": [
+        "horizon3ai-senior-ai-engineer-external-attack-1f4417",
+        "andurilindustries-senior-ai-infrastructure-engineer-60b807",
+        "hyperbolic-member-of-technical-staff-inference-optimization-0df658",
+        "smartsheet-senior-software-engineer-i-agent-engineering-remote-eligible-5a8526",
+        "airbnb-senior-machine-learning-engineer-assistance-foundations-a3b566"
       ]
     }
   ]
