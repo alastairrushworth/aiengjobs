@@ -1,17 +1,6 @@
 {
   "picks": [
     {
-      "date": "2026-10-25",
-      "pickedAt": "2026-10-26T00:03:37.498Z",
-      "slugs": [
-        "skydio-phd-autonomy-engineer-intern-deep-learning-computer-vision-2027-13d29b",
-        "cisco-wd5-cisco-careers-software-engineer-33874d",
-        "skydio-phd-autonomy-engineer-intern-2027-73b18d",
-        "skydio-autonomy-engineer-intern-2027-6ce0f8",
-        "anthropic-enforcement-analyst-agentic-alignment-6127a9"
-      ]
-    },
-    {
       "date": "2026-10-26",
       "pickedAt": "2026-10-27T00:56:17.535Z",
       "slugs": [
@@ -328,6 +317,17 @@
         "hyperbolic-member-of-technical-staff-inference-optimization-0df658",
         "smartsheet-senior-software-engineer-i-agent-engineering-remote-eligible-5a8526",
         "airbnb-senior-machine-learning-engineer-assistance-foundations-a3b566"
+      ]
+    },
+    {
+      "date": "2026-11-24",
+      "pickedAt": "2026-11-25T01:40:59.838Z",
+      "slugs": [
+        "nagarro1-tech-lead-generative-ai-d249e1",
+        "artefact-ai-applied-engineer-ai-engineer-9de926",
+        "qdrant-tech-r-d-lead-engineer-37317a",
+        "artefact-ai-applied-engineer-forward-deployed-95017e",
+        "mistral-ai-ai-scientist-agentic-engineering-ai4engineering-internship-masters-or-phd-fc5c7b"
       ]
     }
   ]
