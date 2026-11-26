@@ -1,17 +1,6 @@
 {
   "picks": [
     {
-      "date": "2026-10-26",
-      "pickedAt": "2026-10-27T00:56:17.535Z",
-      "slugs": [
-        "mastercard-wd1-corporatecareers-senior-ai-engineer-d96989",
-        "mastercard-wd1-corporatecareers-ai-engineer-ii-c0e797",
-        "gartner-wd5-ext-lead-software-engineer-gen-ai-nlp-ml-43ce1c",
-        "statestreet-wd1-global-data-scientist-assistant-manager-b9dd4f",
-        "gsk-wd5-gskcareers-senior-full-stack-engineer-9bd078"
-      ]
-    },
-    {
       "date": "2026-10-27",
       "pickedAt": "2026-10-28T01:42:55.942Z",
       "slugs": [
@@ -328,6 +317,17 @@
         "qdrant-tech-r-d-lead-engineer-37317a",
         "artefact-ai-applied-engineer-forward-deployed-95017e",
         "mistral-ai-ai-scientist-agentic-engineering-ai4engineering-internship-masters-or-phd-fc5c7b"
+      ]
+    },
+    {
+      "date": "2026-11-25",
+      "pickedAt": "2026-11-26T00:59:11.830Z",
+      "slugs": [
+        "doordashusa-principal-engineer-ai-ml-platform-b30de1",
+        "tennr-senior-ml-infrastructure-engineer-20cc12",
+        "nagarro1-ai-architect-bcb3b5",
+        "artefact-ai-engineer-08cea7",
+        "notion-staff-software-engineer-ai-agents-7430b9"
       ]
     }
   ]
