@@ -1,17 +1,6 @@
 {
   "picks": [
     {
-      "date": "2026-10-28",
-      "pickedAt": "2026-10-29T02:01:47.847Z",
-      "slugs": [
-        "ciandt-job-32501-ai-engineer-senior-brazil-885956",
-        "hackerrank-ai-researcher-intern-bba653",
-        "gsk-wd5-gskcareers-ai-platform-engineer-ii-a81dee",
-        "openai-research-engineer-research-scientist-human-flourishing-39fb4f",
-        "verisign-principal-ai-enablement-engineer-74b439"
-      ]
-    },
-    {
       "date": "2026-10-29",
       "pickedAt": "2026-10-30T01:43:29.636Z",
       "slugs": [
@@ -328,6 +317,17 @@
         "alan-fullstack-software-engineer-x-f-m-mo-medical-ab1bb2",
         "ciandt-job-32611-senior-full-stack-developer-python-react-brazil-b40537",
         "alan-fullstack-software-engineer-x-f-m-mo-companion-29dc49"
+      ]
+    },
+    {
+      "date": "2026-11-27",
+      "pickedAt": "2026-11-28T00:03:47.874Z",
+      "slugs": [
+        "ciandt-job-32869-senior-data-scientist-brazil-79f0d0",
+        "graphcore-staff-research-engineer-730b61",
+        "graphcore-staff-research-scientist-e75796",
+        "ciandt-job-32717-ai-engineer-brazil-c40a1d",
+        "bolna-product-engineer-voice-ai-42d6ca"
       ]
     }
   ]
